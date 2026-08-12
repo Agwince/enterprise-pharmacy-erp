@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
+import 'smart_invoice_scanner.dart';
 
 class WholesaleCatalogScreen extends StatefulWidget {
   const WholesaleCatalogScreen({super.key});
@@ -87,7 +88,6 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
-        automaticallyImplyLeading: false,
         title: Row(
           children: [
             Container(
@@ -129,6 +129,49 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
             ),
           ),
         ],
+      ),
+      drawer: Drawer(
+        backgroundColor: const Color(0xFF1E293B),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF0F172A)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(Icons.warehouse_rounded, size: 40, color: Colors.cyanAccent),
+                  const SizedBox(height: 12),
+                  Text('Floor Ops Workspace', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(AuthService().userName, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2_rounded, color: Colors.cyanAccent),
+              title: Text('Wholesale Catalog', style: GoogleFonts.inter(color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+              selected: true,
+              selectedTileColor: Colors.cyanAccent.withValues(alpha: 0.1),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.document_scanner_rounded, color: Colors.white54),
+              title: Text('Invoice Auto-Picker', style: GoogleFonts.inter(color: Colors.white)),
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation1, animation2) => const SmartInvoiceScannerScreen(),
+                    transitionDuration: Duration.zero,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

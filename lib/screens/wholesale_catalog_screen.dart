@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
-import 'smart_invoice_scanner.dart';
+import 'invoice_scanner_screen.dart';
 
 class WholesaleCatalogScreen extends StatefulWidget {
   const WholesaleCatalogScreen({super.key});
@@ -164,7 +164,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
                 Navigator.pushReplacement(
                   context,
                   PageRouteBuilder(
-                    pageBuilder: (context, animation1, animation2) => const SmartInvoiceScannerScreen(),
+                    pageBuilder: (context, animation1, animation2) => const InvoiceScannerScreen(),
                     transitionDuration: Duration.zero,
                   ),
                 );

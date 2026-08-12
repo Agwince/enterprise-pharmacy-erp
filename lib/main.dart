@@ -8,7 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/super_admin_workspace.dart';
 import 'screens/ceo_dashboard_screen.dart';
 import 'screens/admin_hr_workspace_screen.dart';
-import 'screens/wholesale_catalog_screen.dart';
+import 'screens/invoice_scanner_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -76,7 +76,7 @@ class StrictAuthRoleRouter extends StatelessWidget {
           case UserRole.hr:
             return const AdminHrWorkspaceScreen();
           case UserRole.warehousePicker:
-            return const WholesaleCatalogScreen();
+            return const InvoiceScannerScreen();
           case UserRole.none:
           default:
             return const LoginScreen();

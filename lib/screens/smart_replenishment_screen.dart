@@ -44,7 +44,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.emerald,
+          backgroundColor: const Color(0xFF10B981),
           content: Text(
             'Auto-drafted Purchase Order #${result['po_number'] ?? 'PO-2026'}! Added ${result['items_added'] ?? 3} low-stock line items.',
             style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
@@ -69,10 +69,10 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.emerald.withOpacity(0.2),
+                color: const Color(0xFF10B981).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.auto_awesome_rounded, color: Colors.emerald),
+              child: const Icon(Icons.auto_awesome_rounded, color: const Color(0xFF10B981)),
             ),
             const SizedBox(width: 12),
             Text(
@@ -90,7 +90,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.emerald))
+          ? const Center(child: CircularProgressIndicator(color: const Color(0xFF10B981)))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -104,7 +104,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                         colors: [const Color(0xFF1E293B), const Color(0xFF0F2942)],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.emerald.withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -128,7 +128,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                         ElevatedButton.icon(
                           onPressed: _isDrafting ? null : _triggerAutoDraftPO,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.emerald,
+                            backgroundColor: const Color(0xFF10B981),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -150,17 +150,17 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.emerald.withOpacity(0.1),
+                        color: const Color(0xFF10B981).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.emerald.withOpacity(0.4)),
+                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.emerald, size: 24),
+                          const Icon(Icons.check_circle_rounded, color: const Color(0xFF10B981), size: 24),
                           const SizedBox(width: 12),
                           Text(
                             'Active Draft Order: ${_lastPoResult!['po_number']} | Added ${_lastPoResult!['items_added']} items | Total Value: \$${(_lastPoResult!['total_amount'] as num).toStringAsFixed(2)}',
-                            style: GoogleFonts.inter(color: Colors.emerald, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.inter(color: const Color(0xFF10B981), fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -241,8 +241,8 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
 
     switch (abcClass) {
       case 'Fast':
-        bg = Colors.emerald.withOpacity(0.2);
-        fg = Colors.emerald;
+        bg = const Color(0xFF10B981).withOpacity(0.2);
+        fg = const Color(0xFF10B981);
         icon = Icons.bolt_rounded;
         break;
       case 'Steady':

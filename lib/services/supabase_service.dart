@@ -2,9 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/branch.dart';
 import '../models/drug.dart';
-import '../models/inventory.dart';
-import '../models/purchase_order.dart';
-import '../models/transaction.dart';
 
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;

@@ -98,7 +98,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                         mainAxisSpacing: 16,
                         childAspectRatio: isDesktop ? 2.2 : 1.8,
                         children: [
-                          _buildKpiCard('Total ERP Sales', '\$${_totalRevenue.toStringAsFixed(2)}', '+18.4% vs last month', Icons.attach_money_rounded, Colors.emerald),
+                          _buildKpiCard('Total ERP Sales', '\$${_totalRevenue.toStringAsFixed(2)}', '+18.4% vs last month', Icons.attach_money_rounded, const Color(0xFF10B981)),
                           _buildKpiCard('Active Branches', '${_branchRevenues.length} Locations', '100% Operational', Icons.storefront_rounded, Colors.blueAccent),
                           _buildKpiCard('Total Orders', '$_totalTransactions Sales', 'Past 30 Days', Icons.receipt_long_rounded, Colors.amber),
                           _buildKpiCard('Inventory Health', '94.2%', 'ABC Velocity Optimized', Icons.verified_user_rounded, Colors.purpleAccent),
@@ -142,7 +142,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                                   BarChartData(
                                     alignment: BarChartAlignment.spaceAround,
                                     maxY: (_totalRevenue * 0.8).clamp(10000.0, 50000.0),
-                                    barTouchData: BarTouchDataEnabled(false),
+                                    barTouchData: BarTouchData(enabled: false),
                                     titlesData: FlTitlesData(
                                       show: true,
                                       bottomTitles: AxisTitles(
@@ -307,7 +307,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
           child: Text(bin, style: GoogleFonts.inter(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
         )),
-        DataCell(Text(price, style: GoogleFonts.inter(color: Colors.emerald, fontWeight: FontWeight.bold))),
+        DataCell(Text(price, style: GoogleFonts.inter(color: const Color(0xFF10B981), fontWeight: FontWeight.bold))),
       ],
     );
   }

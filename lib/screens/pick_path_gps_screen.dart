@@ -86,7 +86,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
         ),
         actions: [
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.emerald),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
             onPressed: () {
               Navigator.pop(context);
               setState(() => _currentIndex = 0);
@@ -128,15 +128,15 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                 margin: const EdgeInsets.only(right: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: online ? Colors.emerald.withOpacity(0.15) : Colors.amber.withOpacity(0.15),
+                  color: online ? const Color(0xFF10B981).withOpacity(0.15) : Colors.amber.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: online ? Colors.emerald : Colors.amber),
+                  border: Border.all(color: online ? const Color(0xFF10B981) : Colors.amber),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 4,
-                      backgroundColor: online ? Colors.emerald : Colors.amber,
+                      backgroundColor: online ? const Color(0xFF10B981) : Colors.amber,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -144,7 +144,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: online ? Colors.emerald : Colors.amber,
+                        color: online ? const Color(0xFF10B981) : Colors.amber,
                       ),
                     ),
                   ],
@@ -228,7 +228,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                                     'TARGET LOCATION',
                                     style: GoogleFonts.inter(
                                       color: Colors.black54,
-                                      fontWeight: FontWeight.black,
+                                      fontWeight: FontWeight.w900,
                                       fontSize: 12,
                                       letterSpacing: 2,
                                     ),

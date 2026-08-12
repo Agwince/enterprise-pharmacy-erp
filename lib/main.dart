@@ -82,8 +82,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               onDestinationSelected: (index) => setState(() => _selectedIndex = index),
               labelType: NavigationRailLabelType.all,
               selectedIconTheme: const IconThemeData(color: Colors.cyanAccent),
-              selectedLabelStyle: GoogleFonts.inter(color: Colors.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12),
-              unselectedLabelStyle: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
               leading: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20.0),
                 child: Column(
@@ -97,7 +95,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                       child: const Icon(Icons.local_pharmacy_rounded, color: Colors.black, size: 28),
                     ),
                     const SizedBox(height: 8),
-                    Text('PHARMA ERP', style: GoogleFonts.inter(fontWeight: FontWeight.black, fontSize: 10, color: Colors.white70)),
+                    Text('PHARMA ERP', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.white70)),
                   ],
                 ),
               ),

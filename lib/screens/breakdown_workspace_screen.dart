@@ -159,10 +159,12 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
                               right: 0,
                               child: Container(
                                 height: 2,
-                                color: Colors.cyanAccent,
-                                boxShadow: const [
-                                  BoxShadow(color: Colors.cyanAccent, blurRadius: 8, spreadRadius: 2),
-                                ],
+                                decoration: const BoxDecoration(
+                                  color: Colors.cyanAccent,
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.cyanAccent, blurRadius: 8, spreadRadius: 2),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -284,7 +286,7 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
                                   Text(
                                     '${item['scanned']} / ${item['expected']}',
                                     style: GoogleFonts.inter(
-                                      color: item['scanned'] == item['expected'] ? Colors.emerald : Colors.amber,
+                                      color: item['scanned'] == item['expected'] ? const Color(0xFF10B981) : Colors.amber,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 13,
                                     ),
@@ -314,13 +316,13 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: Colors.emerald,
+                              backgroundColor: const Color(0xFF10B981),
                               content: Text('Intake Verified & Synced with Supabase Inventory!', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                             ),
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.emerald,
+                          backgroundColor: const Color(0xFF10B981),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

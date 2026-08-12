@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/drug.dart';
 import '../models/transaction.dart';
 import '../services/supabase_service.dart';
@@ -20,6 +21,13 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
   List<Drug> _pickingList = [];
   bool _isLoading = true;
   int _currentIndex = 0;
+
+  final List<String> _sampleMedicineImages = const [
+    'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&auto=format&fit=crop&q=80',
+  ];
 
   @override
   void initState() {
@@ -43,7 +51,6 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
 
     final currentDrug = _pickingList[_currentIndex];
 
-    // Create pick transaction record
     final tx = TransactionRecord(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       branchId: 'b1',
@@ -56,7 +63,6 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
       drugName: currentDrug.name,
     );
 
-    // Queue transaction (handles offline/online automatically)
     await _offlineSync.queueTransaction(tx);
 
     if (_currentIndex < _pickingList.length - 1) {
@@ -117,7 +123,6 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
           ],
         ),
         actions: [
-          // Offline/Online Status Badge
           ListenableBuilder(
             listenable: _offlineSync,
             builder: (context, _) {
@@ -128,7 +133,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                 margin: const EdgeInsets.only(right: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: online ? const Color(0xFF10B981).withOpacity(0.15) : Colors.amber.withOpacity(0.15),
+                  color: online ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: online ? const Color(0xFF10B981) : Colors.amber),
                 ),
@@ -189,136 +194,209 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                   ),
                 ),
 
-                // Disabled Scroll PageView (One Item at a Time Focus View)
+                // Single-Item Focus View (Disabled Scrolling)
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(), // SCROLLING DISABLED PER BLUEPRINT
+                    physics: const NeverScrollableScrollPhysics(),
                     itemCount: _pickingList.length,
                     itemBuilder: (context, index) {
                       final drug = _pickingList[index];
+                      final imageUrl = _sampleMedicineImages[index % _sampleMedicineImages.length];
 
-                      return Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // MASSIVE LOCATION TYPOGRAPHY CARD
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.amber.shade700, Colors.orangeAccent.shade700],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 550),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // TASK 3: HIGH-RESOLUTION MEDICINE IMAGE ENGINE (PROMINENTLY HIGHLIGHTED)
+                                Container(
+                                  width: double.infinity,
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.cyanAccent, width: 2),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.cyanAccent.withValues(alpha: 0.3),
+                                        blurRadius: 20,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(18),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        CachedNetworkImage(
+                                          imageUrl: imageUrl,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => Container(
+                                            color: const Color(0xFF1E293B),
+                                            child: const Center(
+                                              child: CircularProgressIndicator(color: Colors.cyanAccent),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) => Container(
+                                            color: const Color(0xFF1E293B),
+                                            child: const Icon(Icons.medication_rounded, size: 60, color: Colors.cyanAccent),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 12,
+                                          right: 12,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withValues(alpha: 0.75),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(color: Colors.cyanAccent),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.verified_rounded, size: 14, color: Colors.cyanAccent),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'VISUAL VERIFICATION ENGINE',
+                                                  style: GoogleFonts.inter(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.amber.withOpacity(0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'TARGET LOCATION',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.black54,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 12,
-                                      letterSpacing: 2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    drug.binLocation,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 26, // MASSIVE TEXT
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 24),
+                                const SizedBox(height: 20),
 
-                            // DRUG DETAILS CARD
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: Colors.white.withOpacity(0.08)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                // MASSIVE LOCATION TYPOGRAPHY CARD
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [Colors.amber.shade700, Colors.orangeAccent.shade700],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.amber.withValues(alpha: 0.3),
+                                        blurRadius: 15,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
                                     children: [
                                       Text(
-                                        drug.sku,
-                                        style: GoogleFonts.inter(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                                        'TARGET LOCATION',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.black54,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                          letterSpacing: 2,
+                                        ),
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(6)),
-                                        child: Text(
-                                          drug.category,
-                                          style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        drug.binLocation,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.inter(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 24,
+                                          letterSpacing: 1,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    drug.name,
-                                    style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // DRUG DETAILS CARD
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E293B),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                                   ),
-                                  if (drug.genericName != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Active Ingredient: ${drug.genericName}',
-                                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 20),
-                                  const Divider(color: Colors.white10),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        'Quantity to Pick:',
-                                        style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            drug.sku,
+                                            style: GoogleFonts.inter(color: Colors.cyanAccent, fontWeight: FontWeight.bold),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(6)),
+                                            child: Text(
+                                              drug.category,
+                                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                                            ),
+                                          ),
+                                        ],
                                       ),
+                                      const SizedBox(height: 10),
                                       Text(
-                                        '2 ${drug.unit}',
-                                        style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 22, fontWeight: FontWeight.bold),
+                                        drug.name,
+                                        style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                      ),
+                                      if (drug.genericName != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Active Ingredient: ${drug.genericName}',
+                                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+                                        ),
+                                      ],
+                                      const SizedBox(height: 16),
+                                      Divider(color: Colors.white.withValues(alpha: 0.1)),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Quantity to Pick:',
+                                            style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+                                          ),
+                                          Text(
+                                            '2 ${drug.unit}',
+                                            style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 20, fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       );
                     },
                   ),
                 ),
 
-                // Bottom Fixed Action Button
+                // Bottom Action Button
                 Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20),
                   color: const Color(0xFF1E293B),
                   child: SizedBox(
                     width: double.infinity,
@@ -327,13 +405,13 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.amberAccent,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      icon: const Icon(Icons.check_circle_rounded, size: 24),
+                      icon: const Icon(Icons.check_circle_rounded, size: 22),
                       label: Text(
                         _currentIndex == _pickingList.length - 1 ? 'Confirm Final Pick & Finish' : 'Confirm Pick & Next Location',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                     ),
                   ),

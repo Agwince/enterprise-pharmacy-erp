@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'PITCH DEMO QUICK-LOGIN (4 ROLES)',
+                        'PITCH DEMO QUICK-LOGIN (5 ROLES)',
                         style: GoogleFonts.inter(
                           color: Colors.amberAccent,
                           fontSize: 10,
@@ -267,6 +267,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: const Icon(Icons.inventory_2_rounded, size: 18),
                   label: Text(
                     'Login as Warehouse Picker',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 5: Branch Manager
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsBranchManager();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.tealAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.tealAccent,
+                    side: const BorderSide(color: Colors.tealAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.store_mall_directory_rounded, size: 18),
+                  label: Text(
+                    'Login as Branch Manager',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

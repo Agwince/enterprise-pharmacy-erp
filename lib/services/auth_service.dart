@@ -7,6 +7,7 @@ enum UserRole {
   ceo,
   hr,
   warehousePicker,
+  branchManager,
 }
 
 class AuthService extends ChangeNotifier {
@@ -51,6 +52,13 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void loginAsBranchManager() {
+    _role = UserRole.branchManager;
+    _userEmail = 'manager@nairobibulk.com';
+    _userName = 'Sarah Jenkins (Branch Manager)';
+    notifyListeners();
+  }
+
   Future<bool> signInWithEmailPassword(String email, String password) async {
     try {
       final response = await Supabase.instance.client.auth.signInWithPassword(
@@ -64,6 +72,8 @@ class AuthService extends ChangeNotifier {
           loginAsHr();
         } else if (email.contains('picker') || email.contains('store')) {
           loginAsWarehousePicker();
+        } else if (email.contains('manager')) {
+          loginAsBranchManager();
         } else {
           loginAsCeo();
         }
@@ -80,6 +90,8 @@ class AuthService extends ChangeNotifier {
       loginAsHr();
     } else if (email.contains('picker')) {
       loginAsWarehousePicker();
+    } else if (email.contains('manager')) {
+      loginAsBranchManager();
     } else {
       loginAsCeo();
     }

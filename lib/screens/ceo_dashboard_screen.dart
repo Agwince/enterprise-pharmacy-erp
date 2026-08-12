@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/supabase_service.dart';
+import '../services/auth_service.dart';
 
 class CeoDashboardScreen extends StatefulWidget {
   const CeoDashboardScreen({super.key});
@@ -76,7 +77,19 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             tooltip: 'Refresh Analytics',
           ),
-          const SizedBox(width: 16),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: OutlinedButton.icon(
+              onPressed: () => AuthService().logout(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text('Logout CEO', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ),
         ],
       ),
       body: _isLoading

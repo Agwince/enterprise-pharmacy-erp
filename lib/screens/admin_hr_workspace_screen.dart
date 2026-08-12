@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
 
 class AdminHrWorkspaceScreen extends StatefulWidget {
   const AdminHrWorkspaceScreen({super.key});
@@ -105,7 +106,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.purpleAccent.withOpacity(0.2),
+                      color: Colors.purpleAccent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.person_add_alt_1_rounded, color: Colors.purpleAccent),
@@ -275,7 +276,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.cyanAccent.withOpacity(0.2),
+                  color: Colors.cyanAccent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.domain_add_rounded, color: Colors.cyanAccent),
@@ -310,9 +311,9 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.cyanAccent.withOpacity(0.1),
+                    color: Colors.cyanAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
+                    border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
@@ -369,12 +370,13 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
+        automaticallyImplyLeading: false,
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.purpleAccent.withOpacity(0.2),
+                color: Colors.purpleAccent.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.badge_rounded, color: Colors.purpleAccent),
@@ -386,6 +388,21 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
             ),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: OutlinedButton.icon(
+              onPressed: () => AuthService().logout(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text('Logout HR', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

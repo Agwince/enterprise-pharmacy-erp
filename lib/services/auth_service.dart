@@ -3,8 +3,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 enum UserRole {
   none,
+  superAdmin,
   ceo,
-  storekeeper,
+  hr,
+  warehousePicker,
 }
 
 class AuthService extends ChangeNotifier {
@@ -21,17 +23,31 @@ class AuthService extends ChangeNotifier {
   String get userName => _userName;
   bool get isAuthenticated => _role != UserRole.none;
 
-  void loginAsCeo() {
-    _role = UserRole.ceo;
-    _userEmail = 'ceo@pharmacy.com';
-    _userName = 'Eleanor Vance (CEO)';
+  void loginAsSuperAdmin() {
+    _role = UserRole.superAdmin;
+    _userEmail = 'superadmin@pharmasaas.com';
+    _userName = 'Super Admin (Platform Owner)';
     notifyListeners();
   }
 
-  void loginAsStorekeeper() {
-    _role = UserRole.storekeeper;
-    _userEmail = 'storekeeper@pharmacy.com';
-    _userName = 'Dave Bowman (Storekeeper)';
+  void loginAsCeo() {
+    _role = UserRole.ceo;
+    _userEmail = 'ceo@nairobibulk.com';
+    _userName = 'Eleanor Vance (Client CEO)';
+    notifyListeners();
+  }
+
+  void loginAsHr() {
+    _role = UserRole.hr;
+    _userEmail = 'hr@nairobibulk.com';
+    _userName = 'Jessica Taylor (Client HR)';
+    notifyListeners();
+  }
+
+  void loginAsWarehousePicker() {
+    _role = UserRole.warehousePicker;
+    _userEmail = 'picker@nairobibulk.com';
+    _userName = 'Dave Bowman (Warehouse Picker)';
     notifyListeners();
   }
 
@@ -42,21 +58,28 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       if (response.user != null) {
-        // Simple role parsing based on email or default to CEO
-        if (email.contains('store') || email.contains('pick') || email.contains('intake')) {
-          loginAsStorekeeper();
+        if (email.contains('super') || email.contains('admin')) {
+          loginAsSuperAdmin();
+        } else if (email.contains('hr')) {
+          loginAsHr();
+        } else if (email.contains('picker') || email.contains('store')) {
+          loginAsWarehousePicker();
         } else {
           loginAsCeo();
         }
         return true;
       }
     } catch (e) {
-      debugPrint('Supabase Auth error (falling back to quick demo mode): $e');
+      debugPrint('Supabase Auth note: $e');
     }
-    
-    // Fallback demo authentication if offline or unseeded user
-    if (email.contains('storekeeper')) {
-      loginAsStorekeeper();
+
+    // Demo fallback role parsing
+    if (email.contains('super')) {
+      loginAsSuperAdmin();
+    } else if (email.contains('hr')) {
+      loginAsHr();
+    } else if (email.contains('picker')) {
+      loginAsWarehousePicker();
     } else {
       loginAsCeo();
     }

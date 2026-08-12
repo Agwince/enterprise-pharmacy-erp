@@ -10,7 +10,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'ceo@pharmacy.com');
+  final _emailController = TextEditingController(text: 'ceo@nairobibulk.com');
   final _passwordController = TextEditingController(text: '••••••••');
   bool _isLoading = false;
 
@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 440),
+            constraints: const BoxConstraints(maxWidth: 460),
             padding: const EdgeInsets.all(32.0),
             decoration: BoxDecoration(
               color: const Color(0xFF1E293B),
@@ -49,26 +49,26 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Logo & Header
+                // Logo & Branding Header
                 Center(
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Colors.blueAccent, Colors.cyanAccent],
+                        colors: [Colors.amberAccent, Colors.cyanAccent],
                       ),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(
                       Icons.local_pharmacy_rounded,
                       color: Colors.black,
-                      size: 40,
+                      size: 38,
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Enterprise Pharmacy ERP',
+                  'Multi-Tenant Enterprise ERP',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 22,
@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Multi-Tenant SaaS Gateway • RBAC Enabled',
+                  'Wholesale B2B SaaS • Authentication Gateway',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 12,
@@ -87,9 +87,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-                // Email Input
+                // Corporate Email Textfield
                 Text(
                   'Corporate Email',
                   style: GoogleFonts.inter(
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.inter(color: Colors.white),
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.email_outlined, color: Colors.white54),
-                    hintText: 'user@pharmacy.com',
+                    hintText: 'user@tenantdomain.com',
                     hintStyle: GoogleFonts.inter(color: Colors.white38),
                     filled: true,
                     fillColor: const Color(0xFF0F172A),
@@ -114,9 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Password Input
+                // Password Textfield
                 Text(
                   'Password',
                   style: GoogleFonts.inter(
@@ -169,16 +169,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-                // Divider for Demo Quick Login
+                // Pitch Demo Quick-Login Header
                 Row(
                   children: [
                     Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'PITCH DEMO QUICK-LOGIN',
+                        'PITCH DEMO QUICK-LOGIN (4 ROLES)',
                         style: GoogleFonts.inter(
                           color: Colors.amberAccent,
                           fontSize: 10,
@@ -190,9 +190,29 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.15))),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-                // Quick Login Button 1: CEO
+                // Button 1: Super Admin (Platform Owner)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsSuperAdmin();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amberAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.amberAccent,
+                    side: const BorderSide(color: Colors.amberAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.shield_rounded, size: 18),
+                  label: Text(
+                    'Login as Super Admin (Platform Owner)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 2: Client CEO
                 ElevatedButton.icon(
                   onPressed: () {
                     AuthService().loginAsCeo();
@@ -202,42 +222,52 @@ class _LoginScreenState extends State<LoginScreen> {
                     foregroundColor: Colors.purpleAccent,
                     side: const BorderSide(color: Colors.purpleAccent, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.admin_panel_settings_rounded, size: 20),
+                  icon: const Icon(Icons.admin_panel_settings_rounded, size: 18),
                   label: Text(
-                    'Login as CEO (Executive Role)',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    'Login as Client CEO',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
-                // Quick Login Button 2: Storekeeper
+                // Button 3: Client HR
                 ElevatedButton.icon(
                   onPressed: () {
-                    AuthService().loginAsStorekeeper();
+                    AuthService().loginAsHr();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.blueAccent,
+                    side: const BorderSide(color: Colors.blueAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.badge_rounded, size: 18),
+                  label: Text(
+                    'Login as Client HR',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 4: Warehouse Picker
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsWarehousePicker();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
                     foregroundColor: Colors.cyanAccent,
                     side: const BorderSide(color: Colors.cyanAccent, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.inventory_2_rounded, size: 20),
+                  icon: const Icon(Icons.inventory_2_rounded, size: 18),
                   label: Text(
-                    'Login as Storekeeper (Floor Role)',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                    'Login as Warehouse Picker',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import 'visual_pick_list_screen.dart';
 
@@ -15,12 +16,18 @@ class InvoiceScannerScreen extends StatefulWidget {
 class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   bool _isScanning = false;
   String _scanStatusText = 'Capturing High-Res Image...';
-  late final MobileScannerController _scannerController;
+  late MobileScannerController _scannerController;
+  bool _cameraFailed = false;
+  String _cameraErrorMessage = '';
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
-    _scannerController = MobileScannerController();
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+    );
   }
 
   @override
@@ -29,8 +36,45 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     super.dispose();
   }
 
+  /// Fallback: capture invoice photo via native camera or gallery
+  Future<void> _pickInvoiceImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+      if (image != null) {
+        _startScan();
+      }
+    } catch (e) {
+      // Fall back to gallery if native camera fails
+      try {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+        );
+        if (image != null) {
+          _startScan();
+        }
+      } catch (e2) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not open camera or gallery: $e2',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _startScan() async {
-    _scannerController.stop();
+    if (!_cameraFailed) {
+      _scannerController.stop();
+    }
 
     setState(() {
       _isScanning = true;
@@ -56,6 +100,86 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const VisualPickListScreen()),
+    );
+  }
+
+  Widget _buildCameraErrorFallback(String message) {
+    return Container(
+      color: const Color(0xFF0F172A),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.videocam_off_rounded, color: Colors.redAccent, size: 48),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Camera Error',
+                style: GoogleFonts.inter(
+                  color: Colors.redAccent,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 260,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _pickInvoiceImage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.photo_camera_rounded, size: 22),
+                  label: Text(
+                    'Take Photo of Invoice',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 260,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+                      if (image != null) _startScan();
+                    } catch (_) {}
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.purpleAccent,
+                    side: const BorderSide(color: Colors.purpleAccent, width: 2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.folder_open_rounded, size: 20),
+                  label: Text(
+                    'Upload from Gallery',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -112,32 +236,99 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: _isScanning
           ? null
-          : SizedBox(
-              height: 70,
-              width: 300,
-              child: FloatingActionButton.extended(
-                onPressed: _startScan,
-                backgroundColor: Colors.purpleAccent,
-                foregroundColor: Colors.white,
-                icon: const Icon(Icons.camera_alt, size: 28),
-                label: Text(
-                  'Scan Paper Invoice',
-                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+          : Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Primary scan button
+                  SizedBox(
+                    height: 64,
+                    width: 220,
+                    child: FloatingActionButton.extended(
+                      heroTag: 'scan_invoice',
+                      onPressed: _startScan,
+                      backgroundColor: Colors.purpleAccent,
+                      foregroundColor: Colors.white,
+                      icon: const Icon(Icons.camera_alt, size: 24),
+                      label: Text(
+                        'Scan Invoice',
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Fallback: Upload photo
+                  SizedBox(
+                    height: 64,
+                    width: 64,
+                    child: FloatingActionButton(
+                      heroTag: 'upload_invoice',
+                      onPressed: _pickInvoiceImage,
+                      backgroundColor: Colors.orangeAccent,
+                      foregroundColor: Colors.black,
+                      child: const Icon(Icons.folder_open_rounded, size: 28),
+                    ),
+                  ),
+                ],
               ),
             ),
     );
   }
 
   Widget _buildCaptureState() {
+    if (_cameraFailed) {
+      return _buildCameraErrorFallback(_cameraErrorMessage);
+    }
+
     return Stack(
       children: [
-        // Live camera feed
+        // Live camera feed with error handling
         MobileScanner(
           controller: _scannerController,
+          errorBuilder: (context, error) {
+            final message = switch (error.errorCode) {
+              MobileScannerErrorCode.permissionDenied =>
+                'Camera permission denied.\nPlease allow camera access in your browser/device settings.',
+              MobileScannerErrorCode.unsupported =>
+                'Camera scanning is not supported on this device.',
+              MobileScannerErrorCode.genericError =>
+                'Camera error: ${error.errorDetails?.message ?? 'Unknown'}',
+              _ => 'Scanner error: ${error.errorCode.name}',
+            };
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_cameraFailed) {
+                setState(() {
+                  _cameraFailed = true;
+                  _cameraErrorMessage = message;
+                });
+              }
+            });
+
+            return _buildCameraErrorFallback(message);
+          },
+          placeholderBuilder: (context) {
+            return Container(
+              color: Colors.black,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(color: Colors.purpleAccent),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Initializing Camera...',
+                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
         
-        // Scanning brackets
+        // Scanning brackets overlay
         Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40.0),

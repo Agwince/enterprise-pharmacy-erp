@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../services/auth_service.dart';
 
 class StoreMappingScreen extends StatefulWidget {
@@ -11,6 +12,19 @@ class StoreMappingScreen extends StatefulWidget {
 
 class _StoreMappingScreenState extends State<StoreMappingScreen> {
   final List<Map<String, String>> _mappedLocations = [];
+  late final MobileScannerController _scannerController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scannerController = MobileScannerController();
+  }
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
   void _showMappingModal() {
     final aisleController = TextEditingController();
@@ -42,7 +56,10 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+                _scannerController.start();
+              },
               child: Text(
                 'Cancel',
                 style: GoogleFonts.inter(color: Colors.white54, fontWeight: FontWeight.bold),
@@ -70,6 +87,7 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
                 });
                 
                 Navigator.pop(context);
+                _scannerController.start();
                 
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -169,9 +187,14 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
               flex: 4,
               child: Stack(
                 children: [
-                  Container(
-                    width: double.infinity,
-                    color: Colors.black,
+                  MobileScanner(
+                    controller: _scannerController,
+                    onDetect: (capture) {
+                      if (capture.barcodes.isNotEmpty) {
+                        _scannerController.stop();
+                        _showMappingModal();
+                      }
+                    },
                   ),
                   Center(
                     child: Padding(
@@ -295,7 +318,10 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
         child: SizedBox(
           height: 60,
           child: ElevatedButton.icon(
-            onPressed: _showMappingModal,
+            onPressed: () {
+              _scannerController.stop();
+              _showMappingModal();
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.tealAccent,
               foregroundColor: Colors.black,

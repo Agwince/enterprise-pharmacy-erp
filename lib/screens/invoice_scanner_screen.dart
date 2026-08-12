@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../services/auth_service.dart';
 import 'visual_pick_list_screen.dart';
 
@@ -14,8 +15,23 @@ class InvoiceScannerScreen extends StatefulWidget {
 class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   bool _isScanning = false;
   String _scanStatusText = 'Capturing High-Res Image...';
+  late final MobileScannerController _scannerController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scannerController = MobileScannerController();
+  }
+
+  @override
+  void dispose() {
+    _scannerController.dispose();
+    super.dispose();
+  }
 
   void _startScan() async {
+    _scannerController.stop();
+
     setState(() {
       _isScanning = true;
       _scanStatusText = 'Capturing High-Res Image...';
@@ -116,8 +132,10 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   Widget _buildCaptureState() {
     return Stack(
       children: [
-        // Camera simulation dark background
-        Container(color: Colors.black87),
+        // Live camera feed
+        MobileScanner(
+          controller: _scannerController,
+        ),
         
         // Scanning brackets
         Center(

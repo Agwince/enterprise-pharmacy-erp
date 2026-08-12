@@ -78,19 +78,19 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
 
     setState(() {
       _isScanning = true;
-      _scanStatusText = 'Capturing High-Res Image...';
+      _scanStatusText = 'Reading Invoice Text...';
     });
 
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     setState(() {
-      _scanStatusText = 'Running OCR Text Extraction...';
+      _scanStatusText = 'Matching to Database...';
     });
 
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     setState(() {
-      _scanStatusText = 'Matching SKUs to Warehouse Bin Locations...';
+      _scanStatusText = 'Generating Visual Route...';
     });
 
     await Future.delayed(const Duration(seconds: 1));
@@ -244,7 +244,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
                   // Primary scan button
                   SizedBox(
                     height: 64,
-                    width: 220,
+                    width: 280,
                     child: FloatingActionButton.extended(
                       heroTag: 'scan_invoice',
                       onPressed: _startScan,
@@ -252,8 +252,8 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
                       foregroundColor: Colors.white,
                       icon: const Icon(Icons.camera_alt, size: 24),
                       label: Text(
-                        'Scan Invoice',
-                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+                        'Snap Photo of Printed Invoice',
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),

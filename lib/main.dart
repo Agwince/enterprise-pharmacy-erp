@@ -7,6 +7,7 @@ import 'screens/ceo_dashboard_screen.dart';
 import 'screens/smart_replenishment_screen.dart';
 import 'screens/breakdown_workspace_screen.dart';
 import 'screens/pick_path_gps_screen.dart';
+import 'screens/admin_hr_workspace_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     SmartReplenishmentScreen(),
     BreakdownWorkspaceScreen(),
     PickPathGpsScreen(),
+    AdminHrWorkspaceScreen(),
   ];
 
   @override
@@ -120,6 +122,11 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                   selectedIcon: Icon(Icons.navigation_rounded),
                   label: Text('Pick GPS'),
                 ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.badge_outlined),
+                  selectedIcon: Icon(Icons.badge_rounded),
+                  label: Text('Admin & HR'),
+                ),
               ],
             ),
           Expanded(child: _screens[_selectedIndex]),
@@ -129,7 +136,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           ? null
           : NavigationBar(
               backgroundColor: const Color(0xFF1E293B),
-              indicatorColor: Colors.cyanAccent.withOpacity(0.2),
+              indicatorColor: Colors.cyanAccent.withValues(alpha: 0.2),
               selectedIndex: _selectedIndex,
               onDestinationSelected: (index) => setState(() => _selectedIndex = index),
               destinations: const [
@@ -152,6 +159,11 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                   icon: Icon(Icons.navigation_outlined),
                   selectedIcon: Icon(Icons.navigation_rounded, color: Colors.cyanAccent),
                   label: 'Pick GPS',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.badge_outlined),
+                  selectedIcon: Icon(Icons.badge_rounded, color: Colors.cyanAccent),
+                  label: 'Admin',
                 ),
               ],
             ),

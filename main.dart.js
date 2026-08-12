@@ -106328,7 +106328,7 @@ I(a){var s,r=this,q=null,p=t.p,o=A.d1(A.b([A.bd(q,B.Nq,B.n,q,q,new A.bg(B.ai.bu(
 o=A.BX(A.b([new A.bI(B.eA,A.q4(B.eM,A.a0("Logout Picker",q,q,q,A.Y().$2$fontSize$fontWeight(12,B.o),q,q),new A.aGo(),n),q)],p),!0,B.Z,0,q,o)
 n=r.d?A.eh(A.c7(A.b([B.YR,B.YX,A.a0(r.e,q,q,q,A.Y().$3$color$fontSize$fontWeight(B.f,20,B.o),B.bo,q)],p),B.E,B.cf,B.y),q,q):r.aee()
 if(r.d)p=q
-else{s=A.di(new A.Eb(B.NI,B.f,B.ai,"scan_invoice",r.gasP(),!0,B.E4,A.a0("Scan Invoice",q,q,q,A.Y().$2$fontSize$fontWeight(16,B.o),q,q),q),64,220)
+else{s=A.di(new A.Eb(B.NI,B.f,B.ai,"scan_invoice",r.gasP(),!0,B.E4,A.a0("Snap Photo of Printed Invoice",q,q,q,A.Y().$2$fontSize$fontWeight(14,B.o),q,q),q),64,280)
 p=new A.bI(B.qs,A.d1(A.b([s,B.bZ,A.di(new A.Eb(B.NT,B.m,B.df,"upload_invoice",r.gWY(),!1,B.a5w,q,q),64,64)],p),B.E,B.cf,B.y,0,q),q)}return A.mp(o,B.a9,n,q,p,B.pr)},
 aee(){var s,r,q=this,p=null
 if(q.r)return q.W0(q.w)
@@ -106341,13 +106341,13 @@ return A.bd(s,s,B.n,s,s,new A.bg(s,s,new A.dk(r,!a?B.ia:B.k,q,p),s,s,s,B.z),40,s
 A.aGk.prototype={
 $0(){var s=this.a
 s.d=!0
-s.e="Capturing High-Res Image..."},
+s.e="Reading Invoice Text..."},
 $S:0}
 A.aGl.prototype={
-$0(){this.a.e="Running OCR Text Extraction..."},
+$0(){this.a.e="Matching to Database..."},
 $S:0}
 A.aGm.prototype={
-$0(){this.a.e="Matching SKUs to Warehouse Bin Locations..."},
+$0(){this.a.e="Generating Visual Route..."},
 $S:0}
 A.aGn.prototype={
 $1(a){return B.a51},

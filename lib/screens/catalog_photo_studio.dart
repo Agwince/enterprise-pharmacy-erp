@@ -3,6 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/supabase_service.dart';
+import 'register_product_screen.dart';
+
 class CatalogPhotoStudioScreen extends StatefulWidget {
   const CatalogPhotoStudioScreen({super.key});
 
@@ -12,45 +16,76 @@ class CatalogPhotoStudioScreen extends StatefulWidget {
 
 class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
   final ImagePicker _picker = ImagePicker();
+  final SupabaseService _supabaseService = SupabaseService();
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _catalog = [];
 
-  final List<Map<String, dynamic>> _catalog = [
-    {
-      'id': 'nrb-001',
-      'name': 'ABZ SUSPENSION 10ML',
-      'sku': 'NRB-ABZ-10ML',
-      'category': 'Anthelmintic Syrup',
-      'box_image_url': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
-      'barcode_string': '6001234567891',
-      'loose_unit_image_url': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
-    },
-    {
-      'id': 'nrb-002',
-      'name': 'AMOXICILLIN 500MG 100\'S',
-      'sku': 'NRB-AMX-100S',
-      'category': 'Antibiotics Caps',
-      'box_image_url': null,
-      'barcode_string': null,
-      'loose_unit_image_url': null,
-    },
-    {
-      'id': 'nrb-003',
-      'name': 'PANADOL EXTRA 100\'S',
-      'sku': 'NRB-PAN-100S',
-      'category': 'Analgesic Tabs',
-      'box_image_url': null,
-      'barcode_string': null,
-      'loose_unit_image_url': null,
-    },
-    {
-      'id': 'nrb-004',
-      'name': 'FLUGONE EXP 60MLS',
-      'sku': 'NRB-FLU-60ML',
-      'category': 'Cough Liquid',
-      'box_image_url': null,
-      'barcode_string': null,
-      'loose_unit_image_url': null,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadLiveCatalog();
+  }
+
+  Future<void> _loadLiveCatalog() async {
+    setState(() => _isLoading = true);
+    try {
+      final client = Supabase.instance.client;
+      final response = await client.from('drugs').select();
+      final list = response as List<dynamic>;
+
+      List<Map<String, dynamic>> items = [];
+      if (list.isNotEmpty) {
+        items = list.map((json) {
+          return {
+            'id': json['id'] as String,
+            'name': json['name'] as String,
+            'sku': json['sku'] as String,
+            'category': json['category'] as String? ?? 'General',
+            'box_image_url': json['image_url'] as String?,
+            'barcode_string': json['sku'] as String?,
+            'loose_unit_image_url': null,
+          };
+        }).toList();
+      } else {
+        final drugs = await _supabaseService.fetchDrugs();
+        items = drugs.map((drug) {
+          return {
+            'id': drug.id,
+            'name': drug.name,
+            'sku': drug.sku,
+            'category': drug.category,
+            'box_image_url': drug.imageUrl,
+            'barcode_string': drug.sku,
+            'loose_unit_image_url': null,
+          };
+        }).toList();
+      }
+
+      if (mounted) {
+        setState(() {
+          _catalog = items;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _catalog = [];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _openRegisterNewMedicineScreen() async {
+    final res = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RegisterProductScreen()),
+    );
+    if (res == true) {
+      _loadLiveCatalog();
+    }
+  }
 
   void _openGuidedPhotoStudio(Map<String, dynamic> drug) {
     showDialog(

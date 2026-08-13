@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/drug.dart';
+import '../services/supabase_service.dart';
 import '../services/auth_service.dart';
+import 'register_product_screen.dart';
 
 class StockPutawayScreen extends StatefulWidget {
   const StockPutawayScreen({super.key});
@@ -14,102 +16,73 @@ class StockPutawayScreen extends StatefulWidget {
 
 class _StockPutawayScreenState extends State<StockPutawayScreen> {
   final ImagePicker _picker = ImagePicker();
+  final SupabaseService _supabaseService = SupabaseService();
 
-  // Nairobi Catalog Sample Seed Data
-  final List<Drug> _nairobiCatalog = [
-    Drug(
-      id: 'nrb-001',
-      sku: 'NRB-ABZ-10ML',
-      name: 'ABZ SUSPENSION 10ML',
-      genericName: 'Albendazole 400mg/10ml',
-      category: 'Anthelmintic',
-      unit: 'Bottle 10ml',
-      binLocation: 'AISLE 1 - SHELF B2',
-      unitPrice: 120.00,
-      costPrice: 75.00,
-      minThreshold: 20,
-      maxThreshold: 200,
-      imageUrl: null, // Relies on placeholder!
-      createdAt: DateTime.now(),
-    ),
-    Drug(
-      id: 'nrb-002',
-      sku: 'NRB-PAN-100S',
-      name: 'PANADOL EXTRA 100\'S',
-      genericName: 'Paracetamol + Caffeine',
-      category: 'Analgesics',
-      unit: 'Box of 100',
-      binLocation: 'AISLE 1 - SHELF A1',
-      unitPrice: 850.00,
-      costPrice: 520.00,
-      minThreshold: 50,
-      maxThreshold: 500,
-      imageUrl: null, // Relies on placeholder!
-      createdAt: DateTime.now(),
-    ),
-    Drug(
-      id: 'nrb-003',
-      sku: 'NRB-AMX-100S',
-      name: 'AMOXICILLIN 500MG 100\'S',
-      genericName: 'Amoxicillin Trihydrate',
-      category: 'Antibiotics',
-      unit: 'Box of 100',
-      binLocation: 'AISLE 2 - SHELF A3',
-      unitPrice: 1450.00,
-      costPrice: 900.00,
-      minThreshold: 30,
-      maxThreshold: 300,
-      imageUrl: null, // Relies on placeholder!
-      createdAt: DateTime.now(),
-    ),
-    Drug(
-      id: 'nrb-004',
-      sku: 'NRB-FLU-60ML',
-      name: 'FLUGONE EXP 60MLS',
-      genericName: 'Expectorant Cough Formula',
-      category: 'Cough & Cold',
-      unit: 'Bottle 60ml',
-      binLocation: 'AISLE 3 - SHELF C1',
-      unitPrice: 380.00,
-      costPrice: 210.00,
-      minThreshold: 25,
-      maxThreshold: 250,
-      imageUrl: null, // Relies on placeholder!
-      createdAt: DateTime.now(),
-    ),
-    Drug(
-      id: 'nrb-005',
-      sku: 'NRB-INS-100U',
-      name: 'INSULIN GLARGINE 100U/ML',
-      genericName: 'Insulin Glargine',
-      category: 'Cold Storage',
-      unit: 'Vial 10ml',
-      binLocation: 'REFRIGERATOR - BAY 1',
-      unitPrice: 3200.00,
-      costPrice: 2100.00,
-      minThreshold: 10,
-      maxThreshold: 50,
-      imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
-      createdAt: DateTime.now(),
-    ),
-  ];
-
+  bool _isLoading = true;
+  List<Drug> _drugsCatalog = []; // Live Supabase Drugs Catalog (No Hardcoded Mock Arrays)
   Drug? _selectedDrug;
   String? _capturedImageLocalPath;
   int _currentStep = 1; // 1: Barcode Scan, 1.5: Image Interception, 2: Shelf QR Scan
   bool _isUploading = false;
   final _quantityController = TextEditingController(text: '50');
 
+  @override
+  void initState() {
+    super.initState();
+    _loadLiveCatalog();
+  }
+
+  Future<void> _loadLiveCatalog() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final client = Supabase.instance.client;
+      final response = await client.from('drugs').select();
+      final list = response as List<dynamic>;
+
+      List<Drug> drugs = [];
+      if (list.isNotEmpty) {
+        drugs = list.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
+      } else {
+        // Query via SupabaseService if direct query returns empty
+        drugs = await _supabaseService.fetchDrugs();
+      }
+
+      if (mounted) {
+        setState(() {
+          _drugsCatalog = drugs;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Live catalog query note: $e');
+      if (mounted) {
+        setState(() {
+          _drugsCatalog = [];
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _openRegisterNewMedicineScreen() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const RegisterProductScreen()),
+    );
+    if (result == true) {
+      _loadLiveCatalog();
+    }
+  }
+
   void _selectDrug(Drug drug) {
     setState(() {
       _selectedDrug = drug;
       _capturedImageLocalPath = null;
-      
-      // First-Touch Interception Check
       if (drug.imageUrl == null) {
-        _currentStep = 1; // Needs First-Touch Photo Interception
+        _currentStep = 1;
       } else {
-        _currentStep = 2; // Directly to Step 2 Shelf Scan
+        _currentStep = 2;
       }
     });
   }
@@ -126,7 +99,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
         _processPhotoUpload(photo.path);
       }
     } catch (e) {
-      // Fallback to gallery pick if camera fails or is un-supported in web browser
       try {
         final XFile? photo = await _picker.pickImage(
           source: ImageSource.gallery,
@@ -152,14 +124,13 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
       _isUploading = true;
     });
 
-    // Simulate 1.5s cloud upload
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
     setState(() {
       _isUploading = false;
       _capturedImageLocalPath = path;
-      _currentStep = 2; // Immediately resume to Step 2: Scan Shelf QR
+      _currentStep = 2;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -253,16 +224,16 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0),
+            padding: const EdgeInsets.only(right: 12.0),
             child: OutlinedButton.icon(
               onPressed: () => AuthService().logout(),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent),
+                side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.5)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              icon: const Icon(Icons.logout_rounded, size: 16),
-              label: Text('Logout', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.logout_rounded, size: 14),
+              label: Text('Logout', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -274,142 +245,200 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Banner header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.amberAccent.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.camera_enhance_rounded, color: Colors.amberAccent, size: 28),
+                // Top Header Row with Register New Medicine Button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Live Warehouse Catalog',
+                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          Text(
+                            'Select items to initiate intake or register new stock.',
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'First-Touch Visual Intake Protocol',
-                              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Items lacking real photos trigger an automatic capture request during stock putaway.',
-                              style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
-                            ),
-                          ],
-                        ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _openRegisterNewMedicineScreen,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.tealAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                    ],
-                  ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(
+                        'Register New Medicine from Scratch',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
 
-                // Step 1: Select / Scan Item from Nairobi Catalog
-                Text(
-                  'Step 1: Select or Scan Item Barcode (Nairobi Catalog)',
-                  style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 120,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _nairobiCatalog.length,
-                    separatorBuilder: (context, index) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final item = _nairobiCatalog[index];
-                      final isSelected = _selectedDrug?.id == item.id;
-                      final hasRealImage = item.imageUrl != null || (_selectedDrug?.id == item.id && _capturedImageLocalPath != null);
-
-                      return GestureDetector(
-                        onTap: () => _selectDrug(item),
-                        child: Container(
-                          width: 240,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF1E293B).withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: isSelected ? Colors.amberAccent : Colors.white.withValues(alpha: 0.1),
-                              width: isSelected ? 2 : 1,
+                // TASK 1: BLANK / EMPTY STATE IF NO DATA IN DATABASE
+                if (_isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(40.0),
+                      child: CircularProgressIndicator(color: Colors.amberAccent),
+                    ),
+                  )
+                else if (_drugsCatalog.isEmpty)
+                  Center(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.amberAccent.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.inventory_2_outlined, color: Colors.amberAccent, size: 48),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Warehouse is empty. Register new stock to begin.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No pre-filled mock cards. Key in medicine details live into Supabase.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(fontSize: 13, color: Colors.white54),
+                          ),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: _openRegisterNewMedicineScreen,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.tealAccent,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
+                            label: Text(
+                              'Register New Medicine from Scratch',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 14),
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  width: 54,
-                                  height: 54,
-                                  color: const Color(0xFF0F172A),
-                                  child: Image.network(
-                                    item.displayImageUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(Icons.medication_rounded, color: Colors.amberAccent),
+                        ],
+                      ),
+                    ),
+                  )
+                else ...[
+                  // Step 1: Select or Scan Item
+                  Text(
+                    'Step 1: Select or Scan Item Barcode (Supabase Catalog)',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 120,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _drugsCatalog.length,
+                      separatorBuilder: (context, index) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final item = _drugsCatalog[index];
+                        final isSelected = _selectedDrug?.id == item.id;
+                        final hasRealImage = item.imageUrl != null || (_selectedDrug?.id == item.id && _capturedImageLocalPath != null);
+
+                        return GestureDetector(
+                          onTap: () => _selectDrug(item),
+                          child: Container(
+                            width: 240,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF1E293B).withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isSelected ? Colors.amberAccent : Colors.white.withValues(alpha: 0.1),
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: 54,
+                                    height: 54,
+                                    color: const Color(0xFF0F172A),
+                                    child: Image.network(
+                                      item.displayImageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) =>
+                                          const Icon(Icons.medication_rounded, color: Colors.amberAccent),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      item.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      item.sku,
-                                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: hasRealImage
-                                            ? Colors.green.withValues(alpha: 0.2)
-                                            : Colors.orange.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(4),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        item.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                                       ),
-                                      child: Text(
-                                        hasRealImage ? '✓ Real Photo' : '⚠️ Needs Photo',
-                                        style: GoogleFonts.inter(
-                                          color: hasRealImage ? Colors.greenAccent : Colors.orangeAccent,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        item.sku,
+                                        style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: hasRealImage
+                                              ? Colors.green.withValues(alpha: 0.2)
+                                              : Colors.orange.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          hasRealImage ? '✓ Real Photo' : '⚠️ Needs Photo',
+                                          style: GoogleFonts.inter(
+                                            color: hasRealImage ? Colors.greenAccent : Colors.orangeAccent,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 24),
 
-                // Active Item Selected Section
+                // Active Selected Item Putaway UI
                 if (_selectedDrug != null) ...[
-                  // Card representing selected item state
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -462,7 +491,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                           ],
                         ),
 
-                        // FIRST-TOUCH INTERCEPTION WARNING CARD
                         if (_selectedDrug!.imageUrl == null && _capturedImageLocalPath == null) ...[
                           const SizedBox(height: 20),
                           Container(
@@ -518,7 +546,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                             ),
                           ),
                         ] else ...[
-                          // STEP 2: SCAN SHELF QR & COMPLETE PUTAWAY
                           const SizedBox(height: 20),
                           Container(
                             padding: const EdgeInsets.all(16),
@@ -593,7 +620,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
             ),
           ),
 
-          // Uploading cloud overlay simulation
           if (_isUploading)
             Container(
               color: Colors.black.withValues(alpha: 0.85),

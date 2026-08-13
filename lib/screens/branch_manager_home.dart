@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'branch_dashboard_screen.dart';
 import 'location_manager_screen.dart';
+import 'catalog_photo_studio.dart';
 import 'store_mapping_screen.dart';
 
 class BranchManagerHome extends StatefulWidget {
@@ -24,6 +25,8 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
       case 2:
         return _buildLocalInventoryView();
       case 3:
+        return const CatalogPhotoStudioScreen();
+      case 4:
         return const StoreMappingScreen();
       default:
         return const BranchDashboardScreen();
@@ -228,6 +231,11 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
               icon: Icon(Icons.inventory_2_rounded),
               activeIcon: Icon(Icons.inventory_2_rounded, color: Colors.tealAccent),
               label: 'Inventory',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.camera_enhance_rounded),
+              activeIcon: Icon(Icons.camera_enhance_rounded, color: Colors.tealAccent),
+              label: 'Photo Studio',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.qr_code_scanner_rounded),

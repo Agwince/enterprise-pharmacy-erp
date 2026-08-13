@@ -272,6 +272,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // Button 5: Storekeeper (Stock Intake)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsStorekeeper();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amberAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.amberAccent,
+                    side: const BorderSide(color: Colors.amberAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.camera_enhance_rounded, size: 18),
+                  label: Text(
+                    'Login as Storekeeper (Stock Intake)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
                 // Button 5: Branch Manager
                 ElevatedButton.icon(
                   onPressed: () {

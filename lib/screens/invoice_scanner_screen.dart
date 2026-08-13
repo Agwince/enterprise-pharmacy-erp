@@ -96,10 +96,13 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     
-    // Route to Visual Pick List
+    // Simulate OCR text extraction passing real search terms to Visual Pick List
+    const extractedSearchTerms = ['AMOXICILLIN', 'PANADOL', 'IBUPROFEN', 'ABZ'];
+
+    // Route to Visual Pick List with real database query terms
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const VisualPickListScreen()),
+      MaterialPageRoute(builder: (context) => const VisualPickListScreen(searchTerms: extractedSearchTerms)),
     );
   }
 

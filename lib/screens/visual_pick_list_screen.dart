@@ -63,14 +63,19 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
       final List<Map<String, dynamic>> items = matchedDrugs.map((drug) {
         final isFractional = drug.name.contains('0.10') || drug.name.contains('10ML') || drug.name.contains('SUSP');
         final double pickQty = isFractional ? 0.10 : 1.0;
+        final String innerUnitType = (drug.toJson()['inner_unit_type'] as String?) ??
+            (drug.name.toUpperCase().contains('SUSP') || drug.name.toUpperCase().contains('LIQ') || drug.name.toUpperCase().contains('SYRUP')
+                ? 'Bottle'
+                : 'Strip/Blister');
 
         return {
           'id': drug.id,
           'sku': drug.sku,
           'name': drug.name,
           'pick_quantity': pickQty,
+          'inner_unit_type': innerUnitType,
           'unit_label': isFractional
-              ? 'Pick: 0.10 (1 Loose Blister Strip / Unit)'
+              ? 'Pick: 0.10 (1 Loose $innerUnitType)'
               : 'Pick: 1.0 (Full Sealed Box)',
           'location': '📍 ${drug.binLocation}',
           'box_image_url': drug.imageUrl ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
@@ -249,34 +254,47 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Task 1: Sleek Pastel Alert Banners
+                              // Task 2: Dynamic Pastel Alert Banners using Inner Unit Type
                               if (isFractional)
-                                Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 16),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'OPEN BOX: PICK LOOSE STRIPS / UNITS (0.10 FRACTIONAL)',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.amberAccent,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
+                                Builder(
+                                  builder: (context) {
+                                    final unitType = (item['inner_unit_type'] as String? ?? 'Strip').toUpperCase();
+                                    final displayUnit = unitType.contains('BOTTLE')
+                                        ? 'BOTTLE'
+                                        : (unitType.contains('TUBE')
+                                            ? 'TUBE'
+                                            : (unitType.contains('VIAL')
+                                                ? 'VIAL'
+                                                : (unitType.contains('PIECE') ? 'UNIT' : 'STRIP')));
+
+                                    return Container(
+                                      width: double.infinity,
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
                                       ),
-                                    ],
-                                  ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 16),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              '⚠️ OPEN BOX: PICK LOOSE $displayUnit (0.10 FRACTIONAL)',
+                                              style: GoogleFonts.inter(
+                                                color: Colors.amberAccent,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                                letterSpacing: 0.2,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 )
                               else
                                 Container(

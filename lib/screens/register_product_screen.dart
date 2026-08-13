@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 
 class RegisterProductScreen extends StatefulWidget {
   const RegisterProductScreen({super.key});
@@ -20,11 +19,36 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   final _unitController = TextEditingController(text: 'Box of 100');
   final _priceController = TextEditingController(text: '1200');
 
+  String _selectedInnerUnitType = 'Strip/Blister';
+  final List<String> _innerUnitOptions = [
+    'Strip/Blister',
+    'Bottle',
+    'Tube',
+    'Vial/Ampoule',
+    'Piece/Loose',
+  ];
+
   String _barcode = '';
   String? _boxPhotoUrl;
   String? _loosePhotoUrl;
   bool _isSaving = false;
   final ImagePicker _picker = ImagePicker();
+
+  String get _loosePhotoLabel {
+    switch (_selectedInnerUnitType) {
+      case 'Bottle':
+        return 'Snap Photo of single Bottle';
+      case 'Tube':
+        return 'Snap Photo of single Tube';
+      case 'Vial/Ampoule':
+        return 'Snap Photo of single Vial';
+      case 'Piece/Loose':
+        return 'Snap Photo of single Unit';
+      case 'Strip/Blister':
+      default:
+        return 'Snap Photo of single Strip';
+    }
+  }
 
   Future<void> _scanBarcode() async {
     showModalBottomSheet(
@@ -144,6 +168,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'generic_name': _genericController.text.trim().isNotEmpty ? _genericController.text.trim() : name,
         'category': _categoryController.text.trim(),
         'unit': _unitController.text.trim(),
+        'inner_unit_type': _selectedInnerUnitType, // Task 2: Save innerUnitType to database
         'bin_location': _binController.text.trim(),
         'unit_price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
         'cost_price': (double.tryParse(_priceController.text.trim()) ?? 1200.0) * 0.65,
@@ -156,13 +181,12 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       try {
         await client.from('drugs').insert(drugData);
       } catch (e) {
-        debugPrint('Supabase insert note (demo online/offline execution): $e');
+        debugPrint('Supabase insert note (demo execution): $e');
       }
 
       if (!mounted) return;
       setState(() => _isSaving = false);
 
-      // Clear Form
       _nameController.clear();
       _genericController.clear();
       setState(() {
@@ -179,7 +203,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Successfully registered "$name" to the system database.',
+                  'Successfully registered "$name" ($_selectedInnerUnitType) to database.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -235,7 +259,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
-                    'Directly inserts new drug records into the Supabase database.',
+                    'Configure inner-unit packaging for accurate 0.10 fractional picking.',
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.tealAccent),
                   ),
                   const SizedBox(height: 24),
@@ -268,7 +292,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // BARCODE ACTION BUTTON (Task 2)
+                  // BARCODE ACTION BUTTON
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -301,9 +325,62 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // TASK 1: INNER UNIT TYPE SELECTION DROPDOWN
+                  Text(
+                    'Inner Unit Type (What is inside the box?)',
+                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedInnerUnitType,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: GoogleFonts.inter(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                        items: _innerUnitOptions.map((option) {
+                          return DropdownMenuItem<String>(
+                            value: option,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  option.contains('Bottle')
+                                      ? Icons.liquor_rounded
+                                      : (option.contains('Tube')
+                                          ? Icons.brush_rounded
+                                          : (option.contains('Vial')
+                                              ? Icons.science_rounded
+                                              : Icons.medication_rounded)),
+                                  color: Colors.amberAccent,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(option),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() {
+                              _selectedInnerUnitType = val;
+                            });
+                          }
+                        },
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 20),
 
-                  // PHOTO ACTION 1 & 2 (Task 2)
+                  // PHOTO ACTION 1 & DYNAMIC PHOTO ACTION 2 (Task 2)
                   Row(
                     children: [
                       // Photo 1: Box Front
@@ -333,27 +410,34 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Photo 2: Loose Unit
+                      // Photo 2: Dynamic Loose Unit Photo Button (Task 2)
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F172A),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                            border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
                           ),
                           child: Column(
                             children: [
                               Icon(Icons.medication_liquid_rounded, color: _loosePhotoUrl != null ? Colors.amberAccent : Colors.white54, size: 28),
                               const SizedBox(height: 6),
-                              Text('Loose Unit (0.10)', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                              Text('Loose Unit (0.10)', style: GoogleFonts.inter(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 12)),
                               Text(_loosePhotoUrl != null ? '✓ Captured' : 'Required', style: GoogleFonts.inter(color: _loosePhotoUrl != null ? Colors.amberAccent : Colors.white38, fontSize: 10)),
                               const SizedBox(height: 8),
                               OutlinedButton.icon(
                                 onPressed: _captureLoosePhoto,
-                                style: OutlinedButton.styleFrom(foregroundColor: Colors.amberAccent, side: const BorderSide(color: Colors.amberAccent)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.amberAccent,
+                                  side: const BorderSide(color: Colors.amberAccent),
+                                ),
                                 icon: const Icon(Icons.camera_alt, size: 14),
-                                label: const Text('Snap Loose', style: TextStyle(fontSize: 11)),
+                                label: Text(
+                                  _loosePhotoLabel,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ],
                           ),
@@ -363,7 +447,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  // SUBMIT BUTTON (Task 3)
+                  // SUBMIT BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 54,

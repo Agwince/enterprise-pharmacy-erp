@@ -231,14 +231,18 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       String? boxUrl;
       String? looseUrl;
 
-      // 1. Upload Box Image if captured
+      // 1. Upload Box Image if captured (Task 1: Explicit contentType for Web safety)
       if (_boxImageBytes != null) {
         try {
           final boxFileName = 'box_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await client.storage.from('medicine_images').uploadBinary(
                 boxFileName,
                 _boxImageBytes!,
-                fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+                fileOptions: const FileOptions(
+                  contentType: 'image/jpeg',
+                  cacheControl: '3600',
+                  upsert: true,
+                ),
               );
           boxUrl = client.storage.from('medicine_images').getPublicUrl(boxFileName);
         } catch (storageErr) {
@@ -246,14 +250,18 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         }
       }
 
-      // 2. Upload Loose Image if captured
+      // 2. Upload Loose Image if captured (Task 1: Explicit contentType for Web safety)
       if (_looseImageBytes != null) {
         try {
           final looseFileName = 'loose_${DateTime.now().millisecondsSinceEpoch}.jpg';
           await client.storage.from('medicine_images').uploadBinary(
                 looseFileName,
                 _looseImageBytes!,
-                fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+                fileOptions: const FileOptions(
+                  contentType: 'image/jpeg',
+                  cacheControl: '3600',
+                  upsert: true,
+                ),
               );
           looseUrl = client.storage.from('medicine_images').getPublicUrl(looseFileName);
         } catch (storageErr) {
@@ -279,8 +287,8 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Real Supabase Insert Execution
-      await client.from('drugs').insert(drugData);
+      // Task 2: Real Supabase Insert Execution ending with .select() for Web Future resolution
+      await client.from('drugs').insert(drugData).select();
 
       if (!mounted) return;
       setState(() => _isSaving = false);
@@ -318,7 +326,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       if (!mounted) return;
       setState(() => _isSaving = false);
 
-      // Task 3: Prominent Red AlertDialog on failure (No fake success snackbars)
+      // Task 3: Graceful Web Error Handling & SQL Instructions AlertDialog
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -328,12 +336,48 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
             children: [
               const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
               const SizedBox(width: 10),
-              Text('Supabase Error', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              Expanded(
+                child: Text(
+                  'Database Connection Rejected',
+                  style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
             ],
           ),
-          content: Text(
-            'Failed to save to database:\n$e',
-            style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Database Connection Rejected. Ensure your Supabase backend is configured.',
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Error details: $e',
+                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Execute the following SQL in your Supabase SQL Editor:',
+                  style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: SelectableText(
+                    'create table public.drugs (id uuid default gen_random_uuid() primary key, name text, price text, inner_unit_type text, box_image_url text, inner_unit_image_url text); alter table public.drugs disable row level security;',
+                    style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             ElevatedButton(

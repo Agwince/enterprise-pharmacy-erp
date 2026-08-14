@@ -46,11 +46,43 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       if (mounted) {
         setState(() {
           completedNames = names;
-          _isLoading = false;
         });
       }
+    } on StorageException catch (e) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Storage Error'),
+          content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
-      debugPrint('Error fetching completed items from Supabase: $e');
+      if (!mounted) return;
+      if (e.toString().contains('ClientException') || e.toString().contains('StorageException')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Storage Error'),
+            content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        debugPrint('Error fetching completed items from Supabase: $e');
+      }
+    } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }

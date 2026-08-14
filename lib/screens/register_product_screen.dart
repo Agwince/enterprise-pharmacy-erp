@@ -254,9 +254,6 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
 
       await supabase.from('drugs').insert(drugData).select();
 
-      if (!mounted) return;
-      setState(() => _isSaving = false);
-
       _nameController.clear();
       _genericController.clear();
       _priceController.clear();
@@ -289,18 +286,47 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       if (mounted) {
         Navigator.pop(context, true);
       }
-    } catch (e) {
+    } on StorageException catch (e) {
       if (!mounted) return;
-      setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Note: $e', style: GoogleFonts.inter(color: Colors.white)),
-          backgroundColor: Colors.amber,
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Storage Error'),
+          content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
         ),
       );
-      if (mounted) {
-        Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      if (e.toString().contains('ClientException') || e.toString().contains('StorageException')) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Storage Error'),
+            content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e', style: GoogleFonts.inter(color: Colors.white)),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
       }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 

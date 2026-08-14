@@ -15,26 +15,66 @@ import 'screens/storekeeper_home.dart';
 import 'screens/floor_worker_home.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Supabase Client
   try {
-    await Supabase.initialize(
-      url: SupabaseConfig.url,
-      anonKey: SupabaseConfig.anonKey,
+    WidgetsFlutterBinding.ensureInitialized();
+
+    // Initialize Supabase Client
+    try {
+      await Supabase.initialize(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
+    } catch (e) {
+      debugPrint('Supabase initialization note: $e');
+    }
+
+    // Initialize Offline Caching Queue (Hive)
+    try {
+      await OfflineSyncService().initialize();
+    } catch (e) {
+      debugPrint('Offline sync initialization note: $e');
+    }
+
+    runApp(const PharmacyErpApp());
+  } catch (e, stackTrace) {
+    debugPrint('Fatal initialization error: $e\n$stackTrace');
+    runApp(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: const Color(0xFF0F172A),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Initialization Warning',
+                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'The application encountered an initialization error:\n$e',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () => runApp(const PharmacyErpApp()),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
+                    child: const Text('Proceed to App'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-  } catch (e) {
-    debugPrint('Supabase initialization note: $e');
   }
-
-  // Initialize Offline Caching Queue (Hive)
-  try {
-    await OfflineSyncService().initialize();
-  } catch (e) {
-    debugPrint('Offline sync initialization note: $e');
-  }
-
-  runApp(const PharmacyErpApp());
 }
 
 class PharmacyErpApp extends StatelessWidget {

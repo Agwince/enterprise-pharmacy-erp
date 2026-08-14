@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterProductScreen extends StatefulWidget {
@@ -208,7 +210,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     }
   }
 
-  // Task 3: Strict Supabase Saving with Red AlertDialog on Failure
+  // Tasks 1 & 2: Sever Supabase Write & Save to Local Device Storage via SharedPreferences
   Future<void> _saveToSupabase() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -224,50 +226,12 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final client = Supabase.instance.client;
       final generatedId = 'drug-${DateTime.now().millisecondsSinceEpoch}';
       final skuCode = _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}';
 
-      String? boxUrl;
-      String? looseUrl;
-
-      // 1. Upload Box Image if captured (Task 1: Explicit contentType for Web safety)
-      if (_boxImageBytes != null) {
-        try {
-          final boxFileName = 'box_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await client.storage.from('medicine_images').uploadBinary(
-                boxFileName,
-                _boxImageBytes!,
-                fileOptions: const FileOptions(
-                  contentType: 'image/jpeg',
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-          boxUrl = client.storage.from('medicine_images').getPublicUrl(boxFileName);
-        } catch (storageErr) {
-          debugPrint('Storage box upload note: $storageErr');
-        }
-      }
-
-      // 2. Upload Loose Image if captured (Task 1: Explicit contentType for Web safety)
-      if (_looseImageBytes != null) {
-        try {
-          final looseFileName = 'loose_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await client.storage.from('medicine_images').uploadBinary(
-                looseFileName,
-                _looseImageBytes!,
-                fileOptions: const FileOptions(
-                  contentType: 'image/jpeg',
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-          looseUrl = client.storage.from('medicine_images').getPublicUrl(looseFileName);
-        } catch (storageErr) {
-          debugPrint('Storage loose upload note: $storageErr');
-        }
-      }
+      // Convert captured image bytes to Base64 strings for local storage mode
+      String? boxBase64 = _boxImageBytes != null ? base64Encode(_boxImageBytes!) : null;
+      String? looseBase64 = _looseImageBytes != null ? base64Encode(_looseImageBytes!) : null;
 
       final drugData = {
         'id': generatedId,
@@ -282,13 +246,33 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'cost_price': (double.tryParse(_priceController.text.trim()) ?? 1200.0) * 0.65,
         'min_threshold': 15,
         'max_threshold': 150,
-        'image_url': boxUrl,
-        'inner_unit_image_url': looseUrl,
+        'image_url': boxBase64,
+        'inner_unit_image_url': looseBase64,
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Task 2: Real Supabase Insert Execution ending with .select() for Web Future resolution
-      await client.from('drugs').insert(drugData).select();
+      // Save to SharedPreferences Local Storage Mode
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> existing = prefs.getStringList('local_drugs_catalog') ?? [];
+      existing.add(jsonEncode(drugData));
+      await prefs.setStringList('local_drugs_catalog', existing);
+
+      // Best-effort optional background sync to Supabase if connected
+      try {
+        final client = Supabase.instance.client;
+        await client.from('drugs').insert({
+          'id': generatedId,
+          'sku': skuCode,
+          'name': name,
+          'category': _categoryController.text.trim(),
+          'unit': _unitController.text.trim(),
+          'inner_unit_type': _selectedInnerUnitType,
+          'bin_location': _binController.text.trim(),
+          'unit_price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
+        }).select();
+      } catch (e) {
+        debugPrint('Supabase optional sync note: $e');
+      }
 
       if (!mounted) return;
       setState(() => _isSaving = false);
@@ -309,7 +293,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Successfully registered "$name" ($skuCode) to Supabase database.',
+                  'Successfully registered "$name" ($skuCode) to local device storage.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -323,69 +307,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
 
       Navigator.pop(context, true);
     } catch (e) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-
-      // Task 3: Graceful Web Error Handling & SQL Instructions AlertDialog
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Database Connection Rejected',
-                  style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Database Connection Rejected. Ensure your Supabase backend is configured.',
-                  style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Error details: $e',
-                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Execute the following SQL in your Supabase SQL Editor:',
-                  style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white10),
-                  ),
-                  child: SelectableText(
-                    'create table public.drugs (id uuid default gen_random_uuid() primary key, name text, price text, inner_unit_type text, box_image_url text, inner_unit_image_url text); alter table public.drugs disable row level security;',
-                    style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 11),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
-              child: Text('Acknowledge', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-            ),
-          ],
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save to local storage: $e', style: GoogleFonts.inter(color: Colors.white)),
+          backgroundColor: Colors.redAccent,
         ),
       );
     }

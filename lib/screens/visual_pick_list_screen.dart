@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/drug.dart';
 import '../services/supabase_service.dart';
@@ -34,22 +37,35 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Attempt querying Supabase drugs table directly
-      final client = Supabase.instance.client;
-      List<dynamic> response = [];
+      // 1. Fetch locally saved drugs from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> localSaved = prefs.getStringList('local_drugs_catalog') ?? [];
+      List<Drug> localDrugs = [];
+      for (String itemStr in localSaved) {
+        try {
+          final jsonMap = jsonDecode(itemStr) as Map<String, dynamic>;
+          localDrugs.add(Drug.fromJson(jsonMap));
+        } catch (e) {
+          debugPrint('Error loading local drug: $e');
+        }
+      }
 
+      // 2. Attempt querying Supabase drugs table directly
+      List<Drug> allDrugs = [...localDrugs];
       try {
+        final client = Supabase.instance.client;
         final res = await client.from('drugs').select();
-        response = res as List<dynamic>;
+        final response = res as List<dynamic>;
+        if (response.isNotEmpty) {
+          final supaDrugs = response.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
+          allDrugs.addAll(supaDrugs);
+        }
       } catch (e) {
         debugPrint('Supabase direct query note: $e');
       }
 
-      List<Drug> allDrugs = [];
-      if (response.isNotEmpty) {
-        allDrugs = response.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
-      } else {
-        // Fallback to SupabaseService fetchDrugs (includes Nairobi & core catalog)
+      if (allDrugs.isEmpty) {
+        // Fallback to SupabaseService fetchDrugs
         allDrugs = await _supabaseService.fetchDrugs();
       }
 
@@ -336,25 +352,37 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                                         ),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(10),
-                                          child: (imageUrl != null && imageUrl.isNotEmpty)
-                                              ? CachedNetworkImage(
-                                                  imageUrl: imageUrl,
-                                                  fit: BoxFit.cover,
-                                                  placeholder: (context, url) => Container(
-                                                    color: const Color(0xFF0F172A),
-                                                    child: const Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
-                                                  ),
-                                                  errorWidget: (context, url, error) => Container(
-                                                    color: Colors.grey[800],
-                                                    child: const Icon(Icons.camera_alt, size: 36, color: Colors.white54),
-                                                  ),
-                                                )
-                                              : Container(
-                                                  color: Colors.grey[800],
-                                                  child: const Center(
-                                                    child: Icon(Icons.camera_alt, size: 36, color: Colors.white54),
-                                                  ),
+                                          child: Builder(builder: (context) {
+                                            if (imageUrl == null || imageUrl.isEmpty) {
+                                              return Container(
+                                                color: Colors.grey[800],
+                                                child: const Center(
+                                                  child: Icon(Icons.camera_alt, size: 36, color: Colors.white54),
                                                 ),
+                                              );
+                                            }
+
+                                            // Check if imageUrl is a Base64 string
+                                            if (!imageUrl.startsWith('http')) {
+                                              try {
+                                                final bytes = base64Decode(imageUrl);
+                                                return Image.memory(bytes, fit: BoxFit.cover);
+                                              } catch (_) {}
+                                            }
+
+                                            return CachedNetworkImage(
+                                              imageUrl: imageUrl,
+                                              fit: BoxFit.cover,
+                                              placeholder: (context, url) => Container(
+                                                color: const Color(0xFF0F172A),
+                                                child: const Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
+                                              ),
+                                              errorWidget: (context, url, error) => Container(
+                                                color: Colors.grey[800],
+                                                child: const Icon(Icons.camera_alt, size: 36, color: Colors.white54),
+                                              ),
+                                            );
+                                          }),
                                         ),
                                       ),
                                       Positioned(

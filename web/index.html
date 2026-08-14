@@ -8,9 +8,6 @@
     The path provided below has to start and end with a slash "/" in order for
     it to work correctly.
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
@@ -20,6 +17,11 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Enterprise Pharmacy ERP - Multi-Branch Management System">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- Disable Cache for Mobile Browser Reliability -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
   <!-- Allow camera/media access without CSP blocking -->
   <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
@@ -36,21 +38,39 @@
   <title>Enterprise Pharmacy ERP</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Barcode / QR Scanner Web Dependencies (mobile_scanner v7.x) -->
+  <!-- Barcode / QR Scanner Web Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://unpkg.com/@nicestudios/zxing-wasm@1.2.15/dist/full/zxing_reader.min.js" crossorigin="anonymous"></script>
+
+  <!-- Task 2: Service Worker Cache Purge for Mobile Browsers -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    window.flutterWebRenderer = "html";
+    window.flutterConfiguration = {
+      renderer: "html"
+    };
+  </script>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <!-- Task 1: Nuclear HTML Renderer Initialization -->
   <script>
-    window.flutterWebRenderer = "html";
+    window.addEventListener('load', function(ev) {
+      if (typeof _flutter !== 'undefined' && _flutter.loader) {
+        _flutter.loader.load({
+          serviceWorkerSettings: null,
+          config: {
+            renderer: "html",
+            useColorEmoji: true,
+          }
+        });
+      }
+    });
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

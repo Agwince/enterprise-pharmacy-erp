@@ -48,7 +48,7 @@
   </script>
 </head>
 <body>
-  <!-- Task 1: Explicit HTML Renderer Initialization & Fast Load -->
+  <!-- Task 3: Force HTML Engine & Cache Busting v=final_prod -->
   <script>
     window.addEventListener('load', function(ev) {
       if (typeof _flutter !== 'undefined' && _flutter.loader) {
@@ -65,6 +65,6 @@
       }
     });
   </script>
-  <script src="flutter_bootstrap.js?v=2" async></script>
+  <script src="flutter_bootstrap.js?v=final_prod" defer></script>
 </body>
 </html>

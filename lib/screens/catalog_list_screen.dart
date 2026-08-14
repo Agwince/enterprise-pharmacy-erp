@@ -1,8 +1,6 @@
-import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_product_screen.dart';
 
 class CatalogListScreen extends StatefulWidget {
@@ -22,31 +20,40 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
     {'name': 'BRUFEN 400MG 100S', 'price': '130.00', 'type': 'Strip/Blister'},
   ];
 
-  List<Map<String, dynamic>> _localRegisteredItems = [];
+  List<String> _registeredDrugNames = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadLocalCatalog();
+    _fetchSupabaseRegisteredDrugs();
   }
 
-  Future<void> _loadLocalCatalog() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload(); // Force reload from disk/memory
-    final List<String> saved = prefs.getStringList('local_drugs_catalog') ?? [];
-    List<Map<String, dynamic>> parsed = [];
-    for (String itemStr in saved) {
-      try {
-        final decoded = jsonDecode(itemStr) as Map<String, dynamic>;
-        parsed.add(decoded);
-      } catch (e) {
-        debugPrint('Error decoding local drug item: $e');
+  Future<void> _fetchSupabaseRegisteredDrugs() async {
+    setState(() => _isLoading = true);
+    try {
+      final client = Supabase.instance.client;
+      final response = await client.from('drugs').select();
+      final list = response as List<dynamic>;
+
+      List<String> names = [];
+      for (var json in list) {
+        if (json['name'] != null) {
+          names.add(_normalizeName(json['name'] as String));
+        }
       }
-    }
-    if (mounted) {
-      setState(() {
-        _localRegisteredItems = parsed;
-      });
+
+      if (mounted) {
+        setState(() {
+          _registeredDrugNames = names;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching registered drugs from Supabase: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -68,12 +75,13 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
           prefilledName: item['name'] as String,
           prefilledPrice: double.tryParse(item['price']?.toString() ?? '0.0'),
           prefilledSku: 'NRB-MED-${1000 + item['name'].hashCode % 8999}',
-          prefilledUnit: (item['type'] ?? item['inner_unit_type']) as String?,
+          prefilledUnit: item['type'] as String?,
         ),
       ),
     );
-    // Task 1: Force complete state reload and UI rebuild whenever returning
-    _loadLocalCatalog();
+    if (result == true) {
+      _fetchSupabaseRegisteredDrugs();
+    }
   }
 
   void _openBlankForm(BuildContext context) async {
@@ -83,8 +91,9 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
         builder: (context) => const RegisterProductScreen(),
       ),
     );
-    // Task 1: Force complete state reload and UI rebuild whenever returning
-    _loadLocalCatalog();
+    if (result == true) {
+      _fetchSupabaseRegisteredDrugs();
+    }
   }
 
   @override
@@ -167,91 +176,60 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Merged catalog list (Seeded + Registered Local Items with Name-matching)
+            // Filter out items that exist in Supabase drugs table (Task 2: Dynamic List Filtering)
             RefreshIndicator(
-              onRefresh: _loadLocalCatalog,
+              onRefresh: _fetchSupabaseRegisteredDrugs,
               color: Colors.tealAccent,
               child: Builder(builder: (context) {
-                final allItems = <Map<String, dynamic>>[];
+                // Filter out items whose normalized name exists in Supabase
+                final missingItems = _catalogItems.where((item) {
+                  final itemNorm = _normalizeName(item['name'] as String);
+                  return !_registeredDrugNames.any((reg) => reg.contains(itemNorm) || itemNorm.contains(reg));
+                }).toList();
 
-                // Build merged list prioritizing matching local entries
-                for (var seeded in _catalogItems) {
-                  final seededNorm = _normalizeName(seeded['name'] as String);
-                  final localMatch = _localRegisteredItems.firstWhere(
-                    (loc) => _normalizeName(loc['name'] as String).contains(seededNorm) || seededNorm.contains(_normalizeName(loc['name'] as String)),
-                    orElse: () => <String, dynamic>{},
+                if (missingItems.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 64),
+                        const SizedBox(height: 16),
+                        Text(
+                          '🎉 All Catalog Photos Captured!',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'All seeded Nairobi catalog items have photos registered in Supabase.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                        ),
+                      ],
+                    ),
                   );
-
-                  if (localMatch.isNotEmpty) {
-                    allItems.add({
-                      'name': seeded['name'],
-                      'price': seeded['price'],
-                      'type': seeded['type'],
-                      'box_image_url': localMatch['image_url'],
-                      'loose_image_url': localMatch['inner_unit_image_url'],
-                      'has_photos': (localMatch['image_url'] != null && (localMatch['image_url'] as String).isNotEmpty) ||
-                          (localMatch['inner_unit_image_url'] != null && (localMatch['inner_unit_image_url'] as String).isNotEmpty),
-                    });
-                  } else {
-                    allItems.add({
-                      'name': seeded['name'],
-                      'price': seeded['price'],
-                      'type': seeded['type'],
-                      'box_image_url': null,
-                      'loose_image_url': null,
-                      'has_photos': false,
-                    });
-                  }
-                }
-
-                // Append any newly registered unlisted local items that aren't in seeded list
-                for (var local in _localRegisteredItems) {
-                  final localNorm = _normalizeName(local['name'] as String);
-                  final isSeeded = _catalogItems.any((s) {
-                    final sNorm = _normalizeName(s['name'] as String);
-                    return sNorm.contains(localNorm) || localNorm.contains(sNorm);
-                  });
-                  if (!isSeeded) {
-                    allItems.add({
-                      'name': local['name'],
-                      'price': local['unit_price']?.toString() ?? local['price']?.toString() ?? '0.00',
-                      'type': local['inner_unit_type'] ?? 'Strip/Blister',
-                      'box_image_url': local['image_url'],
-                      'loose_image_url': local['inner_unit_image_url'],
-                      'has_photos': (local['image_url'] != null && (local['image_url'] as String).isNotEmpty) ||
-                          (local['inner_unit_image_url'] != null && (local['inner_unit_image_url'] as String).isNotEmpty),
-                    });
-                  }
                 }
 
                 return ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: allItems.length,
+                  itemCount: missingItems.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final item = allItems[index];
-                    final bool hasPhotos = item['has_photos'] == true;
-                    final String? boxBase64 = item['box_image_url'] as String?;
-
-                    Uint8List? decodedBytes;
-                    if (hasPhotos && boxBase64 != null && boxBase64.isNotEmpty) {
-                      try {
-                        decodedBytes = base64Decode(boxBase64);
-                      } catch (_) {}
-                    }
+                    final item = missingItems[index];
 
                     return Card(
                       color: const Color(0xFF1E293B),
                       elevation: 2,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(
-                          color: hasPhotos
-                              ? Colors.greenAccent.withValues(alpha: 0.6)
-                              : Colors.orangeAccent.withValues(alpha: 0.4),
-                          width: hasPhotos ? 1.5 : 1.0,
-                        ),
+                        side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.4)),
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(14),
@@ -260,24 +238,15 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
                             children: [
-                              // Task 2: Thumbnail Rendering
                               Container(
-                                width: 52,
-                                height: 52,
+                                width: 48,
+                                height: 48,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF0F172A),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: hasPhotos ? Colors.greenAccent.withValues(alpha: 0.4) : Colors.white10,
-                                  ),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: decodedBytes != null
-                                      ? Image.memory(decodedBytes, fit: BoxFit.cover)
-                                      : const Center(
-                                          child: Icon(Icons.camera_alt, color: Colors.white54, size: 24),
-                                        ),
+                                child: const Center(
+                                  child: Icon(Icons.camera_alt, color: Colors.white54, size: 24),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -290,45 +259,27 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                       style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                                     ),
                                     const SizedBox(height: 4),
-                                    // Task 2: Subtitle update for captured vs missing
                                     Text(
-                                      hasPhotos
-                                          ? 'Photos Attached: Ready for Putaway'
-                                          : 'Price: KES ${item['price']} • Packaging: ${item['type']}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: hasPhotos ? Colors.tealAccent : Colors.white70,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      'Price: KES ${item['price']} • Packaging: ${item['type']}',
+                                      style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600),
                                     ),
                                     const SizedBox(height: 8),
-                                    // Task 2: Action / Status Badge
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: hasPhotos
-                                            ? Colors.green.withValues(alpha: 0.2)
-                                            : Colors.orange.withValues(alpha: 0.2),
+                                        color: Colors.orange.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: hasPhotos
-                                              ? Colors.greenAccent.withValues(alpha: 0.5)
-                                              : Colors.orangeAccent.withValues(alpha: 0.5),
-                                        ),
+                                        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            hasPhotos ? Icons.check_circle_rounded : Icons.camera_alt_outlined,
-                                            color: hasPhotos ? Colors.greenAccent : Colors.orangeAccent,
-                                            size: 13,
-                                          ),
+                                          const Icon(Icons.camera_alt_outlined, color: Colors.orangeAccent, size: 13),
                                           const SizedBox(width: 6),
                                           Text(
-                                            hasPhotos ? '✅ Photo Captured' : '📷 Missing Photos: Tap to Capture',
+                                            '📷 Missing Photos: Tap to Capture',
                                             style: GoogleFonts.inter(
-                                              color: hasPhotos ? Colors.greenAccent : Colors.orangeAccent,
+                                              color: Colors.orangeAccent,
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -339,10 +290,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                   ],
                                 ),
                               ),
-                              Icon(
-                                hasPhotos ? Icons.check_circle_outline_rounded : Icons.chevron_right_rounded,
-                                color: hasPhotos ? Colors.greenAccent : Colors.white38,
-                              ),
+                              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
                             ],
                           ),
                         ),

@@ -208,7 +208,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     }
   }
 
-  // Task 1: Re-establish Live Supabase Cloud Operations
+  // Task 1: Eradicate Local Storage & Restore Supabase (Step-by-Step)
   Future<void> _saveToSupabase() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -224,75 +224,35 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final client = Supabase.instance.client;
-      final generatedId = 'drug-${DateTime.now().millisecondsSinceEpoch}';
-      final skuCode = _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}';
+      final supabase = Supabase.instance.client;
 
-      String? boxUrl;
-      String? looseUrl;
+      String? imageUrl;
 
-      // 1. Upload Box Image to Supabase Storage if captured
+      // 1. Upload Image to Supabase Storage
       if (_boxImageBytes != null) {
-        try {
-          final boxFileName = 'box_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await client.storage.from('medicine_images').uploadBinary(
-                boxFileName,
-                _boxImageBytes!,
-                fileOptions: const FileOptions(
-                  contentType: 'image/jpeg',
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-          boxUrl = client.storage.from('medicine_images').getPublicUrl(boxFileName);
-        } catch (storageErr) {
-          debugPrint('Storage box upload note: $storageErr');
-        }
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await supabase.storage.from('medicine_images').uploadBinary(
+              fileName,
+              _boxImageBytes!,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
+        imageUrl = supabase.storage.from('medicine_images').getPublicUrl(fileName);
       }
 
-      // 2. Upload Loose Image to Supabase Storage if captured
-      if (_looseImageBytes != null) {
-        try {
-          final looseFileName = 'loose_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await client.storage.from('medicine_images').uploadBinary(
-                looseFileName,
-                _looseImageBytes!,
-                fileOptions: const FileOptions(
-                  contentType: 'image/jpeg',
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-          looseUrl = client.storage.from('medicine_images').getPublicUrl(looseFileName);
-        } catch (storageErr) {
-          debugPrint('Storage loose upload note: $storageErr');
-        }
-      }
-
+      // 2. Insert into database
       final drugData = {
-        'id': generatedId,
-        'sku': skuCode,
-        'name': name,
-        'generic_name': _genericController.text.trim().isNotEmpty ? _genericController.text.trim() : name,
-        'category': _categoryController.text.trim(),
-        'unit': _unitController.text.trim(),
+        'name': _nameController.text.trim(),
+        'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
         'inner_unit_type': _selectedInnerUnitType,
-        'bin_location': _binController.text.trim(),
+        'box_image_url': imageUrl,
+        // Keep required schema fields for other features
+        'id': 'drug-${DateTime.now().millisecondsSinceEpoch}',
+        'sku': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
         'unit_price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-        'cost_price': (double.tryParse(_priceController.text.trim()) ?? 1200.0) * 0.65,
-        'min_threshold': 15,
-        'max_threshold': 150,
-        'image_url': boxUrl,
-        'inner_unit_image_url': looseUrl,
-        'created_at': DateTime.now().toIso8601String(),
+        'image_url': imageUrl, 
       };
 
-      // Real Supabase Insert Execution ending with .select()
-      try {
-        await client.from('drugs').insert(drugData).select();
-      } catch (dbErr) {
-        debugPrint('Supabase insert note: $dbErr');
-      }
+      await supabase.from('drugs').insert(drugData).select();
 
       if (!mounted) return;
       setState(() => _isSaving = false);
@@ -314,7 +274,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Successfully saved to Cloud.',
+                  'Saved to Cloud.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),

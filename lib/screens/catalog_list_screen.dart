@@ -20,20 +20,20 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
     {'name': 'BRUFEN 400MG 100S', 'price': '130.00', 'type': 'Strip/Blister'},
   ];
 
-  List<String> _registeredDrugNames = [];
+  List<String> completedNames = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchSupabaseRegisteredDrugs();
+    fetchCompletedItems();
   }
 
-  Future<void> _fetchSupabaseRegisteredDrugs() async {
+  Future<void> fetchCompletedItems() async {
     setState(() => _isLoading = true);
     try {
-      final client = Supabase.instance.client;
-      final response = await client.from('drugs').select();
+      final supabase = Supabase.instance.client;
+      final response = await supabase.from('drugs').select('name');
       final list = response as List<dynamic>;
 
       List<String> names = [];
@@ -45,12 +45,12 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
 
       if (mounted) {
         setState(() {
-          _registeredDrugNames = names;
+          completedNames = names;
           _isLoading = false;
         });
       }
     } catch (e) {
-      debugPrint('Error fetching registered drugs from Supabase: $e');
+      debugPrint('Error fetching completed items from Supabase: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -80,7 +80,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       ),
     );
     if (result == true) {
-      _fetchSupabaseRegisteredDrugs();
+      fetchCompletedItems();
     }
   }
 
@@ -92,7 +92,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       ),
     );
     if (result == true) {
-      _fetchSupabaseRegisteredDrugs();
+      fetchCompletedItems();
     }
   }
 
@@ -178,13 +178,13 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
 
             // Filter out items that exist in Supabase drugs table (Task 2: Dynamic List Filtering)
             RefreshIndicator(
-              onRefresh: _fetchSupabaseRegisteredDrugs,
+              onRefresh: fetchCompletedItems,
               color: Colors.tealAccent,
               child: Builder(builder: (context) {
                 // Filter out items whose normalized name exists in Supabase
                 final missingItems = _catalogItems.where((item) {
                   final itemNorm = _normalizeName(item['name'] as String);
-                  return !_registeredDrugNames.any((reg) => reg.contains(itemNorm) || itemNorm.contains(reg));
+                  return !completedNames.any((reg) => reg.contains(itemNorm) || itemNorm.contains(reg));
                 }).toList();
 
                 if (missingItems.isEmpty) {

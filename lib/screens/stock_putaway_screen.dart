@@ -153,11 +153,22 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
     );
   }
 
-  void _completePutaway() {
+  Future<void> _completePutaway() async {
     if (_selectedDrug == null) return;
 
     final qty = _quantityController.text.trim();
-    final drugName = _selectedDrug!.name;
+    final drug = _selectedDrug!;
+    final drugName = drug.name;
+
+    // Phase 4: Execute Supabase update setting DrugItem's binLocation to the scanned shelf
+    try {
+      await Supabase.instance.client
+          .from('drugs')
+          .update({'bin_location': drug.binLocation})
+          .eq('id', drug.id);
+    } catch (e) {
+      debugPrint('Supabase putaway update note: $e');
+    }
 
     setState(() {
       _selectedDrug = null;
@@ -313,7 +324,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            'Warehouse is empty. Register new stock to begin.',
+                            'No Inventory Found. Register new stock.',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                           ),

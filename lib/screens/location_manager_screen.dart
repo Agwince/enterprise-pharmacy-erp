@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/shelf_location.dart';
 
 class LocationManagerScreen extends StatefulWidget {
   const LocationManagerScreen({super.key});
@@ -98,6 +100,18 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
           {'name': 'Unassigned SKU Slot ${i + 1}', 'qty': '0 Units (Ready for Putaway)'},
         ]
       });
+
+      // Save directly to Supabase ShelfLocation table (Phase 3)
+      try {
+        Supabase.instance.client.from('shelf_locations').insert({
+          'id': 'shelf-${DateTime.now().millisecondsSinceEpoch}-$i',
+          'aisle_name': aisleName,
+          'shelf_name': 'Shelf $shelfLetter',
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      } catch (e) {
+        debugPrint('Supabase shelf insert note: $e');
+      }
     }
 
     setState(() {

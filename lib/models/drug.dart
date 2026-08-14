@@ -11,6 +11,8 @@ class Drug {
   final int minThreshold;
   final int maxThreshold;
   final String? imageUrl;
+  final String? innerUnitImageUrl;
+  final String innerUnitType;
   final DateTime createdAt;
 
   Drug({
@@ -26,6 +28,8 @@ class Drug {
     required this.minThreshold,
     required this.maxThreshold,
     this.imageUrl,
+    this.innerUnitImageUrl,
+    this.innerUnitType = 'Strip/Blister',
     required this.createdAt,
   });
 
@@ -66,6 +70,8 @@ class Drug {
       minThreshold: (json['min_threshold'] as num?)?.toInt() ?? 15,
       maxThreshold: (json['max_threshold'] as num?)?.toInt() ?? 150,
       imageUrl: json['image_url'] as String?,
+      innerUnitImageUrl: json['inner_unit_image_url'] as String?,
+      innerUnitType: json['inner_unit_type'] as String? ?? 'Strip/Blister',
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
@@ -86,6 +92,8 @@ class Drug {
       'min_threshold': minThreshold,
       'max_threshold': maxThreshold,
       'image_url': imageUrl,
+      'inner_unit_image_url': innerUnitImageUrl,
+      'inner_unit_type': innerUnitType,
       'created_at': createdAt.toIso8601String(),
     };
   }

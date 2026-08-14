@@ -33,27 +33,12 @@ class Drug {
     required this.createdAt,
   });
 
-  /// Category-based placeholder URL assigner
-  String get displayImageUrl {
+  /// Returns the real image URL if one exists, otherwise null (no fake images).
+  String? get displayImageUrl {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return imageUrl!;
     }
-    final upperName = name.toUpperCase();
-    if (upperName.contains('SYRUP') ||
-        upperName.contains('SUSP') ||
-        upperName.contains('EXP') ||
-        upperName.contains('LIQ') ||
-        upperName.contains('60ML') ||
-        upperName.contains('10ML')) {
-      return 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
-    } else if (upperName.contains('TABS') ||
-        upperName.contains('CAPS') ||
-        upperName.contains('100\'S') ||
-        upperName.contains('PANADOL') ||
-        upperName.contains('AMOXICILLIN')) {
-      return 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80';
-    }
-    return 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800&auto=format&fit=crop&q=80';
+    return null;
   }
 
   factory Drug.fromJson(Map<String, dynamic> json) {

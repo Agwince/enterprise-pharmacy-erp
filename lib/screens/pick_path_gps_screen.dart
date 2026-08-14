@@ -22,11 +22,11 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
   bool _isLoading = true;
   int _currentIndex = 0;
 
-  final List<String> _sampleMedicineImages = const [
-    'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&auto=format&fit=crop&q=80',
+  final List<String?> _mockImagePlaceholders = [
+    null,
+    null,
+    null,
+    null,
   ];
 
   @override

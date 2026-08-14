@@ -493,12 +493,14 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                                         width: 46,
                                         height: 46,
                                         color: const Color(0xFF0F172A),
-                                        child: Image.network(
-                                          item.displayImageUrl,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) =>
-                                              const Icon(Icons.medication_rounded, color: Colors.amberAccent),
-                                        ),
+                                        child: item.displayImageUrl != null
+                                            ? Image.network(
+                                                item.displayImageUrl!,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) =>
+                                                    const Icon(Icons.camera_alt, color: Colors.white54),
+                                              )
+                                            : const Icon(Icons.camera_alt, color: Colors.white54),
                                       ),
                                     ),
                                     const SizedBox(width: 10),
@@ -592,10 +594,17 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  _selectedDrug!.displayImageUrl,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: _selectedDrug!.displayImageUrl != null
+                                    ? Image.network(
+                                        _selectedDrug!.displayImageUrl!,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        color: Colors.grey[800],
+                                        child: const Center(
+                                          child: Icon(Icons.camera_alt, color: Colors.white54, size: 32),
+                                        ),
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 16),

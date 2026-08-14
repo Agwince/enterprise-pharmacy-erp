@@ -274,8 +274,8 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'cost_price': (double.tryParse(_priceController.text.trim()) ?? 1200.0) * 0.65,
         'min_threshold': 15,
         'max_threshold': 150,
-        'image_url': boxUrl ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
-        'inner_unit_image_url': looseUrl ?? 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+        'image_url': boxUrl,
+        'inner_unit_image_url': looseUrl,
         'created_at': DateTime.now().toIso8601String(),
       };
 

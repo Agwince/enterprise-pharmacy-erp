@@ -78,8 +78,8 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
               ? 'Pick: 0.10 (1 Loose $innerUnitType)'
               : 'Pick: 1.0 (Full Sealed Box)',
           'location': '📍 ${drug.binLocation}',
-          'box_image_url': drug.imageUrl ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
-          'loose_unit_image_url': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+          'box_image_url': drug.imageUrl,
+          'loose_unit_image_url': drug.innerUnitImageUrl,
           'checked': false,
         };
       }).toList();
@@ -336,18 +336,25 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                                         ),
                                         child: ClipRRect(
                                           borderRadius: BorderRadius.circular(10),
-                                          child: CachedNetworkImage(
-                                            imageUrl: imageUrl,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) => Container(
-                                              color: const Color(0xFF0F172A),
-                                              child: const Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
-                                            ),
-                                            errorWidget: (context, url, error) => Container(
-                                              color: const Color(0xFF0F172A),
-                                              child: const Icon(Icons.medication_rounded, size: 36, color: Colors.tealAccent),
-                                            ),
-                                          ),
+                                          child: (imageUrl != null && imageUrl.isNotEmpty)
+                                              ? CachedNetworkImage(
+                                                  imageUrl: imageUrl,
+                                                  fit: BoxFit.cover,
+                                                  placeholder: (context, url) => Container(
+                                                    color: const Color(0xFF0F172A),
+                                                    child: const Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
+                                                  ),
+                                                  errorWidget: (context, url, error) => Container(
+                                                    color: Colors.grey[800],
+                                                    child: const Icon(Icons.camera_alt, size: 36, color: Colors.white54),
+                                                  ),
+                                                )
+                                              : Container(
+                                                  color: Colors.grey[800],
+                                                  child: const Center(
+                                                    child: Icon(Icons.camera_alt, size: 36, color: Colors.white54),
+                                                  ),
+                                                ),
                                         ),
                                       ),
                                       Positioned(

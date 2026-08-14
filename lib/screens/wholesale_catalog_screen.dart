@@ -22,7 +22,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 240,
       'boxesAvailable': '12,000 Boxes',
       'binLocation': 'AISLE 1 - PALLET BAY A4',
-      'image': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
     {
       'sku': 'WHOLE-PARA-1000',
@@ -33,7 +33,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 560,
       'boxesAvailable': '28,000 Boxes',
       'binLocation': 'AISLE 2 - PALLET BAY B1',
-      'image': 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
     {
       'sku': 'WHOLE-IBU-400',
@@ -44,7 +44,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 160,
       'boxesAvailable': '6,400 Bottles',
       'binLocation': 'AISLE 3 - PALLET BAY C2',
-      'image': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
     {
       'sku': 'WHOLE-METF-850',
@@ -55,7 +55,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 300,
       'boxesAvailable': '15,000 Boxes',
       'binLocation': 'AISLE 4 - PALLET BAY D5',
-      'image': 'https://images.unsplash.com/photo-1585435557343-3b092031a831?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
     {
       'sku': 'WHOLE-AZITH-250',
@@ -66,7 +66,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 120,
       'boxesAvailable': '4,800 Boxes',
       'binLocation': 'AISLE 1 - PALLET BAY A9',
-      'image': 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
     {
       'sku': 'WHOLE-OMEP-20',
@@ -77,7 +77,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       'cartons': 380,
       'boxesAvailable': '19,000 Boxes',
       'binLocation': 'AISLE 5 - PALLET BAY E3',
-      'image': 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
+      'image': null,
     },
   ];
 

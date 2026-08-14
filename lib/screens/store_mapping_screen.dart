@@ -13,7 +13,7 @@ class StoreMappingScreen extends StatefulWidget {
 
 class _StoreMappingScreenState extends State<StoreMappingScreen> {
   final List<Map<String, String>> _mappedLocations = [];
-  late MobileScannerController _scannerController;
+  MobileScannerController? _scannerController;
   bool _cameraFailed = false;
   String _cameraErrorMessage = '';
   final ImagePicker _imagePicker = ImagePicker();
@@ -21,11 +21,10 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
   @override
   void initState() {
     super.initState();
-    _initScanner();
   }
 
   void _initScanner() {
-    _scannerController = MobileScannerController(
+    _scannerController ??= MobileScannerController(
       detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
     );
@@ -33,7 +32,7 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
 
   @override
   void dispose() {
-    _scannerController.dispose();
+    _scannerController?.dispose();
     super.dispose();
   }
 
@@ -106,7 +105,7 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
               onPressed: () {
                 Navigator.pop(context);
                 if (!_cameraFailed) {
-                  _scannerController.start();
+                  _scannerController?.start();
                 }
               },
               child: Text(
@@ -137,7 +136,7 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
                 
                 Navigator.pop(context);
                 if (!_cameraFailed) {
-                  _scannerController.start();
+                  _scannerController?.start();
                 }
                 
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -256,7 +255,7 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
                           controller: _scannerController,
                           onDetect: (capture) {
                             if (capture.barcodes.isNotEmpty) {
-                              _scannerController.stop();
+                              _scannerController?.stop();
                               _showMappingModal();
                             }
                           },
@@ -432,8 +431,9 @@ class _StoreMappingScreenState extends State<StoreMappingScreen> {
                 height: 56,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    _initScanner();
                     if (!_cameraFailed) {
-                      _scannerController.stop();
+                      _scannerController?.stop();
                     }
                     _showMappingModal();
                   },

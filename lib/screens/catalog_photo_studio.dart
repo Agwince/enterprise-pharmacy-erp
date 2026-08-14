@@ -312,14 +312,13 @@ class _GuidedStudioDialogState extends State<_GuidedStudioDialog> {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
       if (image != null) {
         setState(() {
-          _boxUrl = 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80';
+          _boxUrl = image.path;
           _step = 2;
         });
       }
     } catch (_) {
-      // Demo fallback
       setState(() {
-        _boxUrl = 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80';
+        _boxUrl = null;
         _step = 2;
       });
     }
@@ -337,14 +336,13 @@ class _GuidedStudioDialogState extends State<_GuidedStudioDialog> {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
       if (image != null) {
         setState(() {
-          _looseUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
+          _looseUrl = image.path;
           _step = 4; // Complete!
         });
       }
     } catch (_) {
-      // Demo fallback
       setState(() {
-        _looseUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
+        _looseUrl = null;
         _step = 4;
       });
     }

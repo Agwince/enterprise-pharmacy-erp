@@ -7,13 +7,40 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterProductScreen extends StatefulWidget {
-  const RegisterProductScreen({super.key});
+  final String? prefilledName;
+  final double? prefilledPrice;
+  final String? prefilledSku;
+  final String? prefilledUnit;
+
+  const RegisterProductScreen({
+    super.key,
+    this.prefilledName,
+    this.prefilledPrice,
+    this.prefilledSku,
+    this.prefilledUnit,
+  });
 
   @override
   State<RegisterProductScreen> createState() => _RegisterProductScreenState();
 }
 
 class _RegisterProductScreenState extends State<RegisterProductScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.prefilledName != null) {
+      _nameController.text = widget.prefilledName!;
+    }
+    if (widget.prefilledPrice != null) {
+      _priceController.text = widget.prefilledPrice!.toString();
+    }
+    if (widget.prefilledSku != null) {
+      _barcode = widget.prefilledSku!;
+    }
+    if (widget.prefilledUnit != null) {
+      _unitController.text = widget.prefilledUnit!;
+    }
+  }
   final _nameController = TextEditingController();
   final _genericController = TextEditingController();
   final _categoryController = TextEditingController(text: 'General Medicines');

@@ -19,12 +19,136 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
   final SupabaseService _supabaseService = SupabaseService();
 
   bool _isLoading = true;
-  List<Drug> _drugsCatalog = []; // Live Supabase Drugs Catalog (No Hardcoded Mock Arrays)
+  List<Drug> _drugsCatalog = [];
   Drug? _selectedDrug;
   String? _capturedImageLocalPath;
-  int _currentStep = 1; // 1: Barcode Scan, 1.5: Image Interception, 2: Shelf QR Scan
+  int _currentStep = 1;
   bool _isUploading = false;
   final _quantityController = TextEditingController(text: '50');
+
+  // Task 1: Seeded Official Nairobi PDF Catalog Items
+  final List<Drug> _seededNairobiPdfCatalog = [
+    Drug(
+      id: 'pdf-001',
+      sku: 'NRB-ABZ-10ML',
+      name: 'ABZ SUSPENSION 10ML',
+      genericName: 'Albendazole 400mg/10ml',
+      category: 'Anthelmintic Syrup',
+      unit: 'Bottle 10ml',
+      binLocation: 'AISLE 1 - SHELF B2',
+      unitPrice: 41.00,
+      costPrice: 25.00,
+      minThreshold: 20,
+      maxThreshold: 200,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-002',
+      sku: 'NRB-KOF-60ML',
+      name: 'KOFGON GREEN 60ML',
+      genericName: 'Cough Formula Syrup',
+      category: 'Cough & Cold Syrup',
+      unit: 'Bottle 60ml',
+      binLocation: 'AISLE 1 - SHELF A2',
+      unitPrice: 25.00,
+      costPrice: 15.00,
+      minThreshold: 20,
+      maxThreshold: 200,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-003',
+      sku: 'NRB-KOF-100ML',
+      name: 'KOFGON GREEN 100ML',
+      genericName: 'Cough Formula Syrup',
+      category: 'Cough & Cold Syrup',
+      unit: 'Bottle 100ml',
+      binLocation: 'AISLE 1 - SHELF A3',
+      unitPrice: 33.00,
+      costPrice: 20.00,
+      minThreshold: 20,
+      maxThreshold: 200,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-004',
+      sku: 'NRB-PAN-100S',
+      name: 'PANADOL EXTRA 100\'S',
+      genericName: 'Paracetamol + Caffeine',
+      category: 'Analgesic Tablets',
+      unit: 'Box of 100',
+      binLocation: 'AISLE 1 - SHELF A1',
+      unitPrice: 780.00,
+      costPrice: 500.00,
+      minThreshold: 50,
+      maxThreshold: 500,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-005',
+      sku: 'NRB-AMX-500',
+      name: 'AMOXICILLIN 500MG 100\'S',
+      genericName: 'Amoxicillin Trihydrate',
+      category: 'Antibiotics Caps',
+      unit: 'Box of 100',
+      binLocation: 'AISLE 2 - SHELF A3',
+      unitPrice: 295.00,
+      costPrice: 180.00,
+      minThreshold: 30,
+      maxThreshold: 300,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-006',
+      sku: 'NRB-BRU-400',
+      name: 'BRUFEN 400MG 100\'S',
+      genericName: 'Ibuprofen 400mg',
+      category: 'Anti-Inflammatory',
+      unit: 'Box of 100',
+      binLocation: 'AISLE 1 - SHELF B1',
+      unitPrice: 130.00,
+      costPrice: 80.00,
+      minThreshold: 30,
+      maxThreshold: 300,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-007',
+      sku: 'NRB-PIR-100',
+      name: 'PIRITON SYRUP 100ML',
+      genericName: 'Chlorpheniramine Maleate',
+      category: 'Antihistamine Syrup',
+      unit: 'Bottle 100ml',
+      binLocation: 'AISLE 2 - SHELF B2',
+      unitPrice: 27.00,
+      costPrice: 16.00,
+      minThreshold: 25,
+      maxThreshold: 250,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+    Drug(
+      id: 'pdf-008',
+      sku: 'NRB-FLG-100',
+      name: 'FLAGYL SUSP 100ML',
+      genericName: 'Metronidazole Susp',
+      category: 'Antibacterial Susp',
+      unit: 'Bottle 100ml',
+      binLocation: 'AISLE 2 - SHELF C1',
+      unitPrice: 46.00,
+      costPrice: 28.00,
+      minThreshold: 25,
+      maxThreshold: 250,
+      imageUrl: null, // Lacks photo!
+      createdAt: DateTime.now(),
+    ),
+  ];
 
   @override
   void initState() {
@@ -43,14 +167,20 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
       List<Drug> drugs = [];
       if (list.isNotEmpty) {
         drugs = list.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
-      } else {
-        // Query via SupabaseService if direct query returns empty
-        drugs = await _supabaseService.fetchDrugs();
+      }
+
+      // Merge seeded Nairobi catalog with live database items
+      final Map<String, Drug> mergedMap = {};
+      for (final seedItem in _seededNairobiPdfCatalog) {
+        mergedMap[seedItem.name] = seedItem;
+      }
+      for (final liveItem in drugs) {
+        mergedMap[liveItem.name] = liveItem;
       }
 
       if (mounted) {
         setState(() {
-          _drugsCatalog = drugs;
+          _drugsCatalog = mergedMap.values.toList();
           _isLoading = false;
         });
       }
@@ -58,13 +188,14 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
       debugPrint('Live catalog query note: $e');
       if (mounted) {
         setState(() {
-          _drugsCatalog = [];
+          _drugsCatalog = _seededNairobiPdfCatalog;
           _isLoading = false;
         });
       }
     }
   }
 
+  // Task 3: Open Blank Registration Form
   void _openRegisterNewMedicineScreen() async {
     final result = await Navigator.push(
       context,
@@ -75,16 +206,34 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
     }
   }
 
+  // Task 2: Attach Photos Workflow (Pre-filled read-only form)
+  void _attachPhotosToCatalogItem(Drug item) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RegisterProductScreen(
+          prefilledName: item.name,
+          prefilledPrice: item.unitPrice,
+          prefilledSku: item.sku,
+          prefilledUnit: item.unit,
+        ),
+      ),
+    );
+    if (result == true) {
+      _loadLiveCatalog();
+    }
+  }
+
   void _selectDrug(Drug drug) {
-    setState(() {
-      _selectedDrug = drug;
-      _capturedImageLocalPath = null;
-      if (drug.imageUrl == null) {
-        _currentStep = 1;
-      } else {
+    if (drug.imageUrl == null) {
+      _attachPhotosToCatalogItem(drug);
+    } else {
+      setState(() {
+        _selectedDrug = drug;
+        _capturedImageLocalPath = null;
         _currentStep = 2;
-      }
-    });
+      });
+    }
   }
 
   Future<void> _captureFirstTouchPhoto() async {
@@ -160,7 +309,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
     final drug = _selectedDrug!;
     final drugName = drug.name;
 
-    // Phase 4: Execute Supabase update setting DrugItem's binLocation to the scanned shelf
     try {
       await Supabase.instance.client
           .from('drugs')
@@ -256,7 +404,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Header Row with Register New Medicine Button
+                // Top Header Row with Register New Medicine Button (Task 3)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -265,11 +413,11 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Live Warehouse Catalog',
+                            'Nairobi August 2026 Price List Catalog',
                             style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           Text(
-                            'Select items to initiate intake or register new stock.',
+                            'Tap unphotographed items to attach pictures or register new stock.',
                             style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
                           ),
                         ],
@@ -293,7 +441,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // TASK 1: BLANK / EMPTY STATE IF NO DATA IN DATABASE
                 if (_isLoading)
                   const Center(
                     child: Padding(
@@ -301,67 +448,15 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                       child: CircularProgressIndicator(color: Colors.amberAccent),
                     ),
                   )
-                else if (_drugsCatalog.isEmpty)
-                  Center(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(40),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.amberAccent.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.inventory_2_outlined, color: Colors.amberAccent, size: 48),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'No Inventory Found. Register new stock.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No pre-filled mock cards. Key in medicine details live into Supabase.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(fontSize: 13, color: Colors.white54),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: _openRegisterNewMedicineScreen,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.tealAccent,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.add_circle_outline_rounded, size: 20),
-                            label: Text(
-                              'Register New Medicine from Scratch',
-                              style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 14),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
                 else ...[
-                  // Step 1: Select or Scan Item
+                  // TASK 1: SEEDED CATALOG LIST VIEW
                   Text(
-                    'Step 1: Select or Scan Item Barcode (Supabase Catalog)',
+                    'Step 1: Select Item from Official Nairobi Catalog',
                     style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 120,
+                    height: 150,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: _drugsCatalog.length,
@@ -369,65 +464,91 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                       itemBuilder: (context, index) {
                         final item = _drugsCatalog[index];
                         final isSelected = _selectedDrug?.id == item.id;
-                        final hasRealImage = item.imageUrl != null || (_selectedDrug?.id == item.id && _capturedImageLocalPath != null);
+                        final hasRealImage = item.imageUrl != null;
 
                         return GestureDetector(
                           onTap: () => _selectDrug(item),
                           child: Container(
-                            width: 240,
-                            padding: const EdgeInsets.all(12),
+                            width: 260,
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF1E293B).withValues(alpha: 0.5),
+                              color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF1E293B).withValues(alpha: 0.6),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: isSelected ? Colors.amberAccent : Colors.white.withValues(alpha: 0.1),
+                                color: isSelected
+                                    ? Colors.amberAccent
+                                    : (hasRealImage ? Colors.greenAccent.withValues(alpha: 0.3) : Colors.orangeAccent.withValues(alpha: 0.4)),
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    width: 54,
-                                    height: 54,
-                                    color: const Color(0xFF0F172A),
-                                    child: Image.network(
-                                      item.displayImageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(Icons.medication_rounded, color: Colors.amberAccent),
+                                Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Container(
+                                        width: 46,
+                                        height: 46,
+                                        color: const Color(0xFF0F172A),
+                                        child: Image.network(
+                                          item.displayImageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) =>
+                                              const Icon(Icons.medication_rounded, color: Colors.amberAccent),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                          Text(
+                                            'KES ${item.unitPrice.toStringAsFixed(2)}',
+                                            style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.w700, fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+
+                                // TASK 1 BADGE: MISSING PHOTOS: TAP TO CAPTURE
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: hasRealImage
+                                        ? Colors.green.withValues(alpha: 0.15)
+                                        : Colors.orange.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: hasRealImage ? Colors.greenAccent.withValues(alpha: 0.3) : Colors.orangeAccent.withValues(alpha: 0.4),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                  child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Text(
-                                        item.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                      Icon(
+                                        hasRealImage ? Icons.check_circle_rounded : Icons.camera_enhance_rounded,
+                                        color: hasRealImage ? Colors.greenAccent : Colors.orangeAccent,
+                                        size: 14,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        item.sku,
-                                        style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: hasRealImage
-                                              ? Colors.green.withValues(alpha: 0.2)
-                                              : Colors.orange.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
+                                      const SizedBox(width: 6),
+                                      Flexible(
                                         child: Text(
-                                          hasRealImage ? '✓ Real Photo' : '⚠️ Needs Photo',
+                                          hasRealImage ? '✓ Real Photos Ready' : 'Missing Photos: Tap to Capture',
+                                          overflow: TextOverflow.ellipsis,
                                           style: GoogleFonts.inter(
                                             color: hasRealImage ? Colors.greenAccent : Colors.orangeAccent,
                                             fontSize: 10,
@@ -488,7 +609,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${_selectedDrug!.sku} • ${_selectedDrug!.category} • Unit: ${_selectedDrug!.unit}',
+                                    '${_selectedDrug!.sku} • KES ${_selectedDrug!.unitPrice} • Unit: ${_selectedDrug!.unit}',
                                     style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
                                   ),
                                   const SizedBox(height: 6),

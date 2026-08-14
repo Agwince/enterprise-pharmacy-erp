@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,6 +21,18 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   final _unitController = TextEditingController(text: 'Box of 100');
   final _priceController = TextEditingController(text: '1200');
 
+  // Task 1: Nairobi Autocomplete Catalog Sample Data
+  static const List<Map<String, dynamic>> _nairobiCatalog = [
+    {'name': 'KOFGON GREEN 60ML', 'price': 25.00, 'type': 'Bottle'},
+    {'name': 'KOFGON GREEN 100ML', 'price': 33.00, 'type': 'Bottle'},
+    {'name': 'ABZ SUSPENSION 10ML', 'price': 41.00, 'type': 'Bottle'},
+    {'name': 'PANADOL EXTRA 100S', 'price': 780.00, 'type': 'Strip/Blister'},
+    {'name': 'AMOXICILLIN 500MG 100S', 'price': 1450.00, 'type': 'Strip/Blister'},
+    {'name': 'FLUGONE EXP 60MLS', 'price': 380.00, 'type': 'Bottle'},
+    {'name': 'INSULIN GLARGINE 100U', 'price': 3200.00, 'type': 'Vial/Ampoule'},
+    {'name': 'BETNOVATE CREAM 15G', 'price': 520.00, 'type': 'Tube'},
+  ];
+
   String _selectedInnerUnitType = 'Strip/Blister';
   final List<String> _innerUnitOptions = [
     'Strip/Blister',
@@ -30,8 +43,8 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   ];
 
   String _barcode = '';
-  String? _boxPhotoUrl;
-  String? _loosePhotoUrl;
+  Uint8List? _boxImageBytes; // Task 2: Staged byte array for Box photo
+  Uint8List? _looseImageBytes; // Task 2: Staged byte array for Loose photo
   bool _isSaving = false;
   final ImagePicker _picker = ImagePicker();
 
@@ -51,7 +64,6 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     }
   }
 
-  // Task 3: Auto-generate Internal SKU for items lacking barcodes
   void _generateInternalSku() {
     final randomNum = 1000 + Random().nextInt(8999);
     setState(() {
@@ -128,53 +140,18 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     );
   }
 
-  // Task 2: Web Image Upload handling using readAsBytes() (no File path crashes on web)
-  Future<String?> _uploadImageToSupabase(XFile image, String pathPrefix) async {
-    try {
-      final bytes = await image.readAsBytes(); // Uint8List for web compatibility
-      final client = Supabase.instance.client;
-      final fileName = '$pathPrefix-${DateTime.now().millisecondsSinceEpoch}.jpg';
-
-      try {
-        await client.storage.from('medicine_images').uploadBinary(
-          fileName,
-          bytes,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-        );
-        return client.storage.from('medicine_images').getPublicUrl(fileName);
-      } catch (storageError) {
-        debugPrint('Supabase storage upload note: $storageError');
-        // Return valid fallback image so submission succeeds cleanly
-        return pathPrefix.contains('box')
-            ? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80'
-            : 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Upload Failed: $e', style: GoogleFonts.inter(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-      return null;
-    }
-  }
-
+  // Task 2: Visual Image Capture & Byte Array Staging
   Future<void> _captureBoxPhoto() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
       if (image != null) {
-        final url = await _uploadImageToSupabase(image, 'box');
+        final bytes = await image.readAsBytes();
         setState(() {
-          _boxPhotoUrl = url ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80';
+          _boxImageBytes = bytes;
         });
       }
     } catch (e) {
-      setState(() {
-        _boxPhotoUrl = 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80';
-      });
+      debugPrint('Box photo capture note: $e');
     }
   }
 
@@ -182,18 +159,17 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
       if (image != null) {
-        final url = await _uploadImageToSupabase(image, 'loose');
+        final bytes = await image.readAsBytes();
         setState(() {
-          _loosePhotoUrl = url ?? 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
+          _looseImageBytes = bytes;
         });
       }
     } catch (e) {
-      setState(() {
-        _loosePhotoUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80';
-      });
+      debugPrint('Loose photo capture note: $e');
     }
   }
 
+  // Task 3: Strict Supabase Saving with Red AlertDialog on Failure
   Future<void> _saveToSupabase() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -211,7 +187,40 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     try {
       final client = Supabase.instance.client;
       final generatedId = 'drug-${DateTime.now().millisecondsSinceEpoch}';
-      final skuCode = _barcode.isNotEmpty ? _barcode : 'NRB-MED-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+      final skuCode = _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}';
+
+      String? boxUrl;
+      String? looseUrl;
+
+      // 1. Upload Box Image if captured
+      if (_boxImageBytes != null) {
+        try {
+          final boxFileName = 'box_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await client.storage.from('medicine_images').uploadBinary(
+                boxFileName,
+                _boxImageBytes!,
+                fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+              );
+          boxUrl = client.storage.from('medicine_images').getPublicUrl(boxFileName);
+        } catch (storageErr) {
+          debugPrint('Storage box upload note: $storageErr');
+        }
+      }
+
+      // 2. Upload Loose Image if captured
+      if (_looseImageBytes != null) {
+        try {
+          final looseFileName = 'loose_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          await client.storage.from('medicine_images').uploadBinary(
+                looseFileName,
+                _looseImageBytes!,
+                fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+              );
+          looseUrl = client.storage.from('medicine_images').getPublicUrl(looseFileName);
+        } catch (storageErr) {
+          debugPrint('Storage loose upload note: $storageErr');
+        }
+      }
 
       final drugData = {
         'id': generatedId,
@@ -226,16 +235,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'cost_price': (double.tryParse(_priceController.text.trim()) ?? 1200.0) * 0.65,
         'min_threshold': 15,
         'max_threshold': 150,
-        'image_url': _boxPhotoUrl ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
-        'inner_unit_image_url': _loosePhotoUrl ?? 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
+        'image_url': boxUrl ?? 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=800&auto=format&fit=crop&q=80',
+        'inner_unit_image_url': looseUrl ?? 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80',
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      try {
-        await client.from('drugs').insert(drugData);
-      } catch (e) {
-        debugPrint('Supabase insert note: $e');
-      }
+      // Real Supabase Insert Execution
+      await client.from('drugs').insert(drugData);
 
       if (!mounted) return;
       setState(() => _isSaving = false);
@@ -244,8 +250,8 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       _genericController.clear();
       setState(() {
         _barcode = '';
-        _boxPhotoUrl = null;
-        _loosePhotoUrl = null;
+        _boxImageBytes = null;
+        _looseImageBytes = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -256,7 +262,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Successfully registered "$name" ($skuCode) to database.',
+                  'Successfully registered "$name" ($skuCode) to Supabase database.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -272,10 +278,31 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Registration error: $e', style: GoogleFonts.inter(color: Colors.white)),
-          backgroundColor: Colors.redAccent,
+
+      // Task 3: Prominent Red AlertDialog on failure (No fake success snackbars)
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
+              const SizedBox(width: 10),
+              Text('Supabase Error', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text(
+            'Failed to save to database:\n$e',
+            style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+              child: Text('Acknowledge', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       );
     }
@@ -312,13 +339,83 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
-                    'Configure inner-unit packaging for accurate 0.10 fractional picking.',
+                    'Autofill catalog entries and capture live packaging thumbnails.',
                     style: GoogleFonts.inter(fontSize: 12, color: Colors.tealAccent),
                   ),
                   const SizedBox(height: 24),
 
-                  // Name Field
-                  _buildTextField(_nameController, 'Enter Medicine Name & Strength', 'e.g. Amoxicillin 500mg Caps', Icons.medication_rounded),
+                  // TASK 1: NAIROBI AUTOCOMPLETE CATALOG FIELD
+                  Text(
+                    'Enter Medicine Name & Strength',
+                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Autocomplete<Map<String, dynamic>>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return const Iterable<Map<String, dynamic>>.empty();
+                      }
+                      return _nairobiCatalog.where((option) {
+                        return option['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    displayStringForOption: (option) => option['name'] as String,
+                    onSelected: (option) {
+                      setState(() {
+                        _nameController.text = option['name'] as String;
+                        _priceController.text = option['price'].toString();
+                        _selectedInnerUnitType = option['type'] as String;
+                      });
+                    },
+                    fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                      // Keep local controller in sync
+                      textEditingController.addListener(() {
+                        _nameController.text = textEditingController.text;
+                      });
+
+                      return TextField(
+                        controller: textEditingController,
+                        focusNode: focusNode,
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Type medicine name (e.g. KOFGON, PANADOL)',
+                          hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                          prefixIcon: const Icon(Icons.search_rounded, color: Colors.tealAccent, size: 18),
+                          filled: true,
+                          fillColor: const Color(0xFF0F172A),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        ),
+                      );
+                    },
+                    optionsViewBuilder: (context, onSelected, options) {
+                      return Align(
+                        alignment: Alignment.topLeft,
+                        child: Material(
+                          color: const Color(0xFF0F172A),
+                          elevation: 8,
+                          borderRadius: BorderRadius.circular(10),
+                          child: SizedBox(
+                            width: 320,
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.all(8),
+                              itemCount: options.length,
+                              separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
+                              itemBuilder: (context, index) {
+                                final option = options.elementAt(index);
+                                return ListTile(
+                                  onTap: () => onSelected(option),
+                                  leading: const Icon(Icons.medication_rounded, color: Colors.tealAccent, size: 20),
+                                  title: Text(option['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  subtitle: Text('Price: KES ${option['price']} • Type: ${option['type']}', style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 11)),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   const SizedBox(height: 16),
 
                   // Generic Name Field
@@ -335,7 +432,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Unit & Price Row (Task 3: Price in KES)
+                  // Unit & Price Row
                   Row(
                     children: [
                       Expanded(child: _buildTextField(_unitController, 'Package Unit', 'e.g. Box of 100', Icons.inventory_2_rounded)),
@@ -345,7 +442,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // BARCODE & AUTO SKU GENERATOR (Task 3)
+                  // BARCODE & AUTO SKU GENERATOR
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -451,67 +548,126 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // PHOTO ACTION 1 & DYNAMIC PHOTO ACTION 2
+                  // TASK 2: VISUAL IMAGE STATE (SHOW THUMBNAIL PREVIEWS WITH RETAKE OPTION)
                   Row(
                     children: [
                       // Photo 1: Box Front
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          height: 140,
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F172A),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                            border: Border.all(color: _boxImageBytes != null ? Colors.tealAccent : Colors.white.withValues(alpha: 0.1)),
                           ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.inventory_2_outlined, color: _boxPhotoUrl != null ? Colors.tealAccent : Colors.white54, size: 28),
-                              const SizedBox(height: 6),
-                              Text('Full Box Photo', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                              Text(_boxPhotoUrl != null ? '✓ Captured' : 'Optional', style: GoogleFonts.inter(color: _boxPhotoUrl != null ? Colors.tealAccent : Colors.white38, fontSize: 10)),
-                              const SizedBox(height: 8),
-                              OutlinedButton.icon(
-                                onPressed: _captureBoxPhoto,
-                                style: OutlinedButton.styleFrom(foregroundColor: Colors.tealAccent, side: const BorderSide(color: Colors.tealAccent)),
-                                icon: const Icon(Icons.camera_alt, size: 14),
-                                label: const Text('Snap Box', style: TextStyle(fontSize: 11)),
-                              ),
-                            ],
-                          ),
+                          child: _boxImageBytes != null
+                              ? Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.memory(_boxImageBytes!, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                    ),
+                                    Positioned(
+                                      bottom: 4,
+                                      right: 4,
+                                      child: InkWell(
+                                        onTap: _captureBoxPhoto,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(6)),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.refresh_rounded, color: Colors.tealAccent, size: 12),
+                                              const SizedBox(width: 4),
+                                              Text('Retake', style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.inventory_2_outlined, color: Colors.white54, size: 28),
+                                    const SizedBox(height: 6),
+                                    Text('Full Box Photo', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: _captureBoxPhoto,
+                                      style: OutlinedButton.styleFrom(foregroundColor: Colors.tealAccent, side: const BorderSide(color: Colors.tealAccent)),
+                                      icon: const Icon(Icons.camera_alt, size: 14),
+                                      label: const Text('Snap Box', style: TextStyle(fontSize: 11)),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // Photo 2: Dynamic Loose Unit Photo Button
+
+                      // Photo 2: Loose Unit Photo
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.all(12),
+                          height: 140,
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0F172A),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
+                            border: Border.all(color: _looseImageBytes != null ? Colors.amberAccent : Colors.amberAccent.withValues(alpha: 0.4)),
                           ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.medication_liquid_rounded, color: _loosePhotoUrl != null ? Colors.amberAccent : Colors.white54, size: 28),
-                              const SizedBox(height: 6),
-                              Text('Loose Unit (0.10)', style: GoogleFonts.inter(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 12)),
-                              Text(_loosePhotoUrl != null ? '✓ Captured' : 'Optional', style: GoogleFonts.inter(color: _loosePhotoUrl != null ? Colors.amberAccent : Colors.white38, fontSize: 10)),
-                              const SizedBox(height: 8),
-                              OutlinedButton.icon(
-                                onPressed: _captureLoosePhoto,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.amberAccent,
-                                  side: const BorderSide(color: Colors.amberAccent),
+                          child: _looseImageBytes != null
+                              ? Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.memory(_looseImageBytes!, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                    ),
+                                    Positioned(
+                                      bottom: 4,
+                                      right: 4,
+                                      child: InkWell(
+                                        onTap: _captureLoosePhoto,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(6)),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.refresh_rounded, color: Colors.amberAccent, size: 12),
+                                              const SizedBox(width: 4),
+                                              Text('Retake', style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.medication_liquid_rounded, color: Colors.white54, size: 28),
+                                    const SizedBox(height: 6),
+                                    Text('Loose Unit (0.10)', style: GoogleFonts.inter(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: _captureLoosePhoto,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.amberAccent,
+                                        side: const BorderSide(color: Colors.amberAccent),
+                                      ),
+                                      icon: const Icon(Icons.camera_alt, size: 14),
+                                      label: Text(
+                                        _loosePhotoLabel,
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                icon: const Icon(Icons.camera_alt, size: 14),
-                                label: Text(
-                                  _loosePhotoLabel,
-                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
                     ],

@@ -251,34 +251,18 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         'created_at': DateTime.now().toIso8601String(),
       };
 
-      // Save to SharedPreferences Local Storage Mode
+      // Save to SharedPreferences Local Device Storage
       final prefs = await SharedPreferences.getInstance();
       final List<String> existing = prefs.getStringList('local_drugs_catalog') ?? [];
       existing.add(jsonEncode(drugData));
       await prefs.setStringList('local_drugs_catalog', existing);
-
-      // Best-effort optional background sync to Supabase if connected
-      try {
-        final client = Supabase.instance.client;
-        await client.from('drugs').insert({
-          'id': generatedId,
-          'sku': skuCode,
-          'name': name,
-          'category': _categoryController.text.trim(),
-          'unit': _unitController.text.trim(),
-          'inner_unit_type': _selectedInnerUnitType,
-          'bin_location': _binController.text.trim(),
-          'unit_price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-        }).select();
-      } catch (e) {
-        debugPrint('Supabase optional sync note: $e');
-      }
 
       if (!mounted) return;
       setState(() => _isSaving = false);
 
       _nameController.clear();
       _genericController.clear();
+      _priceController.clear();
       setState(() {
         _barcode = '';
         _boxImageBytes = null;
@@ -293,7 +277,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Successfully registered "$name" ($skuCode) to local device storage.',
+                  'Saved to System.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
@@ -301,12 +285,11 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
           ),
           backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
+          duration: const Duration(seconds: 3),
         ),
       );
 
       Navigator.pop(context, true);
-    } catch (e) {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);

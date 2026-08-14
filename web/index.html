@@ -1,16 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -42,7 +32,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://unpkg.com/@nicestudios/zxing-wasm@1.2.15/dist/full/zxing_reader.min.js" crossorigin="anonymous"></script>
 
-  <!-- Task 2: Service Worker Cache Purge for Mobile Browsers -->
+  <!-- Service Worker Cache Purge & Fast HTML Engine Config -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -58,20 +48,23 @@
   </script>
 </head>
 <body>
-  <!-- Task 1: Nuclear HTML Renderer Initialization -->
+  <!-- Task 1: Explicit HTML Renderer Initialization & Fast Load -->
   <script>
     window.addEventListener('load', function(ev) {
       if (typeof _flutter !== 'undefined' && _flutter.loader) {
-        _flutter.loader.load({
-          serviceWorkerSettings: null,
-          config: {
-            renderer: "html",
-            useColorEmoji: true,
+        _flutter.loader.loadEntrypoint({
+          serviceWorker: null,
+          onEntrypointLoaded: async function(engineInitializer) {
+            let appRunner = await engineInitializer.initializeEngine({
+              renderer: "html",
+              useColorEmoji: true,
+            });
+            await appRunner.runApp();
           }
         });
       }
     });
   </script>
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="flutter_bootstrap.js?v=2" async></script>
 </body>
 </html>

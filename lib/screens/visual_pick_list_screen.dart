@@ -37,35 +37,21 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Fetch locally saved drugs from SharedPreferences
+      // 1. Fetch locally saved drugs from SharedPreferences (Pure Local Read Mode)
       final prefs = await SharedPreferences.getInstance();
       final List<String> localSaved = prefs.getStringList('local_drugs_catalog') ?? [];
-      List<Drug> localDrugs = [];
+      List<Drug> allDrugs = [];
       for (String itemStr in localSaved) {
         try {
           final jsonMap = jsonDecode(itemStr) as Map<String, dynamic>;
-          localDrugs.add(Drug.fromJson(jsonMap));
+          allDrugs.add(Drug.fromJson(jsonMap));
         } catch (e) {
           debugPrint('Error loading local drug: $e');
         }
       }
 
-      // 2. Attempt querying Supabase drugs table directly
-      List<Drug> allDrugs = [...localDrugs];
-      try {
-        final client = Supabase.instance.client;
-        final res = await client.from('drugs').select();
-        final response = res as List<dynamic>;
-        if (response.isNotEmpty) {
-          final supaDrugs = response.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
-          allDrugs.addAll(supaDrugs);
-        }
-      } catch (e) {
-        debugPrint('Supabase direct query note: $e');
-      }
-
       if (allDrugs.isEmpty) {
-        // Fallback to SupabaseService fetchDrugs
+        // Fallback to local offline catalog service
         allDrugs = await _supabaseService.fetchDrugs();
       }
 

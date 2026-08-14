@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'stock_putaway_screen.dart';
 import 'register_product_screen.dart';
+import 'catalog_list_screen.dart';
 
 class StorekeeperHome extends StatefulWidget {
   const StorekeeperHome({super.key});
@@ -19,7 +20,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
       case 0:
         return const StockPutawayScreen();
       case 1:
-        return const RegisterProductScreen();
+        return const CatalogListScreen();
       default:
         return const StockPutawayScreen();
     }

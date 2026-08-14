@@ -11,6 +11,9 @@ class RegisterProductScreen extends StatefulWidget {
   final double? prefilledPrice;
   final String? prefilledSku;
   final String? prefilledUnit;
+  final String? initialName;
+  final String? initialPrice;
+  final String? initialType;
 
   const RegisterProductScreen({
     super.key,
@@ -18,6 +21,9 @@ class RegisterProductScreen extends StatefulWidget {
     this.prefilledPrice,
     this.prefilledSku,
     this.prefilledUnit,
+    this.initialName,
+    this.initialPrice,
+    this.initialType,
   });
 
   @override
@@ -28,17 +34,23 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.prefilledName != null) {
-      _nameController.text = widget.prefilledName!;
+    final name = widget.initialName ?? widget.prefilledName;
+    final price = widget.initialPrice ?? widget.prefilledPrice?.toString();
+
+    if (name != null) {
+      _nameController.text = name;
     }
-    if (widget.prefilledPrice != null) {
-      _priceController.text = widget.prefilledPrice!.toString();
+    if (price != null) {
+      _priceController.text = price;
     }
     if (widget.prefilledSku != null) {
       _barcode = widget.prefilledSku!;
     }
     if (widget.prefilledUnit != null) {
       _unitController.text = widget.prefilledUnit!;
+    }
+    if (widget.initialType != null && _innerUnitOptions.contains(widget.initialType)) {
+      _selectedInnerUnitType = widget.initialType!;
     }
   }
   final _nameController = TextEditingController();
@@ -377,7 +389,20 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 6),
-                  Autocomplete<Map<String, dynamic>>(
+                  if (widget.prefilledName != null || widget.initialName != null)
+                    TextField(
+                      controller: _nameController,
+                      enabled: false,
+                      style: GoogleFonts.inter(color: Colors.white60, fontSize: 14, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.lock_rounded, color: Colors.amberAccent, size: 18),
+                        filled: true,
+                        fillColor: const Color(0xFF0F172A).withValues(alpha: 0.5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      ),
+                    )
+                  else
+                    Autocomplete<Map<String, dynamic>>(
                     optionsBuilder: (TextEditingValue textEditingValue) {
                       if (textEditingValue.text.isEmpty) {
                         return const Iterable<Map<String, dynamic>>.empty();
@@ -464,7 +489,16 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     children: [
                       Expanded(child: _buildTextField(_unitController, 'Package Unit', 'e.g. Box of 100', Icons.inventory_2_rounded)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildTextField(_priceController, 'Price (KES)', '1200', Icons.payments_rounded, isNum: true)),
+                      Expanded(
+                        child: _buildTextField(
+                          _priceController,
+                          'Price (KES)',
+                          '1200',
+                          Icons.payments_rounded,
+                          isNum: true,
+                          enabled: widget.prefilledName == null && widget.initialName == null,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -745,19 +779,20 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint, IconData icon, {bool isNum = false}) {
+  Widget _buildTextField(TextEditingController controller, String label, String hint, IconData icon, {bool isNum = false, bool enabled = true}) {
     return TextField(
       controller: controller,
+      enabled: enabled,
       keyboardType: isNum ? TextInputType.number : TextInputType.text,
-      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+      style: GoogleFonts.inter(color: enabled ? Colors.white : Colors.white60, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
+        labelStyle: GoogleFonts.inter(color: enabled ? Colors.white70 : Colors.white38, fontSize: 12),
         hintText: hint,
         hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
-        prefixIcon: Icon(icon, color: Colors.tealAccent, size: 18),
+        prefixIcon: Icon(icon, color: enabled ? Colors.tealAccent : Colors.white38, size: 18),
         filled: true,
-        fillColor: const Color(0xFF0F172A),
+        fillColor: enabled ? const Color(0xFF0F172A) : const Color(0xFF0F172A).withValues(alpha: 0.5),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       ),
     );

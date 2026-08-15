@@ -24,6 +24,9 @@ void main() async {
         url: SupabaseConfig.url,
         anonKey: SupabaseConfig.anonKey,
       );
+      // Force clear any corrupted session token from localStorage
+      // so the app correctly defaults to the working anonKey.
+      await Supabase.instance.client.auth.signOut();
     } catch (e) {
       debugPrint('Supabase initialization note: $e');
     }

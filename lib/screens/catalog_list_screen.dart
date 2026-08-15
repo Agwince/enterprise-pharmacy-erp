@@ -106,9 +106,18 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
         .toList();
   }
 
+  List<Map<String, dynamic>> _getFilteredCompleted() {
+    if (_searchQuery.isEmpty) return _completedDrugs;
+    final q = _searchQuery.toUpperCase();
+    return _completedDrugs
+        .where((d) => (d['name'] as String).toUpperCase().contains(q))
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredMissing = _getFilteredMissing();
+    final filteredCompleted = _getFilteredCompleted();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -352,6 +361,109 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                               },
                             ),
                           ),
+
+                        const SizedBox(height: 32),
+
+                        // Completed items section header
+                        Text(
+                          'Step 2: Completed Catalog Items',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Completed items list
+                        if (filteredCompleted.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.inventory_2_outlined, color: Colors.white38, size: 48),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No completed items yet.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(fontSize: 14, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: filteredCompleted.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final drug = filteredCompleted[index];
+                              final name = drug['name'] as String;
+                              final price = drug['price']?.toString() ?? '0';
+                              final imageUrl = drug['box_image_url'] as String?;
+
+                              return Card(
+                                color: const Color(0xFF1E293B),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(color: Colors.greenAccent.withValues(alpha: 0.2)),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 50,
+                                        height: 50,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0F172A),
+                                          borderRadius: BorderRadius.circular(8),
+                                          image: imageUrl != null && imageUrl.isNotEmpty
+                                              ? DecorationImage(
+                                                  image: NetworkImage(imageUrl),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
+                                        ),
+                                        child: imageUrl == null || imageUrl.isEmpty
+                                            ? const Icon(Icons.medication, color: Colors.white38)
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              name,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'KES $price',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                color: Colors.white70,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const Icon(Icons.check_circle, color: Colors.greenAccent, size: 24),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 80), // extra padding at bottom
                       ],
                     ),
                   ),

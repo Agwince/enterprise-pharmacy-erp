@@ -51,6 +51,18 @@
   <!-- Task 3: Force HTML Engine & Cache Busting v=final_prod -->
   <script>
     window.addEventListener('load', function(ev) {
+      // FORCE NUKE CORRUPT SUPABASE SESSION
+      localStorage.clear();
+      
+      // NUKE SERVICE WORKER TO FORCE FRESH JAVASCRIPT
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+
       if (typeof _flutter !== 'undefined' && _flutter.loader) {
         _flutter.loader.loadEntrypoint({
           serviceWorker: null,
@@ -65,6 +77,6 @@
       }
     });
   </script>
-  <script src="main.dart.js?v=9999999" defer></script>
+  <script src="main.dart.js?v=9999999999" defer></script>
 </body>
 </html>

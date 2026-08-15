@@ -304,7 +304,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Storage Error'),
-          content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+          content: Text("Cloud Storage Blocked.\n\nDetails: ${e.message}"),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -320,7 +320,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Storage Error'),
-            content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
+            content: Text("Cloud Storage Blocked.\n\nDetails: $e"),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),

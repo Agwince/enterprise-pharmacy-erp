@@ -242,29 +242,51 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
 
       // 1. Upload Image to Supabase Storage
       if (_boxImageBytes != null) {
-        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}.jpg';
         await supabase.storage.from('medicine_images').uploadBinary(
               fileName,
               _boxImageBytes!,
-              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+              fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
             );
         imageUrl = supabase.storage.from('medicine_images').getPublicUrl(fileName);
       }
 
-      // 2. Insert into database
-      final drugData = {
-        'name': _nameController.text.trim(),
-        'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-        'inner_unit_type': _selectedInnerUnitType,
-        'box_image_url': imageUrl,
-        // Keep required schema fields for other features
-        'id': 'drug-${DateTime.now().millisecondsSinceEpoch}',
-        'sku': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
-        'unit_price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-        'image_url': imageUrl, 
-      };
+      // 2. Check if drug already exists in database (by name match)
+      final existing = await supabase
+          .from('drugs')
+          .select('id')
+          .ilike('name', name)
+          .maybeSingle();
 
-      await supabase.from('drugs').insert(drugData).select();
+      if (existing != null) {
+        // UPDATE existing drug with the photo
+        final updateData = <String, dynamic>{};
+        if (imageUrl != null) {
+          updateData['box_image_url'] = imageUrl;
+          updateData['image_url'] = imageUrl;
+        }
+        if (_selectedInnerUnitType.isNotEmpty) {
+          updateData['inner_unit_type'] = _selectedInnerUnitType;
+        }
+        if (updateData.isNotEmpty) {
+          await supabase.from('drugs').update(updateData).eq('id', existing['id']);
+        }
+      } else {
+        // INSERT new drug
+        final drugData = {
+          'name': name,
+          'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
+          'inner_unit_type': _selectedInnerUnitType,
+          'box_image_url': imageUrl,
+          'barcode': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
+          'image_url': imageUrl, 
+          'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
+          'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
+          'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
+          'generic_name': _genericController.text.trim(),
+        };
+        await supabase.from('drugs').insert(drugData).select();
+      }
 
       _nameController.clear();
       _genericController.clear();
@@ -300,43 +322,22 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       }
     } on StorageException catch (e) {
       if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Storage Error'),
-          content: Text("Cloud Storage Blocked.\n\nDetails: ${e.message}"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Photo upload error: ${e.message}', style: GoogleFonts.inter(color: Colors.white)),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      if (e.toString().contains('ClientException') || e.toString().contains('StorageException')) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Storage Error'),
-            content: Text("Cloud Storage Blocked.\n\nDetails: $e"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e', style: GoogleFonts.inter(color: Colors.white)),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e', style: GoogleFonts.inter(color: Colors.white)),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

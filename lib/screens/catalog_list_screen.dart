@@ -11,108 +11,78 @@ class CatalogListScreen extends StatefulWidget {
 }
 
 class _CatalogListScreenState extends State<CatalogListScreen> {
-  static const List<Map<String, dynamic>> _catalogItems = [
-    {'name': 'ABZ SUSPENSION 10ML', 'price': '41.00', 'type': 'Bottle'},
-    {'name': 'KOFGON GREEN 60ML', 'price': '25.00', 'type': 'Bottle'},
-    {'name': 'KOFGON GREEN 100ML', 'price': '33.00', 'type': 'Bottle'},
-    {'name': 'PANADOL EXTRA 100S', 'price': '780.00', 'type': 'Strip/Blister'},
-    {'name': 'AMOXICILLIN 500MG 100S', 'price': '295.00', 'type': 'Strip/Blister'},
-    {'name': 'BRUFEN 400MG 100S', 'price': '130.00', 'type': 'Strip/Blister'},
-  ];
-
-  List<String> completedNames = [];
-  bool _isLoading = false;
+  List<Map<String, dynamic>> _allDrugs = [];
+  List<Map<String, dynamic>> _missingPhotoDrugs = [];
+  List<Map<String, dynamic>> _completedDrugs = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    fetchCompletedItems();
+    _loadDrugs();
   }
 
-  Future<void> fetchCompletedItems() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadDrugs() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
     try {
       final supabase = Supabase.instance.client;
-      final response = await supabase.from('drugs').select('name');
-      final list = response as List<dynamic>;
+      final response = await supabase
+          .from('drugs')
+          .select('id, name, price, inner_unit_type, box_image_url, image_url')
+          .order('name', ascending: true);
+      final list = (response as List<dynamic>)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
-      List<String> names = [];
-      for (var json in list) {
-        if (json['name'] != null) {
-          names.add(_normalizeName(json['name'] as String));
+      final missing = <Map<String, dynamic>>[];
+      final completed = <Map<String, dynamic>>[];
+
+      for (final drug in list) {
+        final hasImage = drug['box_image_url'] != null &&
+            (drug['box_image_url'] as String).isNotEmpty;
+        if (hasImage) {
+          completed.add(drug);
+        } else {
+          missing.add(drug);
         }
       }
 
       if (mounted) {
         setState(() {
-          completedNames = names;
+          _allDrugs = list;
+          _missingPhotoDrugs = missing;
+          _completedDrugs = completed;
+          _isLoading = false;
         });
       }
-    } on StorageException catch (e) {
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Storage Error'),
-          content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
     } catch (e) {
-      if (!mounted) return;
-      if (e.toString().contains('ClientException') || e.toString().contains('StorageException')) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Storage Error'),
-            content: const Text("Cloud Storage Blocked. Ensure your 'medicine_images' bucket exists in Supabase and is set to PUBLIC."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        debugPrint('Error fetching completed items from Supabase: $e');
-      }
-    } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load medicines: $e';
+        });
       }
     }
   }
 
-  String _normalizeName(String raw) {
-    return raw
-        .toUpperCase()
-        .replaceAll("'", "")
-        .replaceAll("S", "")
-        .replaceAll(" ", "")
-        .replaceAll("-", "")
-        .replaceAll(".", "");
-  }
-
-  void _openAttachPhotoForm(BuildContext context, Map<String, dynamic> item) async {
+  void _openAttachPhotoForm(BuildContext context, Map<String, dynamic> drug) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => RegisterProductScreen(
-          prefilledName: item['name'] as String,
-          prefilledPrice: double.tryParse(item['price']?.toString() ?? '0.0'),
-          prefilledSku: 'NRB-MED-${1000 + item['name'].hashCode % 8999}',
-          prefilledUnit: item['type'] as String?,
+          prefilledName: drug['name'] as String,
+          prefilledPrice: double.tryParse(drug['price']?.toString() ?? '0.0'),
+          prefilledUnit: drug['inner_unit_type'] as String?,
         ),
       ),
     );
     if (result == true) {
-      fetchCompletedItems();
+      _loadDrugs();
     }
   }
 
@@ -124,12 +94,22 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       ),
     );
     if (result == true) {
-      fetchCompletedItems();
+      _loadDrugs();
     }
+  }
+
+  List<Map<String, dynamic>> _getFilteredMissing() {
+    if (_searchQuery.isEmpty) return _missingPhotoDrugs;
+    final q = _searchQuery.toUpperCase();
+    return _missingPhotoDrugs
+        .where((d) => (d['name'] as String).toUpperCase().contains(q))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final filteredMissing = _getFilteredMissing();
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
@@ -140,11 +120,11 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Nairobi Official Catalog Intake',
+              'Nairobi August 2026 Price List Catalog',
               style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             Text(
-              'Select an item to attach photos or add unlisted drugs.',
+              'Tap unphotographed items to attach pictures or register new stock.',
               style: GoogleFonts.inter(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.w600),
             ),
           ],
@@ -155,186 +135,227 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
         backgroundColor: Colors.tealAccent,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_rounded, size: 20),
-        label: Text('Register Unlisted Medicine', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13)),
+        label: Text('Register New Medicine from Scratch', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Header Action Bar
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amberAccent.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
+          : _errorMessage.isNotEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                        const SizedBox(height: 16),
+                        Text(_errorMessage, style: GoogleFonts.inter(color: Colors.white70, fontSize: 14), textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadDrugs,
+                          child: const Text('Retry'),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.camera_enhance_rounded, color: Colors.amberAccent, size: 28),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadDrugs,
+                  color: Colors.tealAccent,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Missing Photos Queue',
-                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Tap any item below to pre-fill the form and attach packaging photos.',
-                          style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            Text(
-              'Seeded Price List (August 2026)',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 12),
-
-            // Filter out items that exist in Supabase drugs table (Task 2: Dynamic List Filtering)
-            RefreshIndicator(
-              onRefresh: fetchCompletedItems,
-              color: Colors.tealAccent,
-              child: Builder(builder: (context) {
-                // Filter out items whose normalized name exists in Supabase
-                final missingItems = _catalogItems.where((item) {
-                  final itemNorm = _normalizeName(item['name'] as String);
-                  return !completedNames.any((reg) => reg.contains(itemNorm) || itemNorm.contains(reg));
-                }).toList();
-
-                if (missingItems.isEmpty) {
-                  return Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 64),
-                        const SizedBox(height: 16),
-                        Text(
-                          '🎉 All Catalog Photos Captured!',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'All seeded Nairobi catalog items have photos registered in Supabase.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: missingItems.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = missingItems[index];
-
-                    return Card(
-                      color: const Color(0xFF1E293B),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.4)),
-                      ),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () => _openAttachPhotoForm(context, item),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                        // Stats banner
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
+                          ),
                           child: Row(
                             children: [
                               Container(
-                                width: 48,
-                                height: 48,
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: Colors.amberAccent.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
                                 ),
-                                child: const Center(
-                                  child: Icon(Icons.camera_alt, color: Colors.white54, size: 24),
-                                ),
+                                child: const Icon(Icons.camera_enhance_rounded, color: Colors.amberAccent, size: 28),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      item['name'] as String,
-                                      style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                                      '${_allDrugs.length} Medicines in Catalog',
+                                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Price: KES ${item['price']} • Packaging: ${item['type']}',
-                                      style: GoogleFonts.inter(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.camera_alt_outlined, color: Colors.orangeAccent, size: 13),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            '📷 Missing Photos: Tap to Capture',
-                                            style: GoogleFonts.inter(
-                                              color: Colors.orangeAccent,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                      '${_completedDrugs.length} with photos  •  ${_missingPhotoDrugs.length} need photos',
+                                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right_rounded, color: Colors.white38),
                             ],
                           ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              }),
-            ),
-          ],
-        ),
-      ),
+                        const SizedBox(height: 16),
+
+                        // Search bar
+                        TextField(
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                          style: GoogleFonts.inter(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Search medicines...',
+                            hintStyle: GoogleFonts.inter(color: Colors.white38),
+                            prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                            filled: true,
+                            fillColor: const Color(0xFF1E293B),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Section header
+                        Text(
+                          'Step 1: Select Item from Official Nairobi Catalog',
+                          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Missing photos list - HORIZONTAL scrolling cards
+                        if (filteredMissing.isEmpty && _missingPhotoDrugs.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(32),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.3)),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 64),
+                                const SizedBox(height: 16),
+                                Text(
+                                  '🎉 All Catalog Photos Captured!',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'All medicines have photos registered.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          SizedBox(
+                            height: 180,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: filteredMissing.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final drug = filteredMissing[index];
+                                final name = drug['name'] as String;
+                                final price = drug['price']?.toString() ?? '0';
+
+                                return SizedBox(
+                                  width: 200,
+                                  child: Card(
+                                    color: const Color(0xFF1E293B),
+                                    elevation: 2,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14),
+                                      onTap: () => _openAttachPhotoForm(context, drug),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(14),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              width: 40,
+                                              height: 40,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF0F172A),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Center(
+                                                child: Icon(Icons.camera_alt, color: Colors.white54, size: 20),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'KES $price',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                color: Colors.greenAccent,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange.withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.camera_alt_outlined, color: Colors.orangeAccent, size: 11),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Missing Photos: Tap to Capture',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.orangeAccent,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
     );
   }
 }

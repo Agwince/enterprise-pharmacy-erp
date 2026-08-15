@@ -182,7 +182,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   // Task 2: Visual Image Capture & Byte Array Staging
   Future<void> _captureBoxPhoto() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 70, // Enforce 70% quality compression
+        maxWidth: 1024,   // Cap resolution
+        maxHeight: 1024,
+      );
       if (image != null) {
         final bytes = await image.readAsBytes();
         setState(() {
@@ -196,7 +202,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
 
   Future<void> _captureLoosePhoto() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.camera, preferredCameraDevice: CameraDevice.rear);
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 70, // Enforce 70% quality compression
+        maxWidth: 1024,   // Cap resolution
+        maxHeight: 1024,
+      );
       if (image != null) {
         final bytes = await image.readAsBytes();
         setState(() {

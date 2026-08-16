@@ -16,7 +16,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _branchRevenues = [];
   double _totalRevenue = 0.0;
-  int _totalTransactions = 142;
+  int _totalTransactions = 0;
 
   @override
   void initState() {
@@ -251,10 +251,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                                     sectionsSpace: 4,
                                     centerSpaceRadius: 40,
                                     sections: [
-                                      PieChartSectionData(value: 40, title: 'Analgesics\n40%', color: Colors.blueAccent, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
-                                      PieChartSectionData(value: 30, title: 'Antibiotics\n30%', color: Colors.tealAccent, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
-                                      PieChartSectionData(value: 18, title: 'NSAID\n18%', color: Colors.amberAccent, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black)),
-                                      PieChartSectionData(value: 12, title: 'Others\n12%', color: Colors.purpleAccent, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                                      PieChartSectionData(value: 100, title: 'No Data', color: Colors.white10, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white54)),
                                     ],
                                   ),
                                 ),
@@ -292,12 +289,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                               DataColumn(label: Text('Bin Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Unit Price', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                             ],
-                            rows: [
-                              _buildDataRow('DRUG-PCT-500', 'Paracetamol 500mg Extra', 'Analgesics', 'AISLE 1 - SHELF B1', '\$8.99'),
-                              _buildDataRow('DRUG-AMX-500', 'Amoxicillin 500mg Caps', 'Antibiotics', 'AISLE 1 - SHELF A2', '\$24.50'),
-                              _buildDataRow('DRUG-IBU-400', 'Ibuprofen 400mg Forte', 'NSAID / Pain Relief', 'AISLE 2 - SHELF A1', '\$12.49'),
-                              _buildDataRow('DRUG-MET-500', 'Metformin 500mg ER', 'Antidiabetic', 'AISLE 3 - SHELF C2', '\$18.75'),
-                            ],
+                            rows: [],
                           ),
                         ),
                       ],

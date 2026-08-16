@@ -15,72 +15,7 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
   final _shelfCountController = TextEditingController(text: '5');
   String _selectedAisleType = 'General Medicines';
 
-  final List<Map<String, dynamic>> _aisles = [
-    {
-      'title': 'Aisle 1 - General Medicines',
-      'subtitle': '3 Shelves',
-      'shelves': [
-        {
-          'title': 'Shelf A',
-          'items': [
-            {'name': 'Amoxicillin 500mg', 'qty': '50 Cartons'},
-            {'name': 'Paracetamol 500mg', 'qty': '120 Cartons'},
-          ]
-        },
-        {
-          'title': 'Shelf B',
-          'items': [
-            {'name': 'Ibuprofen 400mg', 'qty': '35 Cartons'},
-            {'name': 'Metformin 500mg', 'qty': '80 Cartons'},
-          ]
-        },
-        {
-          'title': 'Shelf C',
-          'items': [
-            {'name': 'Omeprazole 20mg', 'qty': '45 Cartons'},
-          ]
-        },
-      ]
-    },
-    {
-      'title': 'Aisle 2 - Antibiotics & Antivirals',
-      'subtitle': '2 Shelves',
-      'shelves': [
-        {
-          'title': 'Shelf A',
-          'items': [
-            {'name': 'Azithromycin 250mg', 'qty': '25 Cartons'},
-            {'name': 'Ciprofloxacin 500mg', 'qty': '60 Cartons'},
-          ]
-        },
-        {
-          'title': 'Shelf B',
-          'items': [
-            {'name': 'Acyclovir 200mg', 'qty': '40 Cartons'},
-          ]
-        },
-      ]
-    },
-    {
-      'title': 'Aisle 3 - Cold Storage (2-8°C)',
-      'subtitle': '2 Shelves',
-      'shelves': [
-        {
-          'title': 'Shelf A',
-          'items': [
-            {'name': 'Insulin Glargine', 'qty': '15 Vials'},
-            {'name': 'Hepatitis B Vaccine', 'qty': '30 Doses'},
-          ]
-        },
-        {
-          'title': 'Shelf B',
-          'items': [
-            {'name': 'COVID-19 Pfizer Vaccine', 'qty': '50 Doses'},
-          ]
-        },
-      ]
-    },
-  ];
+  final List<Map<String, dynamic>> _aisles = [];
 
   void _generateDigitalShelves() {
     final aisleName = _aisleNameController.text.trim();
@@ -175,7 +110,7 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
             Row(
               children: [
                 const Icon(
-                  Icons.warehouse_rounded,
+                  Icons.local_pharmacy_rounded,
                   color: Colors.tealAccent,
                   size: 44,
                 ),
@@ -184,7 +119,7 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Location Manager — Digital Twin',
+                      'Pharmacy Shelf Manager',
                       style: GoogleFonts.inter(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -205,7 +140,7 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // DIGITAL BULK SHELF CREATOR CARD (TASK 1)
+            // DIGITAL BULK SHELF CREATOR CARD
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -353,31 +288,50 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Aisles & Shelves Hierarchy List
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: _aisles.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final aisle = _aisles[index];
-                final shelves = aisle['shelves'] as List<Map<String, dynamic>>;
-
-                return _buildAisle(
-                  context,
-                  aisle['title'],
-                  aisle['subtitle'],
-                  shelves.map((s) {
-                    final items = s['items'] as List<Map<String, String>>;
-                    return _buildShelf(
-                      context,
-                      s['title'],
-                      items.map((item) => _buildItem(context, item['name']!, item['qty']!)).toList(),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
+            _aisles.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(Icons.shelves, color: Colors.white24, size: 64),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No pharmacy shelves mapped yet.',
+                            style: GoogleFonts.inter(color: Colors.white54, fontSize: 16),
+                          ),
+                          Text(
+                            'Use the bulk creator above to add your first aisle.',
+                            style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _aisles.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final aisle = _aisles[index];
+                      final shelves = aisle['shelves'] as List<Map<String, dynamic>>;
+      
+                      return _buildAisle(
+                        context,
+                        aisle['title'],
+                        aisle['subtitle'],
+                        shelves.map((s) {
+                          final items = s['items'] as List<Map<String, String>>;
+                          return _buildShelf(
+                            context,
+                            s['title'],
+                            items.map((item) => _buildItem(context, item['name']!, item['qty']!)).toList(),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
           ],
         ),
       ),

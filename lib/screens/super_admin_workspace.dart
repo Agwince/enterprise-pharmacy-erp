@@ -19,38 +19,6 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
       'mrr': '\$12,500/mo',
       'status': 'Active',
     },
-    {
-      'id': 'TNT-902',
-      'name': 'Coast Pharma Distributors',
-      'tier': 'Enterprise SaaS (Standard)',
-      'branches': 8,
-      'mrr': '\$6,800/mo',
-      'status': 'Active',
-    },
-    {
-      'id': 'TNT-903',
-      'name': 'Apex Health Pharmacy Group',
-      'tier': 'Enterprise SaaS (Custom)',
-      'branches': 22,
-      'mrr': '\$18,900/mo',
-      'status': 'Active',
-    },
-    {
-      'id': 'TNT-904',
-      'name': 'Rift Valley Medical Supplies',
-      'tier': 'Growth Plan',
-      'branches': 5,
-      'mrr': '\$3,400/mo',
-      'status': 'Active',
-    },
-    {
-      'id': 'TNT-905',
-      'name': 'Victoria Lake Pharmaceuticals',
-      'tier': 'Enterprise SaaS (Standard)',
-      'branches': 9,
-      'mrr': '\$7,200/mo',
-      'status': 'Pending Setup',
-    },
   ];
 
   void _showProvisionTenantDialog() {

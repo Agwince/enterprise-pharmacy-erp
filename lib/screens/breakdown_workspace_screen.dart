@@ -13,40 +13,7 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
   late AnimationController _scanController;
   bool _isFlashOn = false;
 
-  final List<Map<String, dynamic>> _checklistItems = [
-    {
-      'sku': 'DRUG-PCT-500',
-      'name': 'Paracetamol 500mg Extra',
-      'expected': 50,
-      'scanned': 50,
-      'batch': 'BATCH-2026-PCT',
-      'isChecked': true,
-    },
-    {
-      'sku': 'DRUG-AMX-500',
-      'name': 'Amoxicillin 500mg Caps',
-      'expected': 30,
-      'scanned': 30,
-      'batch': 'BATCH-2026-AMX',
-      'isChecked': true,
-    },
-    {
-      'sku': 'DRUG-IBU-400',
-      'name': 'Ibuprofen 400mg Forte',
-      'expected': 25,
-      'scanned': 20, // 5 missing!
-      'batch': 'BATCH-2026-IBU',
-      'isChecked': false,
-    },
-    {
-      'sku': 'DRUG-ATO-20',
-      'name': 'Atorvastatin 20mg',
-      'expected': 15,
-      'scanned': 15,
-      'batch': 'BATCH-2026-ATO',
-      'isChecked': true,
-    },
-  ];
+  final List<Map<String, dynamic>> _checklistItems = [];
 
   @override
   void initState() {

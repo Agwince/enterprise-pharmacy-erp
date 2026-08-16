@@ -32,7 +32,7 @@ class BranchDashboardScreen extends StatelessWidget {
                       Expanded(
                         child: _buildKPICard(
                           'Today\'s Branch Revenue',
-                          'KES 184,500',
+                          'KES 0',
                           Icons.arrow_upward,
                           Colors.green,
                         ),
@@ -41,7 +41,7 @@ class BranchDashboardScreen extends StatelessWidget {
                       Expanded(
                         child: _buildKPICard(
                           'Low Stock Alerts',
-                          '7 Items',
+                          '0 Items',
                           Icons.warning,
                           Colors.orange,
                         ),
@@ -50,7 +50,7 @@ class BranchDashboardScreen extends StatelessWidget {
                       Expanded(
                         child: _buildKPICard(
                           'Pending Online Orders',
-                          '12 Orders',
+                          '0 Orders',
                           Icons.shopping_cart,
                           Colors.blue,
                         ),
@@ -62,21 +62,21 @@ class BranchDashboardScreen extends StatelessWidget {
                     children: [
                       _buildKPICard(
                         'Today\'s Branch Revenue',
-                        'KES 184,500',
+                        'KES 0',
                         Icons.arrow_upward,
                         Colors.green,
                       ),
                       const SizedBox(height: 16),
                       _buildKPICard(
                         'Low Stock Alerts',
-                        '7 Items',
+                        '0 Items',
                         Icons.warning,
                         Colors.orange,
                       ),
                       const SizedBox(height: 16),
                       _buildKPICard(
                         'Pending Online Orders',
-                        '12 Orders',
+                        '0 Orders',
                         Icons.shopping_cart,
                         Colors.blue,
                       ),
@@ -222,18 +222,18 @@ class BranchDashboardScreen extends StatelessWidget {
                 borderData: FlBorderData(show: false),
                 minX: 0,
                 maxX: 6,
-                minY: 20,
+                minY: 0,
                 maxY: 100,
                 lineBarsData: [
                   LineChartBarData(
                     spots: const [
-                      FlSpot(0, 45),
-                      FlSpot(1, 52),
-                      FlSpot(2, 38),
-                      FlSpot(3, 65),
-                      FlSpot(4, 72),
-                      FlSpot(5, 58),
-                      FlSpot(6, 84),
+                      FlSpot(0, 0),
+                      FlSpot(1, 0),
+                      FlSpot(2, 0),
+                      FlSpot(3, 0),
+                      FlSpot(4, 0),
+                      FlSpot(5, 0),
+                      FlSpot(6, 0),
                     ],
                     isCurved: true,
                     color: Colors.tealAccent,
@@ -255,13 +255,7 @@ class BranchDashboardScreen extends StatelessWidget {
   }
 
   Widget _buildTransactionsCard() {
-    final transactions = [
-      {'name': 'Amoxicillin 500mg', 'qty': '2 Boxes', 'time': '10:45 AM', 'amount': 'KES 1,200'},
-      {'name': 'Paracetamol 500mg', 'qty': '5 Strips', 'time': '11:15 AM', 'amount': 'KES 250'},
-      {'name': 'Omeprazole 20mg', 'qty': '1 Box', 'time': '11:30 AM', 'amount': 'KES 800'},
-      {'name': 'Ibuprofen 400mg', 'qty': '3 Strips', 'time': '12:05 PM', 'amount': 'KES 450'},
-      {'name': 'Vitamin C 1000mg', 'qty': '2 Bottles', 'time': '12:20 PM', 'amount': 'KES 1,500'},
-    ];
+    final List<Map<String, String>> transactions = [];
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -281,47 +275,63 @@ class BranchDashboardScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: transactions.length,
-            separatorBuilder: (context, index) => Divider(color: Colors.grey[800]),
-            itemBuilder: (context, index) {
-              final tx = transactions[index];
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.tealAccent.withOpacity(0.1),
-                    shape: BoxShape.circle,
+          transactions.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32.0),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.receipt_long, color: Colors.white38, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No recent transactions',
+                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: const Icon(Icons.receipt_long, color: Colors.tealAccent),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: transactions.length,
+                  separatorBuilder: (context, index) => Divider(color: Colors.grey[800]),
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.tealAccent.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.receipt_long, color: Colors.tealAccent),
+                      ),
+                      title: Text(
+                        tx['name']!,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${tx['qty']} • ${tx['time']}',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey[400],
+                          fontSize: 12,
+                        ),
+                      ),
+                      trailing: Text(
+                        tx['amount']!,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                title: Text(
-                  tx['name']!,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                subtitle: Text(
-                  '${tx['qty']} • ${tx['time']}',
-                  style: GoogleFonts.inter(
-                    color: Colors.grey[400],
-                    fontSize: 12,
-                  ),
-                ),
-                trailing: Text(
-                  tx['amount']!,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              );
-            },
-          ),
         ],
       ),
     );

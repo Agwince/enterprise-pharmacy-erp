@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import 'storekeeper_scanner_screen.dart';
+import 'store_mapping_screen.dart';
 
 class StorekeeperHome extends StatefulWidget {
   const StorekeeperHome({super.key});
@@ -167,6 +168,36 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
               icon: const Icon(Icons.qr_code_scanner_rounded, size: 28, color: Colors.amberAccent),
               label: Text(
                 'Scan Received Medicines',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Store Infrastructure',
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StoreMappingScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E293B),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.tealAccent.withOpacity(0.5)),
+                ),
+              ),
+              icon: const Icon(Icons.warehouse_rounded, size: 28, color: Colors.tealAccent),
+              label: Text(
+                'Map Store Shelves & Locations',
                 style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),

@@ -61,16 +61,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   final _priceController = TextEditingController(text: '1200');
 
   // Task 1: Nairobi Autocomplete Catalog Sample Data
-  static const List<Map<String, dynamic>> _nairobiCatalog = [
-    {'name': 'KOFGON GREEN 60ML', 'price': 25.00, 'type': 'Bottle'},
-    {'name': 'KOFGON GREEN 100ML', 'price': 33.00, 'type': 'Bottle'},
-    {'name': 'ABZ SUSPENSION 10ML', 'price': 41.00, 'type': 'Bottle'},
-    {'name': 'PANADOL EXTRA 100S', 'price': 780.00, 'type': 'Strip/Blister'},
-    {'name': 'AMOXICILLIN 500MG 100S', 'price': 1450.00, 'type': 'Strip/Blister'},
-    {'name': 'FLUGONE EXP 60MLS', 'price': 380.00, 'type': 'Bottle'},
-    {'name': 'INSULIN GLARGINE 100U', 'price': 3200.00, 'type': 'Vial/Ampoule'},
-    {'name': 'BETNOVATE CREAM 15G', 'price': 520.00, 'type': 'Tube'},
-  ];
+  static const List<Map<String, dynamic>> _nairobiCatalog = [];
 
   String _selectedInnerUnitType = 'Strip/Blister';
   final List<String> _innerUnitOptions = [

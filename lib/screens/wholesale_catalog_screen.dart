@@ -12,74 +12,7 @@ class WholesaleCatalogScreen extends StatefulWidget {
 }
 
 class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
-  final List<Map<String, dynamic>> _wholesaleItems = [
-    {
-      'sku': 'WHOLE-AMOX-500',
-      'name': 'Amoxicillin Trihydrate 500mg (Bulk Cartons)',
-      'genericName': 'Amoxicillin',
-      'category': 'Antibiotic Wholesale',
-      'pallets': 12,
-      'cartons': 240,
-      'boxesAvailable': '12,000 Boxes',
-      'binLocation': 'AISLE 1 - PALLET BAY A4',
-      'image': null,
-    },
-    {
-      'sku': 'WHOLE-PARA-1000',
-      'name': 'Paracetamol Extra 500mg/65mg (Bulk Pallets)',
-      'genericName': 'Paracetamol + Caffeine',
-      'category': 'Analgesic Bulk',
-      'pallets': 28,
-      'cartons': 560,
-      'boxesAvailable': '28,000 Boxes',
-      'binLocation': 'AISLE 2 - PALLET BAY B1',
-      'image': null,
-    },
-    {
-      'sku': 'WHOLE-IBU-400',
-      'name': 'Ibuprofen Suspension 100mg/5ml (Wholesale Crate)',
-      'genericName': 'Ibuprofen',
-      'category': 'Pediatric Care',
-      'pallets': 8,
-      'cartons': 160,
-      'boxesAvailable': '6,400 Bottles',
-      'binLocation': 'AISLE 3 - PALLET BAY C2',
-      'image': null,
-    },
-    {
-      'sku': 'WHOLE-METF-850',
-      'name': 'Metformin HCl 850mg (Master Pallet Stack)',
-      'genericName': 'Metformin Hydrochloride',
-      'category': 'Endocrinology Bulk',
-      'pallets': 15,
-      'cartons': 300,
-      'boxesAvailable': '15,000 Boxes',
-      'binLocation': 'AISLE 4 - PALLET BAY D5',
-      'image': null,
-    },
-    {
-      'sku': 'WHOLE-AZITH-250',
-      'name': 'Azithromycin 250mg Film-Coated (Wholesale Pallet)',
-      'genericName': 'Azithromycin Monohydrate',
-      'category': 'Macrolide Antibiotics',
-      'pallets': 6,
-      'cartons': 120,
-      'boxesAvailable': '4,800 Boxes',
-      'binLocation': 'AISLE 1 - PALLET BAY A9',
-      'image': null,
-    },
-    {
-      'sku': 'WHOLE-OMEP-20',
-      'name': 'Omeprazole Delayed Release 20mg (Bulk Cartons)',
-      'genericName': 'Omeprazole',
-      'category': 'Gastrointestinal Bulk',
-      'pallets': 19,
-      'cartons': 380,
-      'boxesAvailable': '19,000 Boxes',
-      'binLocation': 'AISLE 5 - PALLET BAY E3',
-      'image': null,
-    },
-  ];
+  final List<Map<String, dynamic>> _wholesaleItems = [];
 
   @override
   Widget build(BuildContext context) {

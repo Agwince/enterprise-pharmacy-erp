@@ -30,6 +30,28 @@ class _CatalogAdminHomeState extends State<CatalogAdminHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text(
+          'Catalog Admin',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: OutlinedButton.icon(
+              onPressed: () => AuthService().logout(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text('Logout', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
       body: _buildBody(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

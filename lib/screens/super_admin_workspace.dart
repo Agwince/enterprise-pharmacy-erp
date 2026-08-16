@@ -183,6 +183,8 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
         );
       },
     );
+  }
+
   void _showEditTenantDialog(Map<String, dynamic> tenant, int index) {
     final mrrController = TextEditingController(text: tenant['mrr']);
     String selectedTier = tenant['tier'];

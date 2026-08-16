@@ -187,6 +187,8 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
@@ -204,36 +206,45 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
               child: const Icon(Icons.shield_rounded, color: Colors.black, size: 20),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Super Admin Platform Governance',
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                Text(
-                  'B2B SaaS Multi-Tenant Platform Owner Dashboard',
-                  style: GoogleFonts.inter(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.w600),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isDesktop ? 'Super Admin Platform Governance' : 'Super Admin',
+                    style: GoogleFonts.inter(fontSize: isDesktop ? 16 : 14, fontWeight: FontWeight.bold, color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    isDesktop ? 'B2B SaaS Multi-Tenant Platform Owner Dashboard' : 'Platform Owner',
+                    style: GoogleFonts.inter(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                AuthService().logout();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 16),
-              label: Text('Logout Platform Control', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
+            child: isDesktop
+                ? OutlinedButton.icon(
+                    onPressed: () {
+                      AuthService().logout();
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.logout_rounded, size: 16),
+                    label: Text('Logout Platform Control', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                    onPressed: () => AuthService().logout(),
+                  ),
           ),
         ],
       ),
@@ -250,39 +261,75 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Active B2B SaaS Enterprise Tenants',
-                        style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${_tenants.length} Managed Wholesale Networks • Total Platform MRR: \$48,800/mo',
-                        style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _showProvisionTenantDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amberAccent,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: isDesktop
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Active B2B SaaS Enterprise Tenants',
+                                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${_tenants.length} Managed Wholesale Networks • Total Platform MRR: \$48,800/mo',
+                                style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton.icon(
+                          onPressed: _showProvisionTenantDialog,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amberAccent,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.domain_add_rounded, size: 20),
+                          label: Text(
+                            'Provision New Enterprise Tenant',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Active B2B SaaS Enterprise Tenants',
+                          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${_tenants.length} Managed Wholesale Networks • Total Platform MRR: \$48,800/mo',
+                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _showProvisionTenantDialog,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amberAccent,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.domain_add_rounded, size: 20),
+                            label: Text(
+                              'Provision New Tenant',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    icon: const Icon(Icons.domain_add_rounded, size: 20),
-                    label: Text(
-                      'Provision New Enterprise Tenant',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: 24),
 

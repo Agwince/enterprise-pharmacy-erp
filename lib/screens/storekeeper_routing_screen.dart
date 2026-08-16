@@ -35,8 +35,8 @@ class _StorekeeperRoutingScreenState extends State<StorekeeperRoutingScreen> {
           'drug_id': drugId,
           'transaction_type': 'receipt',
           'quantity': 1, // Defaulting to 1 unit for demo scanner
-          'unit_price': widget.drug['cost_price'] ?? 0.00,
-          'total_amount': widget.drug['cost_price'] ?? 0.00,
+          'unit_price': widget.drug['price'] ?? 0.00,
+          'total_amount': widget.drug['price'] ?? 0.00,
         });
       }
 
@@ -133,8 +133,8 @@ class _StorekeeperRoutingScreenState extends State<StorekeeperRoutingScreen> {
   @override
   Widget build(BuildContext context) {
     final String name = widget.drug['name'] ?? 'Unknown Medicine';
-    final String sku = widget.drug['sku'] ?? 'Unknown SKU';
-    final String binLocation = widget.drug['bin_location'] ?? 'UNASSIGNED';
+    final String sku = widget.drug['barcode'] ?? 'Unknown Barcode';
+    final String binLocation = widget.drug['target_shelf'] ?? 'UNASSIGNED';
     
     // In our simplified database, we use bin_location for both, but we could map pharmacy differently.
     final String storeLocation = 'WAREHOUSE: $binLocation';

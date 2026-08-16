@@ -31,7 +31,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
       final data = await Supabase.instance.client
           .from('drugs')
           .select()
-          .eq('sku', code)
+          .eq('barcode', code)
           .maybeSingle();
 
       if (!mounted) return;

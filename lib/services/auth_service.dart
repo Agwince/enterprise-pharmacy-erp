@@ -8,6 +8,7 @@ enum UserRole {
   hr,
   warehousePicker,
   storekeeper,
+  catalogAdmin,
   branchManager,
 }
 
@@ -57,6 +58,13 @@ class AuthService extends ChangeNotifier {
     _role = UserRole.storekeeper;
     _userEmail = 'storekeeper@nairobibulk.com';
     _userName = 'Sam Wilson (Storekeeper)';
+    notifyListeners();
+  }
+
+  void loginAsCatalogAdmin() {
+    _role = UserRole.catalogAdmin;
+    _userEmail = 'catalog@nairobibulk.com';
+    _userName = 'Jane Doe (Catalog Admin)';
     notifyListeners();
   }
 

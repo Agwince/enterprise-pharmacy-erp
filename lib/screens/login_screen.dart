@@ -272,10 +272,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Button 5: Storekeeper (Stock Intake)
+                // Button 5: Catalog Admin
                 ElevatedButton.icon(
                   onPressed: () {
-                    AuthService().loginAsStorekeeper();
+                    AuthService().loginAsCatalogAdmin();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amberAccent.withValues(alpha: 0.2),
@@ -284,7 +284,27 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.download_rounded, size: 18),
+                  icon: const Icon(Icons.camera_alt_rounded, size: 18),
+                  label: Text(
+                    'Login as Catalog Admin (Register Pictures)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 6: Storekeeper (Real Barcode Scanner)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsStorekeeper();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.orangeAccent,
+                    side: const BorderSide(color: Colors.orangeAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
                   label: Text(
                     'Login as Storekeeper (Stock Receiving)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
@@ -292,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Button 6: Branch Manager
+                // Button 7: Branch Manager
                 ElevatedButton.icon(
                   onPressed: () {
                     AuthService().loginAsBranchManager();

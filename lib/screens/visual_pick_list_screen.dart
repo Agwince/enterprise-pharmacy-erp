@@ -15,7 +15,7 @@ class VisualPickListScreen extends StatefulWidget {
 
   const VisualPickListScreen({
     super.key,
-    this.searchTerms = const ['AMOXICILLIN', 'PANADOL', 'IBUPROFEN', 'ABZ'],
+    this.searchTerms = const [],
   });
 
   @override
@@ -43,10 +43,10 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
       // Filter drugs based on OCR Search Terms if provided
       List<String> terms = widget.searchTerms ?? [];
       
-      // If no search terms provided, simulate OCR by picking 3 random items from the database
-      if (terms.isEmpty && allDrugs.isNotEmpty) {
-        allDrugs.shuffle();
-        terms = allDrugs.take(3).map((d) => d.name).toList();
+      // Ensure terms are valid
+      if (terms.isEmpty) {
+        // We will just show an empty list instead of faking data
+        terms = [];
       }
 
       final matchedDrugs = allDrugs.where((drug) {

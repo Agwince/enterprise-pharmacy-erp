@@ -20,7 +20,9 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
       case 0:
         return const ReceiveDeliveryScanner();
       case 1:
-        return const CatalogListScreen();
+        return const CatalogListScreen(mode: IntakeMode.fullBox);
+      case 2:
+        return const CatalogListScreen(mode: IntakeMode.looseUnit);
       default:
         return const ReceiveDeliveryScanner();
     }
@@ -53,12 +55,17 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
             BottomNavigationBarItem(
               icon: Icon(Icons.qr_code_scanner_rounded),
               activeIcon: Icon(Icons.qr_code_scanner_rounded, color: Colors.amberAccent),
-              label: 'Receive Delivery',
+              label: 'Incoming Scanner',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle_outline_rounded),
-              activeIcon: Icon(Icons.add_circle_outline_rounded, color: Colors.amberAccent),
-              label: 'Register Product',
+              icon: Icon(Icons.inventory_2_outlined),
+              activeIcon: Icon(Icons.inventory_2_rounded, color: Colors.amberAccent),
+              label: 'Store Intake (Boxes)',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.medication_liquid_outlined),
+              activeIcon: Icon(Icons.medication_liquid_rounded, color: Colors.amberAccent),
+              label: 'Pharmacy Intake (Loose)',
             ),
           ],
         ),

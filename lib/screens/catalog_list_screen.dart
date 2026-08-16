@@ -3,8 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'register_product_screen.dart';
 
+enum IntakeMode { fullBox, looseUnit, both }
+
 class CatalogListScreen extends StatefulWidget {
-  const CatalogListScreen({super.key});
+  final IntakeMode mode;
+
+  const CatalogListScreen({super.key, this.mode = IntakeMode.both});
 
   @override
   State<CatalogListScreen> createState() => _CatalogListScreenState();
@@ -43,8 +47,17 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       final completed = <Map<String, dynamic>>[];
 
       for (final drug in list) {
-        final hasImage = drug['box_image_url'] != null &&
-            (drug['box_image_url'] as String).isNotEmpty;
+        bool hasImage = false;
+        
+        if (widget.mode == IntakeMode.fullBox) {
+          hasImage = drug['box_image_url'] != null && (drug['box_image_url'] as String).isNotEmpty;
+        } else if (widget.mode == IntakeMode.looseUnit) {
+          hasImage = drug['image_url'] != null && (drug['image_url'] as String).isNotEmpty;
+        } else {
+          hasImage = (drug['box_image_url'] != null && (drug['box_image_url'] as String).isNotEmpty) ||
+                     (drug['image_url'] != null && (drug['image_url'] as String).isNotEmpty);
+        }
+
         if (hasImage) {
           completed.add(drug);
         } else {
@@ -129,11 +142,19 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Nairobi August 2026 Price List Catalog',
+              widget.mode == IntakeMode.fullBox 
+                  ? 'Store Intake (Full Boxes)' 
+                  : widget.mode == IntakeMode.looseUnit 
+                      ? 'Pharmacy Intake (Loose Units)' 
+                      : 'Nairobi August 2026 Price List Catalog',
               style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             Text(
-              'Tap unphotographed items to attach pictures or register new stock.',
+              widget.mode == IntakeMode.fullBox 
+                  ? 'Tap items to attach photos of FULL BOXES for the warehouse.'
+                  : widget.mode == IntakeMode.looseUnit
+                      ? 'Tap items to attach photos of LOOSE UNITS for the pharmacy shelves.'
+                      : 'Tap unphotographed items to attach pictures or register new stock.',
               style: GoogleFonts.inter(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.w600),
             ),
           ],

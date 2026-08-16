@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
-import 'stock_putaway_screen.dart';
+import 'receive_delivery_scanner.dart';
 import 'register_product_screen.dart';
 import 'catalog_list_screen.dart';
 
@@ -18,11 +18,11 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
   Widget _buildBody() {
     switch (_currentIndex) {
       case 0:
-        return const StockPutawayScreen();
+        return const ReceiveDeliveryScanner();
       case 1:
         return const CatalogListScreen();
       default:
-        return const StockPutawayScreen();
+        return const ReceiveDeliveryScanner();
     }
   }
 
@@ -53,7 +53,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
             BottomNavigationBarItem(
               icon: Icon(Icons.qr_code_scanner_rounded),
               activeIcon: Icon(Icons.qr_code_scanner_rounded, color: Colors.amberAccent),
-              label: 'Intake Putaway',
+              label: 'Receive Delivery',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.add_circle_outline_rounded),

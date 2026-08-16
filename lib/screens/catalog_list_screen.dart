@@ -161,9 +161,18 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-            onPressed: () => AuthService().logout(),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: OutlinedButton.icon(
+              onPressed: () => AuthService().logout(),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.redAccent,
+                side: const BorderSide(color: Colors.redAccent),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 16),
+              label: Text('Logout', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),

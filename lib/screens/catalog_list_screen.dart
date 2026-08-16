@@ -128,6 +128,131 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
         .toList();
   }
 
+  void _showEditDrugDialog(Map<String, dynamic> drug) {
+    final priceController = TextEditingController(text: drug['price']?.toString() ?? '');
+    final nameController = TextEditingController(text: drug['name'] as String);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Edit Medicine', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Medicine Name', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameController,
+                style: GoogleFonts.inter(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Price (KES)', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: priceController,
+                style: GoogleFonts.inter(color: Colors.white),
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                try {
+                  final newPrice = double.tryParse(priceController.text) ?? 0.0;
+                  await Supabase.instance.client
+                      .from('drugs')
+                      .update({'name': nameController.text, 'price': newPrice})
+                      .eq('id', drug['id']);
+                  if (mounted) Navigator.pop(context);
+                  _loadDrugs();
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.save_rounded, size: 16),
+              label: Text('Save', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteDrugDialog(Map<String, dynamic> drug) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              const SizedBox(width: 8),
+              Text('Delete Medicine?', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text('Are you sure you want to permanently delete ${drug['name']}?', style: GoogleFonts.inter(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                try {
+                  await Supabase.instance.client
+                      .from('drugs')
+                      .delete()
+                      .eq('id', drug['id']);
+                  if (mounted) Navigator.pop(context);
+                  _loadDrugs();
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.delete_forever_rounded, size: 16),
+              label: Text('Delete', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filteredMissing = _getFilteredMissing();
@@ -135,47 +260,6 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.mode == IntakeMode.fullBox 
-                  ? 'Store Intake (Full Boxes)' 
-                  : widget.mode == IntakeMode.looseUnit 
-                      ? 'Pharmacy Intake (Loose Units)' 
-                      : 'Nairobi August 2026 Price List Catalog',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            Text(
-              widget.mode == IntakeMode.fullBox 
-                  ? 'Tap items to attach photos of FULL BOXES for the warehouse.'
-                  : widget.mode == IntakeMode.looseUnit
-                      ? 'Tap items to attach photos of LOOSE UNITS for the pharmacy shelves.'
-                      : 'Tap unphotographed items to attach pictures or register new stock.',
-              style: GoogleFonts.inter(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: OutlinedButton.icon(
-              onPressed: () => AuthService().logout(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 16),
-              label: Text('Logout', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openBlankForm(context),
         backgroundColor: Colors.tealAccent,
@@ -213,6 +297,32 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Page Header
+                        Container(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.mode == IntakeMode.fullBox 
+                                    ? 'Store Intake (Full Boxes)' 
+                                    : widget.mode == IntakeMode.looseUnit 
+                                        ? 'Pharmacy Intake (Loose Units)' 
+                                        : 'Nairobi August 2026 Price List Catalog',
+                                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.mode == IntakeMode.fullBox 
+                                    ? 'Tap items to attach photos of FULL BOXES for the warehouse.'
+                                    : widget.mode == IntakeMode.looseUnit
+                                        ? 'Tap items to attach photos of LOOSE UNITS for the pharmacy shelves.'
+                                        : 'Tap unphotographed items to attach pictures or register new stock.',
+                                style: GoogleFonts.inter(fontSize: 12, color: Colors.amberAccent, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
                         // Stats banner
                         Container(
                           padding: const EdgeInsets.all(16),
@@ -367,6 +477,25 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                               ),
                                             ),
                                             const Spacer(),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.end,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 16),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: () => _showEditDrugDialog(drug),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                IconButton(
+                                                  icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 16),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: const BoxConstraints(),
+                                                  onPressed: () => _showDeleteDrugDialog(drug),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                               decoration: BoxDecoration(
@@ -379,7 +508,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                                   const Icon(Icons.camera_alt_outlined, color: Colors.orangeAccent, size: 11),
                                                   const SizedBox(width: 4),
                                                   Text(
-                                                    'Missing Photos: Tap to Capture',
+                                                    'Missing Photos',
                                                     style: GoogleFonts.inter(
                                                       color: Colors.orangeAccent,
                                                       fontSize: 9,
@@ -493,7 +622,21 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                           ],
                                         ),
                                       ),
-                                      const Icon(Icons.check_circle, color: Colors.greenAccent, size: 24),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
+                                            onPressed: () => _showEditDrugDialog(drug),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
+                                            onPressed: () => _showDeleteDrugDialog(drug),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          const Icon(Icons.check_circle, color: Colors.greenAccent, size: 24),
+                                        ],
+                                      ),
                                     ],
                                   ),
                                 ),

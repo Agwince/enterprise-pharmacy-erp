@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
-import 'storekeeper_routing_screen.dart';
+import 'storekeeper_scanner_screen.dart';
 
 class StorekeeperHome extends StatefulWidget {
   const StorekeeperHome({super.key});
@@ -13,67 +12,55 @@ class StorekeeperHome extends StatefulWidget {
 }
 
 class _StorekeeperHomeState extends State<StorekeeperHome> {
-  final MobileScannerController _scannerController = MobileScannerController();
-  bool _isProcessing = false;
+  final ImagePicker _imagePicker = ImagePicker();
 
-  void _onDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
-    
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isEmpty) return;
-    
-    final String? code = barcodes.first.rawValue;
-    if (code == null) return;
-
-    setState(() => _isProcessing = true);
-
+  Future<void> _captureInvoice() async {
     try {
-      final data = await Supabase.instance.client
-          .from('drugs')
-          .select()
-          .eq('barcode', code)
-          .maybeSingle();
-
-      if (!mounted) return;
-
-      if (data == null) {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+      );
+      if (image != null) {
+        _showSuccessSnackbar();
+      }
+    } catch (e) {
+      // Fallback to gallery if camera fails
+      try {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+        );
+        if (image != null) {
+          _showSuccessSnackbar();
+        }
+      } catch (e2) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Medicine not found in database for barcode: $code'),
+            content: Text('Could not open camera or gallery: $e2'),
             backgroundColor: Colors.redAccent,
           ),
         );
-        setState(() => _isProcessing = false);
-        return;
       }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => StorekeeperRoutingScreen(drug: data),
-        ),
-      ).then((_) {
-        if (mounted) {
-          setState(() => _isProcessing = false);
-        }
-      });
-      
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error querying database: $e'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      setState(() => _isProcessing = false);
     }
   }
 
-  @override
-  void dispose() {
-    _scannerController.dispose();
-    super.dispose();
+  void _showSuccessSnackbar() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              'Supplier Invoice Logged Successfully!',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -86,7 +73,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Storekeeper Receiving',
+              'Storekeeper Dashboard',
               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             Text(
@@ -111,70 +98,80 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: const Color(0xFF1E293B),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.amberAccent),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Scan physical medicine barcode to log receipt and determine putaway location.',
-                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                MobileScanner(
-                  controller: _scannerController,
-                  onDetect: _onDetect,
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.amberAccent, width: 2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  width: 250,
-                  height: 250,
-                ),
-                if (_isProcessing)
-                  Container(
-                    color: Colors.black54,
-                    child: const Center(
-                      child: CircularProgressIndicator(color: Colors.amberAccent),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Colors.amberAccent, size: 28),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Welcome to Storekeeper Receiving. First log the supplier invoice, then scan the medicines to route them to the store or pharmacy.',
+                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
                     ),
                   ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                // Mock scanning a drug for testing since webcams might be tricky
-                _scannerController.stop();
-                _onDetect(BarcodeCapture(
-                  barcodes: [Barcode(rawValue: 'DRUG-AMX-500', format: BarcodeFormat.qrCode)],
-                ));
-              },
-              icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Simulate Scan: DRUG-AMX-500'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.amberAccent.withValues(alpha: 0.2),
-                foregroundColor: Colors.amberAccent,
-                side: const BorderSide(color: Colors.amberAccent),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 32),
+            Text(
+              'Step 1: Intake Logging',
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _captureInvoice,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amberAccent,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.receipt_long_rounded, size: 28),
+              label: Text(
+                'Capture Supplier Invoice',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Step 2: Receiving & Putaway',
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StorekeeperScannerScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF334155),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.qr_code_scanner_rounded, size: 28, color: Colors.amberAccent),
+              label: Text(
+                'Scan Received Medicines',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

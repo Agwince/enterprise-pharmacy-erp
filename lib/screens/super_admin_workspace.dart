@@ -183,6 +183,128 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
         );
       },
     );
+  void _showEditTenantDialog(Map<String, dynamic> tenant, int index) {
+    final mrrController = TextEditingController(text: tenant['mrr']);
+    String selectedTier = tenant['tier'];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text('Edit ${tenant['name']}', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Subscription Tier', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedTier,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: GoogleFonts.inter(color: Colors.white),
+                        items: const [
+                          DropdownMenuItem(value: 'Enterprise SaaS (Unlimited)', child: Text('Enterprise SaaS (Unlimited)')),
+                          DropdownMenuItem(value: 'Enterprise SaaS (Standard)', child: Text('Enterprise SaaS (Standard)')),
+                          DropdownMenuItem(value: 'Enterprise SaaS (Custom)', child: Text('Enterprise SaaS (Custom Multi-Branch)')),
+                          DropdownMenuItem(value: 'Growth Plan', child: Text('Growth Plan')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setModalState(() => selectedTier = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text('Monthly MRR (Price)', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: mrrController,
+                    style: GoogleFonts.inter(color: Colors.white),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _tenants[index]['tier'] = selectedTier;
+                      _tenants[index]['mrr'] = mrrController.text;
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.save_rounded, size: 16),
+                  label: Text('Save Changes', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showDeleteConfirmation(Map<String, dynamic> tenant, int index) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              const SizedBox(width: 8),
+              Text('Delete Tenant?', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Text('Are you sure you want to permanently delete ${tenant['name']}? This action cannot be undone.', style: GoogleFonts.inter(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _tenants.removeAt(index);
+                });
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.delete_forever_rounded, size: 16),
+              label: Text('Delete Account', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -360,8 +482,11 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                         DataColumn(label: Text('Active Branches', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                         DataColumn(label: Text('Monthly MRR', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                         DataColumn(label: Text('Provision Status', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Actions', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                       ],
-                      rows: _tenants.map((t) {
+                      rows: _tenants.asMap().entries.map((entry) {
+                        final int index = entry.key;
+                        final Map<String, dynamic> t = entry.value;
                         final bool isPending = t['status'] == 'Pending Setup';
 
                         return DataRow(
@@ -389,6 +514,21 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                            )),
+                            DataCell(Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
+                                  onPressed: () => _showEditTenantDialog(t, index),
+                                  tooltip: 'Edit Price & Tier',
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
+                                  onPressed: () => _showDeleteConfirmation(t, index),
+                                  tooltip: 'Delete Account',
+                                ),
+                              ],
                             )),
                           ],
                         );

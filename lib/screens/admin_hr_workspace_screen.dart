@@ -10,57 +10,7 @@ class AdminHrWorkspaceScreen extends StatefulWidget {
 }
 
 class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
-  final List<Map<String, dynamic>> _staffList = [
-    {
-      'name': 'Eleanor Vance',
-      'email': 'ceo@pharmacy.com',
-      'branch': 'Downtown Central (HQ)',
-      'role': 'CEO',
-      'status': 'Active',
-    },
-    {
-      'name': 'Marcus Brody',
-      'email': 'manager.west@pharmacy.com',
-      'branch': 'Westside Mega Store',
-      'role': 'Branch Manager',
-      'status': 'Active',
-    },
-    {
-      'name': 'Sarah Connor',
-      'email': 'pharmacist.north@pharmacy.com',
-      'branch': 'Northside Express Hub',
-      'role': 'Head Pharmacist',
-      'status': 'Active',
-    },
-    {
-      'name': 'Dave Bowman',
-      'email': 'storekeeper@pharmacy.com',
-      'branch': 'Downtown Central (HQ)',
-      'role': 'Stock Controller',
-      'status': 'Active',
-    },
-    {
-      'name': 'Jessica Taylor',
-      'email': 'hr@pharmacy.com',
-      'branch': 'Downtown Central (HQ)',
-      'role': 'HR Manager',
-      'status': 'Active',
-    },
-    {
-      'name': 'David Kim',
-      'email': 'procurement@pharmacy.com',
-      'branch': 'Downtown Central (HQ)',
-      'role': 'Procurement Manager',
-      'status': 'Active',
-    },
-    {
-      'name': 'Elena Rostova',
-      'email': 'assistant.west@pharmacy.com',
-      'branch': 'Westside Mega Store',
-      'role': 'Assistant Pharmacist',
-      'status': 'Inactive',
-    },
-  ];
+  final List<Map<String, dynamic>> _staffList = [];
 
   final List<String> _pharmacyRoles = const [
     // Executive

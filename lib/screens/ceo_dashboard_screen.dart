@@ -50,46 +50,61 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+        title: isDesktop 
+            ? Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blueAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.dashboard_customize_rounded, color: Colors.blueAccent),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Executive Pharmacy Analytics',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                'CEO Analytics',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              child: const Icon(Icons.dashboard_customize_rounded, color: Colors.blueAccent),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Executive Pharmacy Analytics (CEO View)',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
         actions: [
           IconButton(
             onPressed: _loadDashboardData,
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             tooltip: 'Refresh Analytics',
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: OutlinedButton.icon(
-              onPressed: () => AuthService().logout(),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Colors.redAccent),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          if (isDesktop)
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: OutlinedButton.icon(
+                onPressed: () => AuthService().logout(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 16),
+                label: Text('Logout CEO', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
               ),
-              icon: const Icon(Icons.logout_rounded, size: 16),
-              label: Text('Logout CEO', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold)),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              onPressed: () => AuthService().logout(),
             ),
-          ),
         ],
       ),
       body: _isLoading

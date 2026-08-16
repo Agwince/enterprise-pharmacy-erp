@@ -202,7 +202,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                     itemCount: _pickingList.length,
                     itemBuilder: (context, index) {
                       final drug = _pickingList[index];
-                      final imageUrl = _sampleMedicineImages[index % _sampleMedicineImages.length];
+                      final imageUrl = _mockImagePlaceholders[index % _mockImagePlaceholders.length];
 
                       return SingleChildScrollView(
                         padding: const EdgeInsets.all(20.0),
@@ -233,7 +233,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                                       fit: StackFit.expand,
                                       children: [
                                         CachedNetworkImage(
-                                          imageUrl: imageUrl,
+                                          imageUrl: imageUrl ?? '',
                                           fit: BoxFit.cover,
                                           placeholder: (context, url) => Container(
                                             color: const Color(0xFF1E293B),

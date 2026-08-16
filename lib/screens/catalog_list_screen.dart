@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import 'register_product_screen.dart';
 
 enum IntakeMode { fullBox, looseUnit, both }
@@ -159,6 +160,12 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white70),
+            onPressed: () => AuthService().logout(),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openBlankForm(context),

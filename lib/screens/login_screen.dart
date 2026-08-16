@@ -266,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   icon: const Icon(Icons.inventory_2_rounded, size: 18),
                   label: Text(
-                    'Login as Warehouse Picker',
+                    'Login as Warehouse Picker (Dispatch & Picking)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
@@ -284,15 +284,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  icon: const Icon(Icons.camera_enhance_rounded, size: 18),
+                  icon: const Icon(Icons.download_rounded, size: 18),
                   label: Text(
-                    'Login as Storekeeper (Stock Intake)',
+                    'Login as Storekeeper (Stock Receiving)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
                 const SizedBox(height: 10),
 
-                // Button 5: Branch Manager
+                // Button 6: Branch Manager
                 ElevatedButton.icon(
                   onPressed: () {
                     AuthService().loginAsBranchManager();
@@ -306,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   icon: const Icon(Icons.store_mall_directory_rounded, size: 18),
                   label: Text(
-                    'Login as Branch Manager',
+                    'Login as Branch Manager (Pharmacist)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

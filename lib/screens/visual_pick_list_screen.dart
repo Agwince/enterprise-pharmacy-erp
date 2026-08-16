@@ -37,26 +37,18 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Fetch locally saved drugs from SharedPreferences (Pure Local Read Mode)
-      final prefs = await SharedPreferences.getInstance();
-      final List<String> localSaved = prefs.getStringList('local_drugs_catalog') ?? [];
-      List<Drug> allDrugs = [];
-      for (String itemStr in localSaved) {
-        try {
-          final jsonMap = jsonDecode(itemStr) as Map<String, dynamic>;
-          allDrugs.add(Drug.fromJson(jsonMap));
-        } catch (e) {
-          debugPrint('Error loading local drug: $e');
-        }
-      }
-
-      if (allDrugs.isEmpty) {
-        // Fallback to local offline catalog service
-        allDrugs = await _supabaseService.fetchDrugs();
-      }
+      // 1. Fetch from Supabase
+      List<Drug> allDrugs = await _supabaseService.fetchDrugs();
 
       // Filter drugs based on OCR Search Terms if provided
-      final terms = widget.searchTerms ?? ['AMOXICILLIN', 'PANADOL', 'IBUPROFEN', 'ABZ'];
+      List<String> terms = widget.searchTerms ?? [];
+      
+      // If no search terms provided, simulate OCR by picking 3 random items from the database
+      if (terms.isEmpty && allDrugs.isNotEmpty) {
+        allDrugs.shuffle();
+        terms = allDrugs.take(3).map((d) => d.name).toList();
+      }
+
       final matchedDrugs = allDrugs.where((drug) {
         final upperName = drug.name.toUpperCase();
         return terms.any((term) => upperName.contains(term.toUpperCase()));

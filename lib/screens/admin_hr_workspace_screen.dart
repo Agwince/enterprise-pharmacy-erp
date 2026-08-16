@@ -173,23 +173,37 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
-                    if (nameController.text.isNotEmpty && emailController.text.isNotEmpty) {
+                    if (nameController.text.trim().isNotEmpty && emailController.text.trim().isNotEmpty) {
                       setState(() {
                         _staffList.insert(0, {
-                          'name': nameController.text,
-                          'email': emailController.text,
+                          'name': nameController.text.trim(),
+                          'email': emailController.text.trim(),
                           'branch': selectedBranch,
                           'role': selectedRole,
                           'status': 'Active',
                         });
                       });
+                      
+                      // Save the messenger state before popping the dialog context
+                      final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(context);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           backgroundColor: const Color(0xFF10B981),
                           content: Text(
                             'Staff Member ${nameController.text} added successfully with role "$selectedRole"!',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    } else {
+                      // Show validation error
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: Colors.redAccent,
+                          content: Text(
+                            'Please enter both name and email address.',
                             style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                           ),
                         ),

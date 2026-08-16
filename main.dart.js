@@ -110607,7 +110607,7 @@ p=4
 i=$.f8().b
 i===$&&A.a()
 s=7
-return A.m(i.ip("drugs").rE(0).EG("sku",m).a6f(),$async$wT)
+return A.m(i.ip("drugs").rE(0).EG("barcode",m).a6f(),$async$wT)
 case 7:l=c
 i=n.c
 if(i==null){s=1
@@ -110688,9 +110688,9 @@ l=J.ea(m)?J.am(J.am(m,0),"id"):""
 s=J.bL(l)!==0?7:8
 break
 case 7:j=j.b.ip("transactions")
-i=J.am(o.a.c,"cost_price")
+i=J.am(o.a.c,"price")
 if(i==null)i=0
-h=J.am(o.a.c,"cost_price")
+h=J.am(o.a.c,"price")
 if(h==null)h=0
 s=9
 return A.m(j.kq(0,A.a_(["branch_id",l,"drug_id",n,"transaction_type","receipt","quantity",1,"unit_price",i,"total_amount",h],t.N,t.z)),$async$x9)
@@ -110718,9 +110718,9 @@ s.toString
 A.Q2(!1,new A.aP3(this,a,b),s,t.z)},
 I(a){var s,r,q,p,o,n,m,l,k,j=this,i=null,h=J.am(j.a.c,"name")
 if(h==null)h="Unknown Medicine"
-s=J.am(j.a.c,"sku")
-if(s==null)s="Unknown SKU"
-r=J.am(j.a.c,"bin_location")
+s=J.am(j.a.c,"barcode")
+if(s==null)s="Unknown Barcode"
+r=J.am(j.a.c,"target_shelf")
 if(r==null)r="UNASSIGNED"
 q=A.Q("Route Medicine",i,i,i,A.H().$2$fontSize$fontWeight(16,B.k),i,i)
 q=A.kW(i,!0,B.F,i,A.yt(i,i,B.PL,i,i,new A.aP4(a),i,i,i),q)

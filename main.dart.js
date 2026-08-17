@@ -111341,7 +111341,7 @@ return A.aI(o,A.bH(A.b([B.QZ,B.fI,A.c3(A.L("\u26a0\ufe0f OPEN BOX: PICK LOOSE "+
 $S:140}
 A.aR8.prototype={
 $1(a){var s,r,q,p=null,o=this.a
-if(o.length===0)return A.aI(p,B.Jy,B.l,B.d5,p,p,p,p,p,p,p)
+if(o==null||o.length===0)return A.aI(p,B.Jy,B.l,B.d5,p,p,p,p,p,p,p)
 if(!B.c.bL(o,"http"))try{s=B.lS.cv(o)
 r=A.aVB(s,B.eR,p,p)
 return r}catch(q){}return new A.Dx(new A.nu(p,o,p,1,p,p,p,p,B.Rm),o,new A.aR5(),new A.aR6(),B.eR,p)},

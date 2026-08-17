@@ -224,7 +224,7 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                       final item = _pickListItems[index];
                       final double qty = (item['pick_quantity'] as num).toDouble();
                       final bool isFractional = qty < 1.0;
-                      final String imageUrl = isFractional ? item['loose_unit_image_url'] : item['box_image_url'];
+                      final String? imageUrl = isFractional ? item['loose_unit_image_url'] : item['box_image_url'];
 
                       // Task 1: Clean SaaS Card Aesthetics
                       return Container(

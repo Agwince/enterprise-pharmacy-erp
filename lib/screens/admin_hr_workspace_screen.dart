@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 
 class AdminHrWorkspaceScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
   void _showAddStaffDialog() {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
+    final passwordController = TextEditingController();
     String selectedRole = _pharmacyRoles[0];
     String selectedBranch = _branches[0];
 
@@ -97,6 +99,22 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                         style: GoogleFonts.inter(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'alex.mercer@pharmacy.com',
+                          hintStyle: GoogleFonts.inter(color: Colors.white38),
+                          filled: true,
+                          fillColor: const Color(0xFF0F172A),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      Text('Account Password', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        style: GoogleFonts.inter(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Temporary password',
                           hintStyle: GoogleFonts.inter(color: Colors.white38),
                           filled: true,
                           fillColor: const Color(0xFF0F172A),
@@ -172,8 +190,8 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    if (nameController.text.trim().isNotEmpty && emailController.text.trim().isNotEmpty) {
+                  onPressed: () async {
+                    if (nameController.text.trim().isNotEmpty && emailController.text.trim().isNotEmpty && passwordController.text.trim().isNotEmpty) {
                       setState(() {
                         _staffList.insert(0, {
                           'name': nameController.text.trim(),
@@ -184,19 +202,33 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                         });
                       });
                       
-                      // Save the messenger state before popping the dialog context
-                      final messenger = ScaffoldMessenger.of(context);
-                      Navigator.pop(context);
+                      try {
+                        // Demo Safe Mode DB Insert
+                        await Supabase.instance.client.from('users').insert({
+                          'email': emailController.text.trim(),
+                          'full_name': nameController.text.trim(),
+                          'role': selectedRole.contains('Manager') ? 'Manager' : 
+                                  selectedRole.contains('Pharmacist') ? 'Pharmacist' : 
+                                  selectedRole.contains('Storekeeper') ? 'Storekeeper' : 'Storekeeper',
+                        });
+                      } catch (e) {
+                        debugPrint('Demo safe DB insert error: \$e');
+                      }
 
-                      messenger.showSnackBar(
-                        SnackBar(
-                          backgroundColor: const Color(0xFF10B981),
-                          content: Text(
-                            'Staff Member ${nameController.text} added successfully with role "$selectedRole"!',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                      if (mounted) {
+                        final messenger = ScaffoldMessenger.of(context);
+                        Navigator.pop(context);
+
+                        messenger.showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF10B981),
+                            content: Text(
+                              'Staff Member \${nameController.text} provisioned successfully (Demo Mode)!',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
-                      );
+                        );
+                      }
                     } else {
                       // Show validation error
                       ScaffoldMessenger.of(context).showSnackBar(

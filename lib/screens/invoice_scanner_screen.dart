@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:ui' as ui;
 import '../services/auth_service.dart';
 import 'visual_pick_list_screen.dart';
 
@@ -18,25 +16,7 @@ class InvoiceScannerScreen extends StatefulWidget {
 class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   bool _isScanning = false;
   String _scanStatusText = 'Align invoice within frame...';
-  late MobileScannerController _scannerController;
-  bool _cameraFailed = false;
-  String _cameraErrorMessage = '';
   final ImagePicker _imagePicker = ImagePicker();
-
-  @override
-  void initState() {
-    super.initState();
-    _scannerController = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-    );
-  }
-
-  @override
-  void dispose() {
-    _scannerController.dispose();
-    super.dispose();
-  }
 
   Future<void> _pickInvoiceImage() async {
     try {
@@ -68,10 +48,6 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   }
 
   void _startScan([XFile? image]) async {
-    if (!_cameraFailed) {
-      _scannerController.stop();
-    }
-
     setState(() {
       _isScanning = true;
       _scanStatusText = 'Initializing Offline AI Scanner...';
@@ -99,7 +75,17 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         extractedWords.addAll(words.where((w) => w.length > 2));
       } catch (e) {
         debugPrint('OCR Error: $e');
-        missingItems.add('OCR Processing Failed');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to read image text. Please try again. Error: $e'),
+            backgroundColor: Colors.redAccent,
+          )
+        );
+        setState(() {
+          _isScanning = false;
+        });
+        return;
       }
     }
 
@@ -178,22 +164,25 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0B1120),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         title: Text(
-          'Invoice Scanner',
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          'Dispatch Workspace',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.close),
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              tooltip: 'Logout',
+              onPressed: () {
+                AuthService().logout();
+              },
+            ),
           )
         ],
       ),
-      extendBodyBehindAppBar: true,
       body: _isScanning ? _buildProcessingState() : _buildCaptureState(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: _isScanning
@@ -225,76 +214,39 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   }
 
   Widget _buildCaptureState() {
-    return Stack(
-      children: [
-        MobileScanner(
-          controller: _scannerController,
-          errorBuilder: (context, error) {
-            return Container(
-              color: const Color(0xFF0B1120),
-              child: Center(
-                child: Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
-              ),
-            );
-          },
-          placeholderBuilder: (context) {
-            return Container(color: Colors.black);
-          },
-        ),
-        
-        // Blur overlay
-        ClipRect(
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-        
-        // Focus window
-        Center(
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            height: MediaQuery.of(context).size.height * 0.6,
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.8), width: 3),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.tealAccent.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                )
-              ],
+              color: Colors.tealAccent.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(21),
-              child: MobileScanner(
-                controller: _scannerController,
-                placeholderBuilder: (context) => Container(color: Colors.black),
-              ),
+            child: const Icon(Icons.document_scanner_rounded, size: 80, color: Colors.tealAccent),
+          ),
+          const SizedBox(height: 32),
+          Text(
+            'Ready to Scan',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-        
-        Positioned(
-          top: MediaQuery.of(context).size.height * 0.15,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Text(
-              _scanStatusText,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                shadows: [Shadow(color: Colors.black, blurRadius: 8)],
-              ),
+          const SizedBox(height: 12),
+          Text(
+            'Tap the button below to capture an invoice\nusing your device camera.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: Colors.white54,
+              fontSize: 14,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 100), // spacing for FAB
+        ],
+      ),
     );
   }
 

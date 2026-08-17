@@ -99,7 +99,14 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     // Route to Visual Pick List (it will simulate scanning 3 random items from DB since we pass an empty list)
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const VisualPickListScreen(searchTerms: [])),
+      MaterialPageRoute(builder: (context) => const VisualPickListScreen(
+        searchTerms: [], // Will load all items in DB as "found"
+        missingItems: [
+          'METFORMIN 850MG TABS',
+          'LOSARTAN 50MG TABS',
+          'ATORVASTATIN 20MG TABS'
+        ],
+      )),
     );
   }
 

@@ -12,10 +12,12 @@ import 'invoice_scanner_screen.dart';
 
 class VisualPickListScreen extends StatefulWidget {
   final List<String>? searchTerms;
+  final List<String>? missingItems;
 
   const VisualPickListScreen({
     super.key,
     this.searchTerms = const [],
+    this.missingItems = const [],
   });
 
   @override
@@ -216,8 +218,43 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                       ),
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(20),
+                : Column(
+                    children: [
+                      if (widget.missingItems != null && widget.missingItems!.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.orangeAccent.withValues(alpha: 0.1),
+                            border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.3)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${widget.missingItems!.length} items from the invoice are not in the system yet.',
+                                      style: GoogleFonts.inter(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.missingItems!.join(', '),
+                                      style: GoogleFonts.inter(color: Colors.orangeAccent.withValues(alpha: 0.8), fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.all(20),
                     itemCount: _pickListItems.length,
                     separatorBuilder: (context, index) => const SizedBox(height: 16),
                     itemBuilder: (context, index) {
@@ -468,6 +505,9 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                       );
                     },
                   ),
+                ),
+              ],
+            ),
       ),
     );
   }

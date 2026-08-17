@@ -44,21 +44,21 @@ class Drug {
   factory Drug.fromJson(Map<String, dynamic> json) {
     return Drug(
       id: json['id'] as String,
-      sku: json['sku'] as String,
+      sku: (json['barcode'] ?? json['sku'] ?? '') as String,
       name: json['name'] as String,
       genericName: json['generic_name'] as String?,
       category: json['category'] as String? ?? 'General',
-      unit: json['unit'] as String? ?? 'Box',
-      binLocation: json['bin_location'] as String? ?? 'AISLE 1 - SHELF A1',
-      unitPrice: (json['unit_price'] as num?)?.toDouble() ?? 0.0,
-      costPrice: (json['cost_price'] as num?)?.toDouble() ?? 0.0,
-      minThreshold: (json['min_threshold'] as num?)?.toInt() ?? 15,
-      maxThreshold: (json['max_threshold'] as num?)?.toInt() ?? 150,
-      imageUrl: json['image_url'] as String?,
-      innerUnitImageUrl: json['inner_unit_image_url'] as String?,
+      unit: (json['package_unit'] ?? json['unit'] ?? 'Box') as String,
+      binLocation: (json['target_shelf'] ?? json['bin_location'] ?? 'AISLE 1 - SHELF A1') as String,
+      unitPrice: (json['price'] ?? json['unit_price'] as num?)?.toDouble() ?? 0.0,
+      costPrice: (json['cost'] ?? json['cost_price'] as num?)?.toDouble() ?? 0.0,
+      minThreshold: (json['reorder_level'] ?? json['min_threshold'] as num?)?.toInt() ?? 15,
+      maxThreshold: (json['max_level'] ?? json['max_threshold'] as num?)?.toInt() ?? 150,
+      imageUrl: (json['box_image_url'] ?? json['image_url']) as String?,
+      innerUnitImageUrl: (json['image_url'] ?? json['inner_unit_image_url']) as String?,
       innerUnitType: json['inner_unit_type'] as String? ?? 'Strip/Blister',
       createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
           : DateTime.now(),
     );
   }
@@ -66,18 +66,18 @@ class Drug {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'sku': sku,
+      'barcode': sku,
       'name': name,
       'generic_name': genericName,
       'category': category,
-      'unit': unit,
-      'bin_location': binLocation,
-      'unit_price': unitPrice,
-      'cost_price': costPrice,
-      'min_threshold': minThreshold,
-      'max_threshold': maxThreshold,
-      'image_url': imageUrl,
-      'inner_unit_image_url': innerUnitImageUrl,
+      'package_unit': unit,
+      'target_shelf': binLocation,
+      'price': unitPrice,
+      'cost': costPrice,
+      'reorder_level': minThreshold,
+      'max_level': maxThreshold,
+      'box_image_url': imageUrl,
+      'image_url': innerUnitImageUrl,
       'inner_unit_type': innerUnitType,
       'created_at': createdAt.toIso8601String(),
     };

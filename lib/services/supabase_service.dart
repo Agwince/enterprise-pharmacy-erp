@@ -94,7 +94,7 @@ class SupabaseService {
   /// Fetch all drugs for pick path navigation
   Future<List<Drug>> fetchDrugs() async {
     try {
-      final response = await _client.from('drugs').select().order('bin_location');
+      final response = await _client.from('drugs').select().order('target_shelf');
       final list = response as List<dynamic>;
       if (list.isNotEmpty) {
         return list.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();

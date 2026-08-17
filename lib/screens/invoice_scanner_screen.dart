@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'dart:async';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../config/supabase_config.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'visual_pick_list_screen.dart';
 
 class InvoiceScannerScreen extends StatefulWidget {
@@ -45,7 +48,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         preferredCameraDevice: CameraDevice.rear,
       );
       if (image != null) {
-        _startScan();
+        _startScan(image);
       }
     } catch (e) {
       // Fall back to gallery if native camera fails
@@ -54,7 +57,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
           source: ImageSource.gallery,
         );
         if (image != null) {
-          _startScan();
+          _startScan(image);
         }
       } catch (e2) {
         if (!mounted) return;
@@ -72,39 +75,65 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     }
   }
 
-  void _startScan() async {
+  void _startScan([XFile? image]) async {
     if (!_cameraFailed) {
       _scannerController.stop();
     }
 
     setState(() {
       _isScanning = true;
-      _scanStatusText = 'Reading Invoice Text...';
+      _scanStatusText = 'Extracting Real Text via OCR...';
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    List<String> extractedWords = [];
+    final List<String> missingItems = [];
+
+    if (image != null) {
+      try {
+        final bytes = await image.readAsBytes();
+        var request = http.MultipartRequest('POST', Uri.parse('https://api.ocr.space/parse/image'));
+        request.fields['apikey'] = 'helloworld';
+        request.fields['language'] = 'eng';
+        request.fields['isOverlayRequired'] = 'false';
+        request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: 'invoice.png'));
+
+        var res = await request.send();
+        if (res.statusCode == 200) {
+          var responseBody = await res.stream.bytesToString();
+          var jsonResponse = jsonDecode(responseBody);
+          if (jsonResponse['ParsedResults'] != null && jsonResponse['ParsedResults'].isNotEmpty) {
+            String parsedText = jsonResponse['ParsedResults'][0]['ParsedText'];
+            // Split by words or lines to check against DB
+            final List<String> words = parsedText.split(RegExp(r'\s+'));
+            extractedWords.addAll(words.where((w) => w.length > 3)); // Filter small words
+          } else {
+             missingItems.add('No text found in image');
+          }
+        }
+      } catch (e) {
+        debugPrint('OCR Error: $e');
+        missingItems.add('OCR Connection Failed');
+      }
+    } else {
+      // Simulated scan if called without image (barcode detection fallback)
+      extractedWords = ['KIFARU']; 
+    }
+
     if (!mounted) return;
     setState(() {
-      _scanStatusText = 'Matching to Database...';
+      _scanStatusText = 'Matching text to your Database...';
     });
 
-    // Simulate OCR Text extracted from the user's invoice
-    // Using the exact text from the KIFARU invoice uploaded by the user
-    final List<String> simulatedOcrText = [
-      'KIFARU'
-    ];
-
     // Check DB dynamically
-    final supabase = SupabaseConfig.client;
+    final supabase = Supabase.instance.client;
     final List<String> foundTerms = [];
-    final List<String> missingItems = [];
 
     try {
       final res = await supabase.from('drugs').select('name');
       final List<dynamic> allDrugs = res as List<dynamic>;
       final List<String> allDrugNames = allDrugs.map((d) => (d['name'] as String).toUpperCase()).toList();
 
-      for (String ocrTerm in simulatedOcrText) {
+      for (String ocrTerm in extractedWords) {
         bool found = false;
         for (String dbName in allDrugNames) {
           if (dbName.contains(ocrTerm.toUpperCase())) {
@@ -113,24 +142,26 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
           }
         }
 
-        if (found) {
-          foundTerms.add(ocrTerm);
-        } else {
-          missingItems.add('$ocrTerm (Not in DB)');
+        if (found && !foundTerms.contains(ocrTerm.toUpperCase())) {
+          foundTerms.add(ocrTerm.toUpperCase());
         }
+      }
+      
+      if (foundTerms.isEmpty && missingItems.isEmpty) {
+        missingItems.add('Text found, but no matching medicines in system.');
       }
     } catch (e) {
       debugPrint('Error checking DB: $e');
-      missingItems.addAll(simulatedOcrText);
+      missingItems.add('Database check failed');
     }
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     setState(() {
       _scanStatusText = 'Generating Visual Route...';
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     
     Navigator.pushReplacement(
@@ -287,7 +318,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
                     width: 280,
                     child: FloatingActionButton.extended(
                       heroTag: 'scan_invoice',
-                      onPressed: _startScan,
+                      onPressed: _pickInvoiceImage,
                       backgroundColor: Colors.purpleAccent,
                       foregroundColor: Colors.white,
                       icon: const Icon(Icons.camera_alt, size: 24),

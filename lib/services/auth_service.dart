@@ -114,13 +114,13 @@ class AuthService extends ChangeNotifier {
     return true;
   }
 
-  void logout() {
+  Future<void> logout() async {
     _role = UserRole.none;
     _userEmail = '';
     _userName = '';
-    try {
-      Supabase.instance.client.auth.signOut();
-    } catch (_) {}
     notifyListeners();
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
   }
 }

@@ -89,10 +89,9 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     });
 
     // Simulate OCR Text extracted from the user's invoice
+    // Using the exact text from the KIFARU invoice uploaded by the user
     final List<String> simulatedOcrText = [
-      'TINIDAZOLE',
-      'BRUFEN',
-      'PROMETHAZINE'
+      'KIFARU'
     ];
 
     // Check DB dynamically
@@ -137,7 +136,8 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => VisualPickListScreen(
-        searchTerms: foundTerms.isEmpty ? [] : foundTerms, 
+        // If foundTerms is empty, pass a dummy string so it doesn't show ALL items
+        searchTerms: foundTerms.isEmpty ? ['__NO_MATCH__'] : foundTerms, 
         missingItems: missingItems,
       )),
     );

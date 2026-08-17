@@ -49,10 +49,12 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
         terms = [];
       }
 
-      final matchedDrugs = allDrugs.where((drug) {
-        final upperName = drug.name.toUpperCase();
-        return terms.any((term) => upperName.contains(term.toUpperCase()));
-      }).toList();
+      final matchedDrugs = terms.isEmpty
+          ? allDrugs
+          : allDrugs.where((drug) {
+              final upperName = drug.name.toUpperCase();
+              return terms.any((term) => upperName.contains(term.toUpperCase()));
+            }).toList();
 
       final List<Map<String, dynamic>> items = matchedDrugs.map((drug) {
         final isFractional = drug.name.contains('0.10') || drug.name.contains('10ML') || drug.name.contains('SUSP');

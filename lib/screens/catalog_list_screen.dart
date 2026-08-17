@@ -89,9 +89,12 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => RegisterProductScreen(
+          existingDrugId: drug['id'] as String?,
           prefilledName: drug['name'] as String,
           prefilledPrice: double.tryParse(drug['price']?.toString() ?? '0.0'),
           prefilledUnit: drug['inner_unit_type'] as String?,
+          initialShelf: drug['target_shelf'] as String?,
+          initialImageUrl: drug['box_image_url'] as String?,
         ),
       ),
     );
@@ -126,82 +129,6 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
     return _completedDrugs
         .where((d) => (d['name'] as String).toUpperCase().contains(q))
         .toList();
-  }
-
-  void _showEditDrugDialog(Map<String, dynamic> drug) {
-    final priceController = TextEditingController(text: drug['price']?.toString() ?? '');
-    final nameController = TextEditingController(text: drug['name'] as String);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Edit Medicine', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Medicine Name', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: nameController,
-                style: GoogleFonts.inter(color: Colors.white),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('Price (KES)', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: priceController,
-                style: GoogleFonts.inter(color: Colors.white),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white54)),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                try {
-                  final newPrice = double.tryParse(priceController.text) ?? 0.0;
-                  await Supabase.instance.client
-                      .from('drugs')
-                      .update({'name': nameController.text, 'price': newPrice})
-                      .eq('id', drug['id']);
-                  if (mounted) Navigator.pop(context);
-                  _loadDrugs();
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.save_rounded, size: 16),
-              label: Text('Save', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _showDeleteDrugDialog(Map<String, dynamic> drug) {
@@ -418,7 +345,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                           )
                         else
                           SizedBox(
-                            height: 180,
+                            height: 250,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: filteredMissing.length,
@@ -481,14 +408,14 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                               mainAxisAlignment: MainAxisAlignment.end,
                                               children: [
                                                 IconButton(
-                                                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 16),
+                                                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 18),
                                                   padding: EdgeInsets.zero,
                                                   constraints: const BoxConstraints(),
-                                                  onPressed: () => _showEditDrugDialog(drug),
+                                                  onPressed: () => _openAttachPhotoForm(context, drug),
                                                 ),
-                                                const SizedBox(width: 12),
+                                                const SizedBox(width: 14),
                                                 IconButton(
-                                                  icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 16),
+                                                  icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 18),
                                                   padding: EdgeInsets.zero,
                                                   constraints: const BoxConstraints(),
                                                   onPressed: () => _showDeleteDrugDialog(drug),
@@ -627,7 +554,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                                         children: [
                                           IconButton(
                                             icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
-                                            onPressed: () => _showEditDrugDialog(drug),
+                                            onPressed: () => _openAttachPhotoForm(context, drug),
                                           ),
                                           IconButton(
                                             icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),

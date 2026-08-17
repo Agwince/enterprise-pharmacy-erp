@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterProductScreen extends StatefulWidget {
+  final String? existingDrugId;
   final String? prefilledName;
   final double? prefilledPrice;
   final String? prefilledSku;
@@ -14,9 +15,12 @@ class RegisterProductScreen extends StatefulWidget {
   final String? initialName;
   final String? initialPrice;
   final String? initialType;
+  final String? initialShelf;
+  final String? initialImageUrl;
 
   const RegisterProductScreen({
     super.key,
+    this.existingDrugId,
     this.prefilledName,
     this.prefilledPrice,
     this.prefilledSku,
@@ -24,6 +28,8 @@ class RegisterProductScreen extends StatefulWidget {
     this.initialName,
     this.initialPrice,
     this.initialType,
+    this.initialShelf,
+    this.initialImageUrl,
   });
 
   @override
@@ -51,6 +57,9 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
     }
     if (widget.initialType != null && _innerUnitOptions.contains(widget.initialType)) {
       _selectedInnerUnitType = widget.initialType!;
+    }
+    if (widget.initialShelf != null) {
+      _binController.text = widget.initialShelf!;
     }
   }
   final _nameController = TextEditingController();
@@ -242,16 +251,16 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         imageUrl = supabase.storage.from('medicine_images').getPublicUrl(fileName);
       }
 
-      // 2. Check if drug already exists in database (by name match)
-      final existing = await supabase
-          .from('drugs')
-          .select('id')
-          .ilike('name', name)
-          .maybeSingle();
-
-      if (existing != null) {
-        // UPDATE existing drug with the photo
-        final updateData = <String, dynamic>{};
+      if (widget.existingDrugId != null) {
+        // UPDATE existing drug exactly by ID
+        final updateData = <String, dynamic>{
+          'name': name,
+          'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
+          'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
+          'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
+          'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
+          'generic_name': _genericController.text.trim(),
+        };
         if (imageUrl != null) {
           updateData['box_image_url'] = imageUrl;
           updateData['image_url'] = imageUrl;
@@ -259,25 +268,49 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         if (_selectedInnerUnitType.isNotEmpty) {
           updateData['inner_unit_type'] = _selectedInnerUnitType;
         }
-        if (updateData.isNotEmpty) {
-          await supabase.from('drugs').update(updateData).eq('id', existing['id']);
+        if (_barcode.isNotEmpty) {
+           updateData['barcode'] = _barcode;
         }
+        await supabase.from('drugs').update(updateData).eq('id', widget.existingDrugId!);
       } else {
-        // INSERT new drug
-        final drugData = {
-          'name': name,
-          'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-          'inner_unit_type': _selectedInnerUnitType,
-          'box_image_url': imageUrl,
-          'barcode': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
-          'image_url': imageUrl, 
-          'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
-          'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
-          'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
-          'generic_name': _genericController.text.trim(),
-        };
-        await supabase.from('drugs').insert(drugData).select();
+        // 2. Check if drug already exists in database (by name match)
+        final existing = await supabase
+            .from('drugs')
+            .select('id')
+            .ilike('name', name)
+            .maybeSingle();
+
+        if (existing != null) {
+          // UPDATE existing drug with the photo
+          final updateData = <String, dynamic>{};
+          if (imageUrl != null) {
+            updateData['box_image_url'] = imageUrl;
+            updateData['image_url'] = imageUrl;
+          }
+          if (_selectedInnerUnitType.isNotEmpty) {
+            updateData['inner_unit_type'] = _selectedInnerUnitType;
+          }
+          if (updateData.isNotEmpty) {
+            await supabase.from('drugs').update(updateData).eq('id', existing['id']);
+          }
+        } else {
+          // INSERT new drug
+          final drugData = {
+            'name': name,
+            'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
+            'inner_unit_type': _selectedInnerUnitType,
+            'box_image_url': imageUrl,
+            'barcode': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
+            'image_url': imageUrl, 
+            'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
+            'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
+            'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
+            'generic_name': _genericController.text.trim(),
+          };
+          await supabase.from('drugs').insert(drugData).select();
+        }
       }
+
 
       _nameController.clear();
       _genericController.clear();
@@ -637,21 +670,49 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                                     ),
                                   ],
                                 )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.inventory_2_outlined, color: Colors.white54, size: 28),
-                                    const SizedBox(height: 6),
-                                    Text('Full Box Photo', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                                    const SizedBox(height: 8),
-                                    OutlinedButton.icon(
-                                      onPressed: _captureBoxPhoto,
-                                      style: OutlinedButton.styleFrom(foregroundColor: Colors.tealAccent, side: const BorderSide(color: Colors.tealAccent)),
-                                      icon: const Icon(Icons.camera_alt, size: 14),
-                                      label: const Text('Snap Box', style: TextStyle(fontSize: 11)),
-                                    ),
-                                  ],
-                                ),
+                              : (widget.initialImageUrl != null && widget.initialImageUrl!.startsWith('http')
+                                  ? Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(widget.initialImageUrl!, width: double.infinity, height: double.infinity, fit: BoxFit.cover),
+                                        ),
+                                        Positioned(
+                                          bottom: 4,
+                                          right: 4,
+                                          child: InkWell(
+                                            onTap: _captureBoxPhoto,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(6)),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.refresh_rounded, color: Colors.tealAccent, size: 12),
+                                                  const SizedBox(width: 4),
+                                                  Text('Retake', style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.inventory_2_outlined, color: Colors.white54, size: 28),
+                                        const SizedBox(height: 6),
+                                        Text('Full Box Photo', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                        const SizedBox(height: 8),
+                                        OutlinedButton.icon(
+                                          onPressed: _captureBoxPhoto,
+                                          style: OutlinedButton.styleFrom(foregroundColor: Colors.tealAccent, side: const BorderSide(color: Colors.tealAccent)),
+                                          icon: const Icon(Icons.camera_alt, size: 14),
+                                          label: const Text('Snap Box', style: TextStyle(fontSize: 11)),
+                                        ),
+                                      ],
+                                    )),
                         ),
                       ),
                       const SizedBox(width: 12),

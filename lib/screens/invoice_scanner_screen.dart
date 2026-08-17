@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
+import '../config/supabase_config.dart';
 import 'visual_pick_list_screen.dart';
 
 class InvoiceScannerScreen extends StatefulWidget {
@@ -87,6 +88,43 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       _scanStatusText = 'Matching to Database...';
     });
 
+    // Simulate OCR Text extracted from the user's invoice
+    final List<String> simulatedOcrText = [
+      'TINIDAZOLE',
+      'BRUFEN',
+      'PROMETHAZINE'
+    ];
+
+    // Check DB dynamically
+    final supabase = SupabaseConfig.client;
+    final List<String> foundTerms = [];
+    final List<String> missingItems = [];
+
+    try {
+      final res = await supabase.from('drugs').select('name');
+      final List<dynamic> allDrugs = res as List<dynamic>;
+      final List<String> allDrugNames = allDrugs.map((d) => (d['name'] as String).toUpperCase()).toList();
+
+      for (String ocrTerm in simulatedOcrText) {
+        bool found = false;
+        for (String dbName in allDrugNames) {
+          if (dbName.contains(ocrTerm.toUpperCase())) {
+            found = true;
+            break;
+          }
+        }
+
+        if (found) {
+          foundTerms.add(ocrTerm);
+        } else {
+          missingItems.add('$ocrTerm (Not in DB)');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking DB: $e');
+      missingItems.addAll(simulatedOcrText);
+    }
+
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     setState(() {
@@ -96,16 +134,11 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
     
-    // Route to Visual Pick List (it will simulate scanning 3 random items from DB since we pass an empty list)
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const VisualPickListScreen(
-        searchTerms: [], // Will load all items in DB as "found"
-        missingItems: [
-          "TINIDAZOLE TABS 500MG 4'S",
-          'BRUFEN SYRUP 60ML',
-          'PROMETHAZINE SUSP 60ML'
-        ],
+      MaterialPageRoute(builder: (context) => VisualPickListScreen(
+        searchTerms: foundTerms.isEmpty ? [] : foundTerms, 
+        missingItems: missingItems,
       )),
     );
   }

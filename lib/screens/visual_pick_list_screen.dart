@@ -13,11 +13,13 @@ import 'invoice_scanner_screen.dart';
 class VisualPickListScreen extends StatefulWidget {
   final List<String>? searchTerms;
   final List<String>? missingItems;
+  final Map<String, double>? requiredQuantities;
 
   const VisualPickListScreen({
     super.key,
     this.searchTerms = const [],
     this.missingItems = const [],
+    this.requiredQuantities,
   });
 
   @override
@@ -32,10 +34,10 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
   @override
   void initState() {
     super.initState();
-    _loadPickListFromSupabase();
+    _loadPickList();
   }
 
-  Future<void> _loadPickListFromSupabase() async {
+  Future<void> _loadPickList() async {
     setState(() => _isLoading = true);
 
     try {
@@ -46,8 +48,7 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
       List<String> terms = widget.searchTerms ?? [];
       
       // Ensure terms are valid
-      if (terms.isEmpty) {
-        // We will just show an empty list instead of faking data
+      if (terms.isNotEmpty && terms.first == '__NO_MATCH__') {
         terms = [];
       }
 
@@ -55,12 +56,14 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
           ? allDrugs
           : allDrugs.where((drug) {
               final upperName = drug.name.toUpperCase();
-              return terms.any((term) => upperName.contains(term.toUpperCase()));
+              return terms.contains(upperName); // EXACT match only!
             }).toList();
 
       final List<Map<String, dynamic>> items = matchedDrugs.map((drug) {
         final isFractional = drug.name.contains('0.10') || drug.name.contains('10ML') || drug.name.contains('SUSP');
-        final double pickQty = isFractional ? 0.10 : 1.0;
+        
+        double pickQty = widget.requiredQuantities?[drug.name.toUpperCase()] ?? (isFractional ? 0.10 : 1.0);
+        
         final String innerUnitType = (drug.toJson()['inner_unit_type'] as String?) ??
             (drug.name.toUpperCase().contains('SUSP') || drug.name.toUpperCase().contains('LIQ') || drug.name.toUpperCase().contains('SYRUP')
                 ? 'Bottle'
@@ -72,14 +75,12 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
           'name': drug.name,
           'pick_quantity': pickQty,
           'inner_unit_type': innerUnitType,
-          'unit_label': isFractional
-              ? 'Pick: 0.10 (1 Loose $innerUnitType)'
-              : 'Pick: 1.0 (Full Sealed Box)',
+          'unit_label': 'Pick: $pickQty ${isFractional ? '(Loose $innerUnitType)' : '(Full Sealed Box)'}',
           'location': '📍 ${drug.binLocation}',
           'box_image_url': drug.imageUrl,
           'loose_unit_image_url': drug.innerUnitImageUrl,
           'checked': false,
-          'quantity_picked': 1,
+          'quantity_picked': pickQty.toInt() > 0 ? pickQty.toInt() : 1,
           'quantity_in_stock': drug.quantityInStock,
           'min_threshold': drug.minThreshold,
         };

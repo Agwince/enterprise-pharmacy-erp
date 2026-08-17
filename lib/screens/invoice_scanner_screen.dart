@@ -127,28 +127,59 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     // Check DB dynamically
     final supabase = Supabase.instance.client;
     final List<String> foundTerms = [];
+    final Map<String, double> requiredQuantities = {};
 
     try {
       final res = await supabase.from('drugs').select('name');
       final List<dynamic> allDrugs = res as List<dynamic>;
       final List<String> allDrugNames = allDrugs.map((d) => (d['name'] as String).toUpperCase()).toList();
 
-      for (String ocrTerm in extractedWords) {
-        bool found = false;
-        for (String dbName in allDrugNames) {
-          if (dbName.contains(ocrTerm.toUpperCase())) {
-            found = true;
-            break;
-          }
+      final String rawOcrText = extractedWords.join(' ');
+      final lines = rawOcrText.split(RegExp(r'\n'));
+
+      for (String dbName in allDrugNames) {
+        final String normalizedDbName = dbName.replaceAll(RegExp(r'\s+'), '');
+        final String normalizedOcrText = rawOcrText.replaceAll(RegExp(r'\s+'), '');
+
+        bool isMatch = false;
+
+        if (normalizedOcrText.contains(normalizedDbName)) {
+           isMatch = true;
+        } else {
+           List<String> dbWords = dbName.split(RegExp(r'\s+')).where((w) => w.length > 2).toList();
+           if (dbWords.length >= 2) {
+             if (rawOcrText.contains(dbWords[0]) && rawOcrText.contains(dbWords[1])) {
+               isMatch = true;
+             }
+           } else if (dbWords.isNotEmpty) {
+             if (rawOcrText.contains(dbWords[0]) && dbWords[0].length > 5) {
+               isMatch = true;
+             }
+           }
         }
 
-        if (found && !foundTerms.contains(ocrTerm.toUpperCase())) {
-          foundTerms.add(ocrTerm.toUpperCase());
+        if (isMatch) {
+          foundTerms.add(dbName);
+          // Try to extract quantity from the invoice line
+          double extractedQty = 1.0;
+          final RegExp qtyRegex = RegExp(r'\b(\d+(?:\.\d{1,2})?)\b');
+          // Find the last number on the line that matches
+          for (String word in extractedWords) {
+             // Basic heuristic for demo: if there is a number less than 100, it might be the qty.
+             final val = double.tryParse(word);
+             if (val != null && val > 0 && val < 500) {
+               extractedQty = val;
+               // We don't break immediately, we keep scanning, or just pick the first we see
+             }
+          }
+          // Just as a safety, if we found a number from OCR we set it, otherwise default 1.
+          // Because OCR space output splits everything into words.
+          requiredQuantities[dbName] = extractedQty;
         }
       }
       
       if (foundTerms.isEmpty && missingItems.isEmpty) {
-        missingItems.add('Text found, but no matching medicines in system.');
+        missingItems.add('Text found, but no exact matching medicines in system.');
       }
     } catch (e) {
       debugPrint('Error checking DB: $e');
@@ -170,6 +201,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         // If foundTerms is empty, pass a dummy string so it doesn't show ALL items
         searchTerms: foundTerms.isEmpty ? ['__NO_MATCH__'] : foundTerms, 
         missingItems: missingItems,
+        requiredQuantities: requiredQuantities,
       )),
     );
   }

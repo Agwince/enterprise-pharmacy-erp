@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
 
 class AdminHrWorkspaceScreen extends StatefulWidget {
@@ -203,16 +204,39 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                       });
                       
                       try {
-                        // Demo Safe Mode DB Insert
-                        await Supabase.instance.client.from('users').insert({
-                          'email': emailController.text.trim(),
-                          'full_name': nameController.text.trim(),
-                          'role': selectedRole.contains('Manager') ? 'Manager' : 
-                                  selectedRole.contains('Pharmacist') ? 'Pharmacist' : 
-                                  selectedRole.contains('Storekeeper') ? 'Storekeeper' : 'Storekeeper',
-                        });
+                        // Real Auth Provisioning (Bypass Session Drop)
+                        final secondaryClient = SupabaseClient(SupabaseConfig.url, SupabaseConfig.anonKey);
+                        
+                        final authRes = await secondaryClient.auth.signUp(
+                          email: emailController.text.trim(),
+                          password: passwordController.text.trim(),
+                        );
+
+                        if (authRes.user != null) {
+                          // Insert to public profile with primary client
+                          await Supabase.instance.client.from('users').insert({
+                            'id': authRes.user!.id,
+                            'email': authRes.user!.email,
+                            'full_name': nameController.text.trim(),
+                            'role': selectedRole.contains('Manager') ? 'Manager' : 
+                                    selectedRole.contains('Pharmacist') ? 'Pharmacist' : 
+                                    selectedRole.contains('Storekeeper') ? 'Storekeeper' : 'Storekeeper',
+                          });
+                        }
                       } catch (e) {
-                        debugPrint('Demo safe DB insert error: \$e');
+                        debugPrint('Real Auth provisioning error: \$e');
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.redAccent,
+                              content: Text(
+                                'Provisioning failed: \$e',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          );
+                        }
+                        return;
                       }
 
                       if (mounted) {
@@ -223,7 +247,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                           SnackBar(
                             backgroundColor: const Color(0xFF10B981),
                             content: Text(
-                              'Staff Member \${nameController.text} provisioned successfully (Demo Mode)!',
+                              'Staff Member \${nameController.text} provisioned successfully (Live Auth)!',
                               style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                             ),
                           ),

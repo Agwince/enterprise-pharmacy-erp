@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
 
 class SuperAdminWorkspaceScreen extends StatefulWidget {
@@ -381,31 +382,50 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                     setModalState(() => isSaving = true);
                     
                     try {
-                      // Demo Safe Mode: bypassing Auth logouts and directly inserting to public schema
-                      final db = Supabase.instance.client;
+                      // Real Auth Provisioning (Bypass Session Drop)
+                      final secondaryClient = SupabaseClient(SupabaseConfig.url, SupabaseConfig.anonKey);
+                      final primaryClient = Supabase.instance.client;
                       
                       // Upsert tenant
-                      await db.from('branches').insert({
+                      final branchRes = await primaryClient.from('branches').insert({
                         'name': companyNameController.text,
                         'code': 'TNT-\${DateTime.now().millisecondsSinceEpoch}',
                         'location': 'Enterprise Provisioned',
-                      });
+                      }).select();
                       
-                      // Insert mock users (without real auth to prevent session drop)
-                      if (ceoEmailController.text.isNotEmpty) {
-                        await db.from('users').insert({
-                          'email': ceoEmailController.text,
-                          'full_name': '\${companyNameController.text} CEO',
-                          'role': 'CEO',
-                        });
+                      final branchId = (branchRes as List).isNotEmpty ? branchRes[0]['id'] : null;
+
+                      // Insert real auth users and link them to public DB
+                      if (ceoEmailController.text.isNotEmpty && ceoPasswordController.text.isNotEmpty) {
+                        final ceoAuth = await secondaryClient.auth.signUp(
+                          email: ceoEmailController.text,
+                          password: ceoPasswordController.text,
+                        );
+                        if (ceoAuth.user != null) {
+                          await primaryClient.from('users').insert({
+                            'id': ceoAuth.user!.id,
+                            'email': ceoAuth.user!.email,
+                            'full_name': '\${companyNameController.text} CEO',
+                            'role': 'CEO',
+                            'branch_id': branchId,
+                          });
+                        }
                       }
                       
-                      if (hrEmailController.text.isNotEmpty) {
-                        await db.from('users').insert({
-                          'email': hrEmailController.text,
-                          'full_name': '\${companyNameController.text} HR',
-                          'role': 'Manager', // closest to HR in our schema check
-                        });
+                      if (hrEmailController.text.isNotEmpty && hrPasswordController.text.isNotEmpty) {
+                        final hrAuth = await secondaryClient.auth.signUp(
+                          email: hrEmailController.text,
+                          password: hrPasswordController.text,
+                        );
+                        if (hrAuth.user != null) {
+                          await primaryClient.from('users').insert({
+                            'id': hrAuth.user!.id,
+                            'email': hrAuth.user!.email,
+                            'full_name': '\${companyNameController.text} HR',
+                            'role': 'Manager', // closest to HR
+                            'branch_id': branchId,
+                          });
+                        }
                       }
 
                       if (mounted) {
@@ -415,24 +435,23 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                           SnackBar(
                             backgroundColor: Colors.greenAccent,
                             content: Text(
-                              'Successfully provisioned \${companyNameController.text}',
+                              'Successfully provisioned \${companyNameController.text} (Live Auth)',
                               style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold),
                             )
                           )
                         );
                       }
                     } catch (e) {
-                      // Silently succeed on schema errors for demo purposes
-                      debugPrint('Demo safe DB insert error: \$e');
+                      debugPrint('Live Auth provisioning error: \$e');
                       if (mounted) {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
                         messenger.showSnackBar(
                           SnackBar(
-                            backgroundColor: Colors.greenAccent,
+                            backgroundColor: Colors.redAccent,
                             content: Text(
-                              'Successfully provisioned \${companyNameController.text} (Demo Mode)',
-                              style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold),
+                              'Provisioning Failed: \$e',
+                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
                             )
                           )
                         );

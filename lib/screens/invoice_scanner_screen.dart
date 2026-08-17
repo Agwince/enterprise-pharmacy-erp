@@ -102,9 +102,9 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       MaterialPageRoute(builder: (context) => const VisualPickListScreen(
         searchTerms: [], // Will load all items in DB as "found"
         missingItems: [
-          'METFORMIN 850MG TABS',
-          'LOSARTAN 50MG TABS',
-          'ATORVASTATIN 20MG TABS'
+          "TINIDAZOLE TABS 500MG 4'S",
+          'BRUFEN SYRUP 60ML',
+          'PROMETHAZINE SUSP 60ML'
         ],
       )),
     );

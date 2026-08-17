@@ -10,6 +10,7 @@ class Drug {
   final double costPrice;
   final int minThreshold;
   final int maxThreshold;
+  final int quantityInStock;
   final String? imageUrl;
   final String? innerUnitImageUrl;
   final String innerUnitType;
@@ -27,6 +28,7 @@ class Drug {
     required this.costPrice,
     required this.minThreshold,
     required this.maxThreshold,
+    this.quantityInStock = 50,
     this.imageUrl,
     this.innerUnitImageUrl,
     this.innerUnitType = 'Strip/Blister',
@@ -50,10 +52,11 @@ class Drug {
       category: json['category'] as String? ?? 'General',
       unit: (json['package_unit'] ?? json['unit'] ?? 'Box') as String,
       binLocation: (json['target_shelf'] ?? json['bin_location'] ?? 'AISLE 1 - SHELF A1') as String,
-      unitPrice: (json['price'] ?? json['unit_price'] as num?)?.toDouble() ?? 0.0,
-      costPrice: (json['cost'] ?? json['cost_price'] as num?)?.toDouble() ?? 0.0,
-      minThreshold: (json['reorder_level'] ?? json['min_threshold'] as num?)?.toInt() ?? 15,
-      maxThreshold: (json['max_level'] ?? json['max_threshold'] as num?)?.toInt() ?? 150,
+      unitPrice: json['price'] != null ? double.tryParse(json['price'].toString()) ?? 0.0 : ((json['unit_price'] as num?)?.toDouble() ?? 0.0),
+      costPrice: json['cost'] != null ? double.tryParse(json['cost'].toString()) ?? 0.0 : ((json['cost_price'] as num?)?.toDouble() ?? 0.0),
+      minThreshold: json['reorder_level'] != null ? int.tryParse(json['reorder_level'].toString()) ?? 15 : ((json['min_threshold'] as num?)?.toInt() ?? 15),
+      maxThreshold: json['max_level'] != null ? int.tryParse(json['max_level'].toString()) ?? 150 : ((json['max_threshold'] as num?)?.toInt() ?? 150),
+      quantityInStock: json['quantity_in_stock'] != null ? int.tryParse(json['quantity_in_stock'].toString()) ?? 50 : 50,
       imageUrl: (json['box_image_url'] ?? json['image_url']) as String?,
       innerUnitImageUrl: (json['image_url'] ?? json['inner_unit_image_url']) as String?,
       innerUnitType: json['inner_unit_type'] as String? ?? 'Strip/Blister',
@@ -76,6 +79,7 @@ class Drug {
       'cost': costPrice,
       'reorder_level': minThreshold,
       'max_level': maxThreshold,
+      'quantity_in_stock': quantityInStock,
       'box_image_url': imageUrl,
       'image_url': innerUnitImageUrl,
       'inner_unit_type': innerUnitType,

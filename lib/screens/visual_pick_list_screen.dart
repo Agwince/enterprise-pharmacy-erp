@@ -79,6 +79,9 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
           'box_image_url': drug.imageUrl,
           'loose_unit_image_url': drug.innerUnitImageUrl,
           'checked': false,
+          'quantity_picked': 1,
+          'quantity_in_stock': drug.quantityInStock,
+          'min_threshold': drug.minThreshold,
         };
       }).toList();
 
@@ -94,6 +97,66 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
         setState(() {
           _pickListItems = [];
           _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _confirmPick(Map<String, dynamic> item) async {
+    final int pickedQty = item['quantity_picked'];
+    final int currentStock = item['quantity_in_stock'];
+    final int newStock = currentStock - pickedQty;
+    
+    // Optimistic UI Update
+    setState(() {
+      item['checked'] = true;
+      item['quantity_in_stock'] = newStock;
+    });
+
+    try {
+      // Deduct from Supabase
+      await Supabase.instance.client
+          .from('drugs')
+          .update({'quantity_in_stock': newStock})
+          .eq('id', item['id']);
+
+      // Check for Low Stock / Replenishment Alert
+      final int minThreshold = item['min_threshold'];
+      if (newStock <= minThreshold) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.amber[900],
+              duration: const Duration(seconds: 4),
+              content: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Low Stock Alert! Sent message to Storekeeper to replenish ${item['name']} from main store.',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating stock: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('Failed to update inventory. Please try again.', style: GoogleFonts.inter(color: Colors.white)),
+          ),
+        );
+        // Revert UI on failure
+        setState(() {
+          item['checked'] = false;
+          item['quantity_in_stock'] = currentStock;
         });
       }
     }
@@ -450,53 +513,112 @@ class _VisualPickListScreenState extends State<VisualPickListScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF0F172A),
-                                            borderRadius: BorderRadius.circular(6),
-                                            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                                          ),
-                                          child: Text(
-                                            item['location'],
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white70,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 12,
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF0F172A),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                                              ),
+                                              child: Text(
+                                                item['location'],
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white70,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: item['quantity_in_stock'] <= item['min_threshold'] 
+                                                    ? Colors.amber.withValues(alpha: 0.2)
+                                                    : const Color(0xFF10B981).withValues(alpha: 0.2),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                'Stock: ${item['quantity_in_stock']}',
+                                                style: GoogleFonts.inter(
+                                                  color: item['quantity_in_stock'] <= item['min_threshold']
+                                                      ? Colors.amberAccent
+                                                      : const Color(0xFF10B981),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
 
-                                  // Interactive Checkbox
-                                  InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        item['checked'] = !item['checked'];
-                                      });
-                                    },
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: item['checked'] ? Colors.greenAccent : Colors.transparent,
-                                          border: Border.all(
-                                            color: item['checked'] ? Colors.greenAccent : Colors.white54,
-                                            width: 2,
-                                          ),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: item['checked']
-                                            ? const Icon(Icons.check_rounded, color: Colors.black, size: 24)
-                                            : null,
+                                  // Quantity Counter and Pick Button
+                                  if (item['checked'])
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.greenAccent.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.greenAccent),
                                       ),
+                                      child: const Icon(Icons.check_rounded, color: Colors.greenAccent, size: 24),
+                                    )
+                                  else
+                                    Row(
+                                      children: [
+                                        // Counter
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF0F172A),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.white24),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.remove, color: Colors.white70, size: 18),
+                                                onPressed: () {
+                                                  if (item['quantity_picked'] > 1) {
+                                                    setState(() => item['quantity_picked']--);
+                                                  }
+                                                },
+                                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                padding: EdgeInsets.zero,
+                                              ),
+                                              Text(
+                                                '${item['quantity_picked']}',
+                                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.add, color: Colors.white70, size: 18),
+                                                onPressed: () {
+                                                  setState(() => item['quantity_picked']++);
+                                                },
+                                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                                padding: EdgeInsets.zero,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Confirm Button
+                                        ElevatedButton(
+                                          onPressed: () => _confirmPick(item),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.tealAccent,
+                                            foregroundColor: Colors.black,
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                          ),
+                                          child: Text('Pick', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
                                     ),
-                                  ),
                                 ],
                               ),
                             ],

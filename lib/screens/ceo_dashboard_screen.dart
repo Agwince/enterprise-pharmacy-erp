@@ -15,6 +15,8 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   final SupabaseService _supabaseService = SupabaseService();
   bool _isLoading = true;
   List<Map<String, dynamic>> _branchRevenues = [];
+  Map<String, double> _categorySales = {};
+  List<Map<String, dynamic>> _topDrugs = [];
   double _totalRevenue = 0.0;
   int _totalTransactions = 0;
 
@@ -26,18 +28,88 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
-    final revenues = await _supabaseService.fetchBranchRevenue();
-    double total = 0.0;
-    for (var b in revenues) {
-      total += (b['revenue'] as num).toDouble();
-    }
+    
+    try {
+      final db = Supabase.instance.client;
+      
+      // Fetch branches for Bar Chart
+      final branchRes = await db.from('branches').select();
+      final branches = branchRes as List<dynamic>;
+      
+      // Fetch sales transactions with nested drug data
+      final txRes = await db.from('transactions')
+          .select('*, drugs!inner(category, name, sku, bin_location)')
+          .eq('transaction_type', 'sale');
+      final transactions = txRes as List<dynamic>;
 
-    if (mounted) {
-      setState(() {
-        _branchRevenues = revenues;
-        _totalRevenue = total;
-        _isLoading = false;
-      });
+      double total = 0.0;
+      Map<String, double> categorySales = {};
+      Map<String, double> branchSales = {};
+      Map<String, Map<String, dynamic>> drugSalesMap = {};
+
+      for (var tx in transactions) {
+        final amount = (tx['total_amount'] as num).toDouble();
+        final qty = (tx['quantity'] as num).toInt();
+        final branchId = tx['branch_id'] as String;
+        final drug = tx['drugs'] as Map<String, dynamic>;
+        
+        final category = drug['category'] as String? ?? 'Uncategorized';
+        final sku = drug['sku'] as String? ?? 'N/A';
+        final name = drug['name'] as String? ?? 'Unknown';
+        final bin = drug['bin_location'] as String? ?? 'N/A';
+        final price = (tx['unit_price'] as num).toDouble();
+
+        total += amount;
+        categorySales[category] = (categorySales[category] ?? 0.0) + amount;
+        branchSales[branchId] = (branchSales[branchId] ?? 0.0) + amount;
+
+        if (!drugSalesMap.containsKey(sku)) {
+          drugSalesMap[sku] = {
+            'sku': sku,
+            'name': name,
+            'category': category,
+            'bin': bin,
+            'price': price,
+            'total_amount': 0.0,
+            'qty': 0,
+          };
+        }
+        drugSalesMap[sku]!['total_amount'] += amount;
+        drugSalesMap[sku]!['qty'] += qty;
+      }
+
+      final List<Map<String, dynamic>> branchRevenues = [];
+      for (var b in branches) {
+        final id = b['id'] as String;
+        branchRevenues.add({
+          'id': id,
+          'code': b['code'] as String? ?? 'BR',
+          'name': b['name'] as String? ?? 'Unknown',
+          'revenue': branchSales[id] ?? 0.0,
+        });
+      }
+
+      final topDrugsList = drugSalesMap.values.toList();
+      topDrugsList.sort((a, b) => (b['total_amount'] as double).compareTo(a['total_amount'] as double));
+
+      if (mounted) {
+        setState(() {
+          _branchRevenues = branchRevenues;
+          _totalRevenue = total;
+          _totalTransactions = transactions.length;
+          _categorySales = categorySales;
+          _topDrugs = topDrugsList.take(5).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('CEO Dashboard Live Data Error: $e\\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to load live data: $e'), backgroundColor: Colors.redAccent)
+        );
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -263,11 +335,29 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                                 height: 260,
                                 child: PieChart(
                                   PieChartData(
-                                    sectionsSpace: 4,
+                                    sectionsSpace: 2,
                                     centerSpaceRadius: 40,
-                                    sections: [
-                                      PieChartSectionData(value: 100, title: 'No Data', color: Colors.white10, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white54)),
-                                    ],
+                                    sections: _categorySales.isEmpty 
+                                      ? [PieChartSectionData(value: 100, title: 'No Data', color: Colors.white10, radius: 55, titleStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white54))]
+                                      : _categorySales.entries.toList().asMap().entries.map((entry) {
+                                          final idx = entry.key;
+                                          final cat = entry.value;
+                                          final List<Color> colors = [Colors.blueAccent, Colors.tealAccent, Colors.amberAccent, Colors.purpleAccent, Colors.pinkAccent];
+                                          final color = colors[idx % colors.length];
+                                          return PieChartSectionData(
+                                            value: cat.value,
+                                            title: '\${(cat.value / _totalRevenue * 100).toStringAsFixed(0)}%',
+                                            color: color,
+                                            radius: 55,
+                                            titleStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                            badgeWidget: Container(
+                                              padding: const EdgeInsets.all(4),
+                                              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
+                                              child: Text(cat.key, style: GoogleFonts.inter(fontSize: 9, color: Colors.white)),
+                                            ),
+                                            badgePositionPercentageOffset: 1.2,
+                                          );
+                                      }).toList(),
                                   ),
                                 ),
                               ),
@@ -293,7 +383,12 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                       children: [
                         Text('Top Selling Pharmaceuticals', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                         const SizedBox(height: 16),
-                        SingleChildScrollView(
+                        _topDrugs.isEmpty 
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 32.0),
+                              child: Center(child: Text('No sales data available yet.', style: GoogleFonts.inter(color: Colors.white54, fontStyle: FontStyle.italic))),
+                            )
+                          : SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: DataTable(
                             headingRowColor: WidgetStateProperty.all(Colors.black12),
@@ -302,9 +397,17 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                               DataColumn(label: Text('Drug Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Category', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                               DataColumn(label: Text('Bin Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Unit Price', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                              DataColumn(label: Text('Total Revenue', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                             ],
-                            rows: [],
+                            rows: _topDrugs.map((d) {
+                              return _buildDataRow(
+                                d['sku'] as String, 
+                                d['name'] as String, 
+                                d['category'] as String, 
+                                d['bin'] as String, 
+                                '\$${(d['total_amount'] as double).toStringAsFixed(2)}'
+                              );
+                            }).toList(),
                           ),
                         ),
                       ],

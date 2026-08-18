@@ -5,8 +5,8 @@ import 'dart:typed_data';
 
 class InvoiceReviewScreen extends StatefulWidget {
   final Uint8List imageBytes;
-  final List<Map<String, dynamic>>? prefilledItems;
-  const InvoiceReviewScreen({super.key, required this.imageBytes, this.prefilledItems});
+  final String extractedText;
+  const InvoiceReviewScreen({super.key, required this.imageBytes, this.extractedText = ''});
 
   @override
   State<InvoiceReviewScreen> createState() => _InvoiceReviewScreenState();
@@ -30,27 +30,6 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
       final res = await Supabase.instance.client.from('drugs').select('id, name, target_shelf').order('name');
       setState(() {
         _catalog = List<Map<String, dynamic>>.from(res as List);
-        
-        if (widget.prefilledItems != null && widget.prefilledItems!.isNotEmpty) {
-          for (var prefilled in widget.prefilledItems!) {
-            String geminiName = prefilled['name'].toString().toLowerCase();
-            String? foundId;
-            for (var drug in _catalog) {
-              if (drug['name'].toString().toLowerCase().contains(geminiName) || 
-                  geminiName.contains(drug['name'].toString().toLowerCase())) {
-                foundId = drug['id'];
-                break;
-              }
-            }
-            _items.add({
-              'row_id': UniqueKey().toString(),
-              'drug_id': foundId,
-              'quantity': int.tryParse(prefilled['qty'].toString()) ?? 1,
-              'destination': 'NAIROBI',
-            });
-          }
-        }
-        
         _isLoading = false;
       });
     } catch (e) {
@@ -161,6 +140,25 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                   child: Image.memory(widget.imageBytes, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
                 ),
               ),
+              if (widget.extractedText.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  height: 100,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      widget.extractedText,
+                      style: GoogleFonts.robotoMono(color: Colors.white70, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               
               Row(

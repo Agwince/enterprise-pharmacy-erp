@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/auth_service.dart';
-import '../services/ai_scanner_service.dart';
-import 'visual_pick_list_screen.dart';
+import '../services/web_ocr_service.dart';
+import 'invoice_review_screen.dart';
 import 'invoice_review_screen.dart';
 
 class InvoiceScannerScreen extends StatefulWidget {
@@ -53,162 +53,42 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   }
 
   void _startScan([XFile? image]) async {
+    if (image == null) return;
+
     setState(() {
       _isScanning = true;
-      _scanStatusText = 'Initializing Offline AI Scanner...';
+      _scanStatusText = kIsWeb ? 'Analyzing Invoice with Web OCR...' : 'Extracting Text (First run takes 10s)...';
     });
 
-    List<String> extractedWords = [];
-    final List<String> missingItems = [];
-
-    if (image != null) {
-      try {
-        setState(() {
-          _scanStatusText = kIsWeb ? 'Analyzing Invoice with Cloud AI...' : 'Extracting Text (First run takes 10s)...';
-        });
-        
-        if (kIsWeb) {
-          final imageBytes = await image.readAsBytes();
-          final aiService = AiScannerService();
-          final extractedJson = await aiService.extractInvoiceData(imageBytes);
-          
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(
-              imageBytes: imageBytes,
-              prefilledItems: extractedJson,
-            )),
-          );
-          return;
-        } else {
-          // Use Tesseract (Offline, no CORS, no rate limit)
-          String parsedText = await FlutterTesseractOcr.extractText(
-            image.path, 
-            language: 'eng',
-            args: {
-              "preserve_interword_spaces": "1",
-            }
-          );
-          
-          final List<String> words = parsedText.split(RegExp(r'\s+'));
-          extractedWords.addAll(words.where((w) => w.length > 2));
-        }
-      } on PlatformException catch (e) {
-        debugPrint('OCR Platform Error: $e');
-        if (!mounted || image == null) return;
-        final Uint8List imageBytes = await image.readAsBytes();
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
-        );
-        return;
-      } on NoSuchMethodError catch (e) {
-        debugPrint('OCR NoSuchMethodError: $e');
-        if (!mounted || image == null) return;
-        final Uint8List imageBytes = await image.readAsBytes();
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
-        );
-        return;
-      } catch (e) {
-        debugPrint('OCR Error: $e');
-        if (!mounted) return;
-        
-        // Catch any remaining web plugin errors disguised as normal exceptions
-        if (e.toString().contains('NoSuchMethodError') || e.toString().contains('PlatformException')) {
-          if (image == null) return;
-          final Uint8List imageBytes = await image.readAsBytes();
-          if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
-          );
-          return;
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to read image text. Please try again. Error: $e'),
-            backgroundColor: Colors.redAccent,
-          )
-        );
-        setState(() {
-          _isScanning = false;
-        });
-        return;
-      }
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _scanStatusText = 'Matching text to your Database...';
-    });
-
-    final supabase = Supabase.instance.client;
-    final List<String> foundTerms = [];
-    final Map<String, double> requiredQuantities = {};
+    String extractedRawText = '';
 
     try {
-      final res = await supabase.from('drugs').select('name');
-      final List<dynamic> allDrugs = res as List<dynamic>;
-      final List<String> allDrugNames = allDrugs.map((d) => (d['name'] as String).toUpperCase()).toList();
-
-      final String rawOcrText = extractedWords.join(' ').toUpperCase();
-      
-      for (String dbName in allDrugNames) {
-        final String normalizedDbName = dbName.replaceAll(RegExp(r'\s+'), '');
-        final String normalizedOcrText = rawOcrText.replaceAll(RegExp(r'\s+'), '');
-
-        bool isMatch = false;
-        if (normalizedOcrText.contains(normalizedDbName)) {
-           isMatch = true;
-        } else {
-           List<String> dbWords = dbName.split(RegExp(r'\s+')).where((w) => w.length > 2).toList();
-           if (dbWords.length >= 2) {
-             if (rawOcrText.contains(dbWords[0]) && rawOcrText.contains(dbWords[1])) {
-               isMatch = true;
-             }
-           } else if (dbWords.isNotEmpty) {
-             if (rawOcrText.contains(dbWords[0]) && dbWords[0].length > 5) {
-               isMatch = true;
-             }
-           }
-        }
-
-        if (isMatch) {
-          foundTerms.add(dbName);
-          double extractedQty = 1.0;
-          for (String word in extractedWords) {
-             final val = double.tryParse(word);
-             if (val != null && val > 0 && val < 500) {
-               extractedQty = val;
-             }
+      if (kIsWeb) {
+        final imageBytes = await image.readAsBytes();
+        extractedRawText = await WebOcrService.extractText(imageBytes);
+      } else {
+        // Use Tesseract (Offline, no CORS, no rate limit)
+        extractedRawText = await FlutterTesseractOcr.extractText(
+          image.path, 
+          language: 'eng',
+          args: {
+            "preserve_interword_spaces": "1",
           }
-          requiredQuantities[dbName] = extractedQty;
-        }
-      }
-      
-      if (foundTerms.isEmpty && missingItems.isEmpty) {
-        missingItems.add('Text found, but no exact matching medicines in system.');
+        );
       }
     } catch (e) {
-      debugPrint('Error checking DB: $e');
-      missingItems.add('Database check failed');
+      debugPrint('OCR Error: $e');
     }
 
-    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
+    
+    final Uint8List imageBytes = await image.readAsBytes();
     
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => VisualPickListScreen(
-        searchTerms: foundTerms.isEmpty ? ['__NO_MATCH__'] : foundTerms, 
-        missingItems: missingItems,
-        requiredQuantities: requiredQuantities,
+      MaterialPageRoute(builder: (context) => InvoiceReviewScreen(
+        imageBytes: imageBytes,
+        extractedText: extractedRawText,
       )),
     );
   }
@@ -339,7 +219,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            kIsWeb ? 'Powered by Google Gemini AI' : 'Powered by Offline Neural Engine',
+            kIsWeb ? 'Powered by Free Web OCR API' : 'Powered by Offline Neural Engine',
             style: GoogleFonts.inter(
               color: Colors.white54,
               fontSize: 14,

@@ -26,7 +26,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
 
   Future<void> _fetchCatalog() async {
     try {
-      final res = await Supabase.instance.client.from('drugs').select('id, name, sku').order('name');
+      final res = await Supabase.instance.client.from('drugs').select('id, name, sku, target_shelf').order('name');
       setState(() {
         _catalog = List<Map<String, dynamic>>.from(res as List);
         _isLoading = false;
@@ -42,6 +42,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
   void _addItem() {
     setState(() {
       _items.add({
+        'row_id': UniqueKey().toString(),
         'drug_id': null,
         'quantity': 1,
         'destination': 'NAIROBI',
@@ -171,23 +172,57 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: DropdownButtonFormField<String>(
-                                        value: item['drug_id'],
-                                        dropdownColor: const Color(0xFF1E293B),
-                                        style: GoogleFonts.inter(color: Colors.white),
-                                        decoration: const InputDecoration(
-                                          labelText: 'Medicine',
-                                          labelStyle: TextStyle(color: Colors.white54),
-                                          filled: true,
-                                          fillColor: Color(0xFF0F172A),
-                                        ),
-                                        items: _catalog.map((drug) {
-                                          return DropdownMenuItem<String>(
-                                            value: drug['id'],
-                                            child: Text('${drug['name']} (${drug['sku']})'),
+                                      child: Autocomplete<Map<String, dynamic>>(
+                                        key: ValueKey(item['row_id']),
+                                        displayStringForOption: (option) => '${option['name']} - Shelf ${option['target_shelf'] ?? 'Unassigned'}',
+                                        optionsBuilder: (TextEditingValue textEditingValue) {
+                                          if (textEditingValue.text.isEmpty) {
+                                            return const Iterable<Map<String, dynamic>>.empty();
+                                          }
+                                          return _catalog.where((drug) {
+                                            return drug['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase());
+                                          });
+                                        },
+                                        onSelected: (Map<String, dynamic> selection) {
+                                          setState(() => item['drug_id'] = selection['id']);
+                                        },
+                                        fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                                          return TextFormField(
+                                            controller: textEditingController,
+                                            focusNode: focusNode,
+                                            style: GoogleFonts.inter(color: Colors.white),
+                                            decoration: const InputDecoration(
+                                              labelText: 'Search Medicine...',
+                                              labelStyle: TextStyle(color: Colors.white54),
+                                              filled: true,
+                                              fillColor: Color(0xFF0F172A),
+                                            ),
                                           );
-                                        }).toList(),
-                                        onChanged: (val) => setState(() => item['drug_id'] = val),
+                                        },
+                                        optionsViewBuilder: (context, onSelected, options) {
+                                          return Align(
+                                            alignment: Alignment.topLeft,
+                                            child: Material(
+                                              color: const Color(0xFF1E293B),
+                                              elevation: 4.0,
+                                              child: SizedBox(
+                                                width: MediaQuery.of(context).size.width * 0.5,
+                                                child: ListView.builder(
+                                                  padding: EdgeInsets.zero,
+                                                  shrinkWrap: true,
+                                                  itemCount: options.length,
+                                                  itemBuilder: (context, index) {
+                                                    final option = options.elementAt(index);
+                                                    return ListTile(
+                                                      title: Text('${option['name']} - Shelf ${option['target_shelf'] ?? 'Unassigned'}', style: const TextStyle(color: Colors.white)),
+                                                      onTap: () => onSelected(option),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ),
                                     IconButton(

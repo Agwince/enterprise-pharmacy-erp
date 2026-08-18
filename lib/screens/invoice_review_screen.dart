@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
 
 class InvoiceReviewScreen extends StatefulWidget {
-  final String imagePath;
-  const InvoiceReviewScreen({super.key, required this.imagePath});
+  final Uint8List imageBytes;
+  const InvoiceReviewScreen({super.key, required this.imageBytes});
 
   @override
   State<InvoiceReviewScreen> createState() => _InvoiceReviewScreenState();
@@ -136,9 +135,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: kIsWeb 
-                      ? Image.network(widget.imagePath, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38)))
-                      : Image.file(File(widget.imagePath), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
+                  child: Image.memory(widget.imageBytes, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
                 ),
               ),
               const SizedBox(height: 16),

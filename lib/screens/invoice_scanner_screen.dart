@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
+import 'dart:typed_data';
 import '../services/auth_service.dart';
 import 'visual_pick_list_screen.dart';
 import 'invoice_review_screen.dart';
@@ -77,18 +78,22 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         extractedWords.addAll(words.where((w) => w.length > 2));
       } on PlatformException catch (e) {
         debugPrint('OCR Platform Error: $e');
+        if (!mounted || image == null) return;
+        final Uint8List imageBytes = await image.readAsBytes();
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
         );
         return;
       } on NoSuchMethodError catch (e) {
         debugPrint('OCR NoSuchMethodError: $e');
+        if (!mounted || image == null) return;
+        final Uint8List imageBytes = await image.readAsBytes();
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
         );
         return;
       } catch (e) {
@@ -97,9 +102,12 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         
         // Catch any remaining web plugin errors disguised as normal exceptions
         if (e.toString().contains('NoSuchMethodError') || e.toString().contains('PlatformException')) {
+          if (image == null) return;
+          final Uint8List imageBytes = await image.readAsBytes();
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imageBytes: imageBytes)),
           );
           return;
         }

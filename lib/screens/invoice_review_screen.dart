@@ -6,7 +6,8 @@ import 'dart:typed_data';
 class InvoiceReviewScreen extends StatefulWidget {
   final Uint8List imageBytes;
   final String extractedText;
-  const InvoiceReviewScreen({super.key, required this.imageBytes, this.extractedText = ''});
+  final List<Map<String, dynamic>>? prefilledItems;
+  const InvoiceReviewScreen({super.key, required this.imageBytes, this.extractedText = '', this.prefilledItems});
 
   @override
   State<InvoiceReviewScreen> createState() => _InvoiceReviewScreenState();
@@ -30,6 +31,35 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
       final res = await Supabase.instance.client.from('drugs').select('id, name, target_shelf').order('name');
       setState(() {
         _catalog = List<Map<String, dynamic>>.from(res as List);
+        
+        if (widget.prefilledItems != null && widget.prefilledItems!.isNotEmpty) {
+          for (var prefilled in widget.prefilledItems!) {
+            String parsedName = prefilled['name'].toString().toLowerCase();
+            String? foundId;
+            for (var drug in _catalog) {
+              if (drug['name'].toString().toLowerCase() == parsedName) {
+                foundId = drug['id'];
+                break;
+              }
+            }
+            if (foundId == null) {
+              for (var drug in _catalog) {
+                if (drug['name'].toString().toLowerCase().contains(parsedName) || 
+                    parsedName.contains(drug['name'].toString().toLowerCase())) {
+                  foundId = drug['id'];
+                  break;
+                }
+              }
+            }
+            _items.add({
+              'row_id': UniqueKey().toString(),
+              'drug_id': foundId,
+              'quantity': int.tryParse(prefilled['qty'].toString()) ?? 1,
+              'destination': 'NAIROBI',
+            });
+          }
+        }
+
         _isLoading = false;
       });
     } catch (e) {

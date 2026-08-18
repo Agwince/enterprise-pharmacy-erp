@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/auth_service.dart';
 import '../services/web_ocr_service.dart';
+import '../utils/invoice_parser.dart';
 import 'invoice_review_screen.dart';
 import 'invoice_review_screen.dart';
 
@@ -82,13 +83,30 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
 
     if (!mounted) return;
     
-    final Uint8List imageBytes = await image.readAsBytes();
+    setState(() {
+      _scanStatusText = 'Matching text to your Database...';
+    });
+
+    List<Map<String, dynamic>> extractedItems = [];
+    try {
+      final supabase = Supabase.instance.client;
+      final res = await supabase.from('drugs').select('name, id');
+      final catalog = res as List<dynamic>;
+      extractedItems = InvoiceParser.parseInvoice(extractedRawText, catalog);
+    } catch (e) {
+      debugPrint('Error matching DB: $e');
+    }
+
+    if (!mounted) return;
+
+    final Uint8List imageBytesNav = await image.readAsBytes();
     
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => InvoiceReviewScreen(
-        imageBytes: imageBytes,
+        imageBytes: imageBytesNav,
         extractedText: extractedRawText,
+        prefilledItems: extractedItems,
       )),
     );
   }

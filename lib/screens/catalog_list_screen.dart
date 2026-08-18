@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'register_product_screen.dart';
+import 'register_master_carton_screen.dart';
 
 enum IntakeMode { fullBox, looseUnit, both }
 
@@ -187,12 +188,38 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openBlankForm(context),
-        backgroundColor: Colors.tealAccent,
-        foregroundColor: Colors.black,
-        icon: const Icon(Icons.add_rounded, size: 20),
-        label: Text('Register New Medicine from Scratch', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13)),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (widget.mode == IntakeMode.fullBox) ...[
+            FloatingActionButton.extended(
+              heroTag: 'registerMasterCarton',
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RegisterMasterCartonScreen()),
+                );
+                if (result == true) {
+                  _loadDrugs();
+                }
+              },
+              backgroundColor: Colors.blueAccent,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_box_rounded, size: 20),
+              label: Text('Register Master Shipping Carton', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13)),
+            ),
+            const SizedBox(height: 16),
+          ],
+          FloatingActionButton.extended(
+            heroTag: 'registerNewMedicine',
+            onPressed: () => _openBlankForm(context),
+            backgroundColor: Colors.tealAccent,
+            foregroundColor: Colors.black,
+            icon: const Icon(Icons.add_rounded, size: 20),
+            label: Text('Register New Medicine from Scratch', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 13)),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))

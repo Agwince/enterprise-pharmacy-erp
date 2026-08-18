@@ -410,3 +410,14 @@ BEGIN
     -- Note: DRUG-AZI-250 and DRUG-VIT-1000 have 0 sales in past 30 days -> DEAD STOCK!
 
 END $$;
+ 
+ - -   M A S T E R   C A R T O N S  
+ C R E A T E   T A B L E   I F   N O T   E X I S T S   p u b l i c . m a s t e r _ c a r t o n s   (  
+         i d   U U I D   P R I M A R Y   K E Y   D E F A U L T   g e n _ r a n d o m _ u u i d ( ) ,  
+         c a r t o n _ b a r c o d e   T E X T   U N I Q U E   N O T   N U L L ,  
+         d r u g _ i d   U U I D   N O T   N U L L   R E F E R E N C E S   p u b l i c . d r u g s ( i d )   O N   D E L E T E   C A S C A D E ,  
+         r e t a i l _ q u a n t i t y _ m u l t i p l i e r   I N T   N O T   N U L L   D E F A U L T   1 ,  
+         i m a g e _ u r l   T E X T ,  
+         c r e a t e d _ a t   T I M E S T A M P T Z   D E F A U L T   n o w ( )  
+ ) ;  
+ 

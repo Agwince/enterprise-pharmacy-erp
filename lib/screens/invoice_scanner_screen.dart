@@ -5,7 +5,9 @@ import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/auth_service.dart';
+import '../services/ai_scanner_service.dart';
 import 'visual_pick_list_screen.dart';
 import 'invoice_review_screen.dart';
 
@@ -62,20 +64,36 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
     if (image != null) {
       try {
         setState(() {
-          _scanStatusText = 'Extracting Text (First run takes 10s)...';
+          _scanStatusText = kIsWeb ? 'Analyzing Invoice with Cloud AI...' : 'Extracting Text (First run takes 10s)...';
         });
         
-        // Use Tesseract (Offline, no CORS, no rate limit)
-        String parsedText = await FlutterTesseractOcr.extractText(
-          image.path, 
-          language: 'eng',
-          args: {
-            "preserve_interword_spaces": "1",
-          }
-        );
-        
-        final List<String> words = parsedText.split(RegExp(r'\s+'));
-        extractedWords.addAll(words.where((w) => w.length > 2));
+        if (kIsWeb) {
+          final imageBytes = await image.readAsBytes();
+          final aiService = AiScannerService();
+          final extractedJson = await aiService.extractInvoiceData(imageBytes);
+          
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(
+              imageBytes: imageBytes,
+              prefilledItems: extractedJson,
+            )),
+          );
+          return;
+        } else {
+          // Use Tesseract (Offline, no CORS, no rate limit)
+          String parsedText = await FlutterTesseractOcr.extractText(
+            image.path, 
+            language: 'eng',
+            args: {
+              "preserve_interword_spaces": "1",
+            }
+          );
+          
+          final List<String> words = parsedText.split(RegExp(r'\s+'));
+          extractedWords.addAll(words.where((w) => w.length > 2));
+        }
       } on PlatformException catch (e) {
         debugPrint('OCR Platform Error: $e');
         if (!mounted || image == null) return;
@@ -321,7 +339,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Powered by Offline Neural Engine',
+            kIsWeb ? 'Powered by Google Gemini AI' : 'Powered by Offline Neural Engine',
             style: GoogleFonts.inter(
               color: Colors.white54,
               fontSize: 14,

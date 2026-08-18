@@ -26,7 +26,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
 
   Future<void> _fetchCatalog() async {
     try {
-      final res = await Supabase.instance.client.from('drugs').select('id, name').order('name');
+      final res = await Supabase.instance.client.from('drugs').select('id, name, price, image_url').order('name');
       setState(() {
         _catalog = List<Map<String, dynamic>>.from(res as List);
         _filteredCatalog = List.from(_catalog);
@@ -170,78 +170,24 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
-        title: Text('Telesales POS', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            onPressed: () => AuthService().logout(),
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          // Left Pane: Catalog
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                border: Border(right: BorderSide(color: Colors.white12)),
+  void _showCartBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 16,
+                right: 16,
+                top: 24,
               ),
               child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    onChanged: _filterCatalog,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Search Catalog...',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
-                      filled: true,
-                      fillColor: const Color(0xFF1E293B),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: _isLoading 
-                      ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-                      : ListView.builder(
-                          itemCount: _filteredCatalog.length,
-                          itemBuilder: (context, index) {
-                            final drug = _filteredCatalog[index];
-                            return Card(
-                              color: const Color(0xFF1E293B),
-                              child: ListTile(
-                                title: Text(drug['name'], style: const TextStyle(color: Colors.white)),
-                                subtitle: Text('Price: \$${drug['price'] ?? 10.0}', style: const TextStyle(color: Colors.white54)),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
-                                  onPressed: () => _addToCart(drug),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Right Pane: Cart
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Active Cart', style: GoogleFonts.inter(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
@@ -252,26 +198,33 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                       labelText: 'Client Name',
                       labelStyle: const TextStyle(color: Colors.white54),
                       filled: true,
-                      fillColor: const Color(0xFF1E293B),
+                      fillColor: const Color(0xFF0F172A),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Expanded(
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
                     child: _cart.isEmpty
                         ? const Center(child: Text('Cart is empty', style: TextStyle(color: Colors.white54)))
                         : ListView.builder(
+                            shrinkWrap: true,
                             itemCount: _cart.length,
                             itemBuilder: (context, index) {
                               final item = _cart[index];
                               return Card(
-                                color: const Color(0xFF1E293B),
+                                color: const Color(0xFF0F172A),
                                 child: ListTile(
                                   title: Text(item['name'], style: const TextStyle(color: Colors.white)),
                                   subtitle: Text('Qty: ${item['qty']} x \$${item['price']}', style: const TextStyle(color: Colors.tealAccent)),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.remove_circle, color: Colors.redAccent),
-                                    onPressed: () => _removeFromCart(index),
+                                    onPressed: () {
+                                      setSheetState(() {
+                                        _removeFromCart(index);
+                                      });
+                                      setState(() {}); // Update the main UI badge as well
+                                    },
                                   ),
                                 ),
                               );
@@ -290,25 +243,124 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent, foregroundColor: Colors.black, padding: const EdgeInsets.all(16)),
-                      onPressed: () => _checkout('PENDING', null),
-                      child: const Text('MPesa on Delivery (Invoice)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orangeAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                         Navigator.pop(context);
+                         _checkout('PENDING', null);
+                      },
+                      child: const Text('MPesa on Delivery (Invoice)', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black, padding: const EdgeInsets.all(16)),
-                      onPressed: _showInstantPaymentDialog,
-                      child: const Text('Instant MPesa Payment'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.tealAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                         Navigator.pop(context);
+                         _showInstantPaymentDialog();
+                      },
+                      child: const Text('Instant MPesa Payment', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
-            ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    int totalItems = _cart.fold(0, (sum, item) => sum + (item['qty'] as int));
+    
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B1120),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text('Telesales POS', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: () => AuthService().logout(),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.tealAccent,
+        foregroundColor: Colors.black,
+        icon: const Icon(Icons.shopping_cart),
+        label: Text('Cart ($totalItems) - \$$_cartTotal', style: const TextStyle(fontWeight: FontWeight.bold)),
+        onPressed: _showCartBottomSheet,
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _searchController,
+              onChanged: _filterCatalog,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search Catalog...',
+                hintStyle: const TextStyle(color: Colors.white54),
+                prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
+                filled: true,
+                fillColor: const Color(0xFF1E293B),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
+                : ListView.builder(
+                    itemCount: _filteredCatalog.length,
+                    itemBuilder: (context, index) {
+                      final drug = _filteredCatalog[index];
+                      return Card(
+                        color: const Color(0xFF1E293B),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: drug['image_url'] != null && drug['image_url'].toString().isNotEmpty
+                                ? Image.network(
+                                    drug['image_url'],
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                                  )
+                                : const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                          ),
+                          title: Text(drug['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          subtitle: Text('Price: \$${drug['price'] ?? 10.0}', style: const TextStyle(color: Colors.white54)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
+                            onPressed: () => _addToCart(drug),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }

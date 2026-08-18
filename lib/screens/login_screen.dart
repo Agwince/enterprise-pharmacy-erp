@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,16 +11,65 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController(text: 'ceo@nairobibulk.com');
-  final _passwordController = TextEditingController(text: '••••••••');
+  final _emailController = TextEditingController(text: '');
+  final _passwordController = TextEditingController(text: '');
   bool _isLoading = false;
 
   void _handleStandardLogin() async {
     setState(() => _isLoading = true);
-    await AuthService().signInWithEmailPassword(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      
+      if (response.user != null) {
+        final res = await Supabase.instance.client.from('roles').select('role').eq('email', _emailController.text.trim()).maybeSingle();
+        if (res != null) {
+          String dbRole = res['role'].toString().toUpperCase();
+          switch (dbRole) {
+            case 'TELESALES':
+              AuthService().loginAsTelesales();
+              break;
+            case 'SECRETARY':
+              AuthService().loginAsSecretary();
+              break;
+            case 'CEO':
+              AuthService().loginAsCeo();
+              break;
+            case 'HR':
+              AuthService().loginAsHr();
+              break;
+            case 'STOREKEEPER':
+              AuthService().loginAsStorekeeper();
+              break;
+            case 'CATALOG_ADMIN':
+              AuthService().loginAsCatalogAdmin();
+              break;
+            case 'BRANCH_MANAGER':
+              AuthService().loginAsBranchManager();
+              break;
+            case 'SUPER_ADMIN':
+              AuthService().loginAsSuperAdmin();
+              break;
+            case 'WAREHOUSE_PICKER':
+              AuthService().loginAsWarehousePicker();
+              break;
+            default:
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unknown role in database.')));
+              break;
+          }
+        } else {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No role assigned to this user.')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
+      }
+    }
+
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -178,7 +228,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Text(
-                        'PITCH DEMO QUICK-LOGIN (5 ROLES)',
+                        'PITCH DEMO QUICK-LOGIN',
                         style: GoogleFonts.inter(
                           color: Colors.amberAccent,
                           fontSize: 10,
@@ -327,6 +377,46 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: const Icon(Icons.store_mall_directory_rounded, size: 18),
                   label: Text(
                     'Login as Branch Manager (Pharmacist)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 8: Telesales POS
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsTelesales();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.pinkAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.pinkAccent,
+                    side: const BorderSide(color: Colors.pinkAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.point_of_sale_rounded, size: 18),
+                  label: Text(
+                    'Login as Telesales (POS)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 9: Secretary
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsSecretary();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigoAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.indigoAccent,
+                    side: const BorderSide(color: Colors.indigoAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+                  label: Text(
+                    'Login as Secretary (Finance)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

@@ -109358,7 +109358,7 @@ s=q}for(;;)switch(s){case 0:q=3
 l=$.du().b
 l===$&&A.a()
 s=6
-return A.m(l.di("drugs").kH(0,"id, name, sku, target_shelf").PO(0,"name"),$async$Bm)
+return A.m(l.di("drugs").kH(0,"id, name, target_shelf").PO(0,"name"),$async$Bm)
 case 6:n=b
 o.O(new A.aIb(o,n))
 q=1
@@ -109931,7 +109931,7 @@ s=q}for(;;)switch(s){case 0:q=3
 l=$.du().b
 l===$&&A.a()
 s=6
-return A.m(l.di("drugs").kH(0,"id, name, sku").PO(0,"name"),$async$Bn)
+return A.m(l.di("drugs").kH(0,"id, name").PO(0,"name"),$async$Bn)
 case 6:n=b
 o.O(new A.aLv(o,n))
 q=1
@@ -110056,7 +110056,7 @@ $0(){return this.a.x=!1},
 $S:0}
 A.aLB.prototype={
 $1(a){var s=null,r=J.a8(a),q=r.h(a,"id")
-return A.agg(A.B(A.i(r.h(a,"name"))+" ("+A.i(r.h(a,"sku"))+")",s,s,s,s,s,s),q,t.N)},
+return A.agg(A.B(A.i(r.h(a,"name")),s,s,s,s,s,s),q,t.N)},
 $S:726}
 A.aLC.prototype={
 $1(a){var s=this.a

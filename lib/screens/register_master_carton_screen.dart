@@ -34,7 +34,7 @@ class _RegisterMasterCartonScreenState extends State<RegisterMasterCartonScreen>
     try {
       final res = await Supabase.instance.client
           .from('drugs')
-          .select('id, name, sku')
+          .select('id, name')
           .order('name');
       setState(() {
         _drugs = List<Map<String, dynamic>>.from(res as List);
@@ -195,7 +195,7 @@ class _RegisterMasterCartonScreenState extends State<RegisterMasterCartonScreen>
                     items: _drugs.map((drug) {
                       return DropdownMenuItem<String>(
                         value: drug['id'],
-                        child: Text('${drug['name']} (${drug['sku']})'),
+                        child: Text('${drug['name']}'),
                       );
                     }).toList(),
                     onChanged: (val) {

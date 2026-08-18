@@ -26,7 +26,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
 
   Future<void> _fetchCatalog() async {
     try {
-      final res = await Supabase.instance.client.from('drugs').select('id, name, sku, target_shelf').order('name');
+      final res = await Supabase.instance.client.from('drugs').select('id, name, target_shelf').order('name');
       setState(() {
         _catalog = List<Map<String, dynamic>>.from(res as List);
         _isLoading = false;

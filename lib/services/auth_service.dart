@@ -10,6 +10,8 @@ enum UserRole {
   storekeeper,
   catalogAdmin,
   branchManager,
+  telesales,
+  secretary,
 }
 
 class AuthService extends ChangeNotifier {
@@ -75,6 +77,20 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void loginAsTelesales() {
+    _role = UserRole.telesales;
+    _userEmail = 'telesales@pharmacy.com';
+    _userName = 'Telesales Agent';
+    notifyListeners();
+  }
+
+  void loginAsSecretary() {
+    _role = UserRole.secretary;
+    _userEmail = 'secretary@pharmacy.com';
+    _userName = 'Finance Secretary';
+    notifyListeners();
+  }
+
   Future<bool> signInWithEmailPassword(String email, String password) async {
     try {
       final response = await Supabase.instance.client.auth.signInWithPassword(
@@ -82,6 +98,22 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       if (response.user != null) {
+        try {
+          final res = await Supabase.instance.client.from('roles').select('role').eq('email', email).maybeSingle();
+          if (res != null) {
+            String dbRole = res['role'].toString().toUpperCase();
+            if (dbRole == 'TELESALES') {
+               loginAsTelesales();
+               return true;
+            } else if (dbRole == 'SECRETARY') {
+               loginAsSecretary();
+               return true;
+            }
+          }
+        } catch (e) {
+          debugPrint('Could not fetch custom role: $e');
+        }
+
         if (email.contains('super') || email.contains('admin')) {
           loginAsSuperAdmin();
         } else if (email.contains('hr')) {

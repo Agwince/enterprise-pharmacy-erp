@@ -14,6 +14,8 @@ import 'screens/branch_manager_workspace.dart';
 import 'screens/storekeeper_home.dart';
 import 'screens/catalog_admin_home.dart';
 import 'screens/floor_worker_home.dart';
+import 'screens/telesales_pos_screen.dart';
+import 'screens/secretary_finance_screen.dart';
 
 void main() async {
   try {
@@ -117,6 +119,10 @@ class StrictAuthRoleRouter extends StatelessWidget {
 
         // Strict Role Routing - Dedicated Workspaces (No Shared Global Sidebar)
         switch (auth.role) {
+          case UserRole.telesales:
+            return const TelesalesPosScreen();
+          case UserRole.secretary:
+            return const SecretaryFinanceScreen();
           case UserRole.superAdmin:
             return const SuperAdminWorkspaceScreen();
           case UserRole.ceo:

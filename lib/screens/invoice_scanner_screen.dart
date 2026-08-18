@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import 'visual_pick_list_screen.dart';
+import 'invoice_review_screen.dart';
 
 class InvoiceScannerScreen extends StatefulWidget {
   const InvoiceScannerScreen({super.key});
@@ -73,9 +75,35 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
         
         final List<String> words = parsedText.split(RegExp(r'\s+'));
         extractedWords.addAll(words.where((w) => w.length > 2));
+      } on PlatformException catch (e) {
+        debugPrint('OCR Platform Error: $e');
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+        );
+        return;
+      } on NoSuchMethodError catch (e) {
+        debugPrint('OCR NoSuchMethodError: $e');
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+        );
+        return;
       } catch (e) {
         debugPrint('OCR Error: $e');
         if (!mounted) return;
+        
+        // Catch any remaining web plugin errors disguised as normal exceptions
+        if (e.toString().contains('NoSuchMethodError') || e.toString().contains('PlatformException')) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => InvoiceReviewScreen(imagePath: image.path)),
+          );
+          return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to read image text. Please try again. Error: $e'),

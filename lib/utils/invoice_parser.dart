@@ -31,8 +31,10 @@ class InvoiceParser {
         }
 
         matchedItems.add({
+          'id': drug['id'],
           'name': drugName,
           'qty': qty,
+          'target_shelf': drug['target_shelf'],
         });
       }
     }

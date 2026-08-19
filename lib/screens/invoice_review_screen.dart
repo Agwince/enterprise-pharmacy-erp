@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
+import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../services/web_ocr_service.dart';
+import '../utils/invoice_parser.dart';
 
 class InvoiceReviewScreen extends StatefulWidget {
   final Uint8List imageBytes;
-  final String extractedText;
-  final List<Map<String, dynamic>>? prefilledItems;
-  const InvoiceReviewScreen({super.key, required this.imageBytes, this.extractedText = '', this.prefilledItems});
+  final String? imagePath;
+  const InvoiceReviewScreen({super.key, required this.imageBytes, this.imagePath});
 
   @override
   State<InvoiceReviewScreen> createState() => _InvoiceReviewScreenState();
@@ -15,6 +18,8 @@ class InvoiceReviewScreen extends StatefulWidget {
 
 class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
   bool _isLoading = true;
+  String _loadingText = "Scanning Invoice offline...";
+  String _extractedText = '';
   List<Map<String, dynamic>> _catalog = [];
   
   // List of rows. Each row has a selected drug_id, quantity, and destination.
@@ -23,48 +28,47 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchCatalog();
+    _processInvoice();
   }
 
-  Future<void> _fetchCatalog() async {
+  Future<void> _processInvoice() async {
     try {
-      final res = await Supabase.instance.client.from('drugs').select('id, name, target_shelf').order('name');
-      setState(() {
-        _catalog = List<Map<String, dynamic>>.from(res as List);
-        
-        if (widget.prefilledItems != null && widget.prefilledItems!.isNotEmpty) {
-          for (var prefilled in widget.prefilledItems!) {
-            String parsedName = prefilled['name'].toString().toLowerCase();
-            String? foundId;
-            for (var drug in _catalog) {
-              if (drug['name'].toString().toLowerCase() == parsedName) {
-                foundId = drug['id'];
-                break;
-              }
-            }
-            if (foundId == null) {
-              for (var drug in _catalog) {
-                if (drug['name'].toString().toLowerCase().contains(parsedName) || 
-                    parsedName.contains(drug['name'].toString().toLowerCase())) {
-                  foundId = drug['id'];
-                  break;
-                }
-              }
-            }
-            _items.add({
-              'row_id': UniqueKey().toString(),
-              'drug_id': foundId,
-              'quantity': int.tryParse(prefilled['qty'].toString()) ?? 1,
-              'destination': 'NAIROBI',
-            });
-          }
-        }
+      if (kIsWeb) {
+         setState(() => _loadingText = "Analyzing Invoice with Web OCR...");
+         _extractedText = await WebOcrService.extractText(widget.imageBytes);
+      } else {
+         setState(() => _loadingText = "Scanning Invoice offline...");
+         if (widget.imagePath != null) {
+           _extractedText = await FlutterTesseractOcr.extractText(
+             widget.imagePath!,
+             language: 'eng',
+             args: {"preserve_interword_spaces": "1"}
+           );
+         }
+      }
 
-        _isLoading = false;
-      });
+      setState(() => _loadingText = "Matching text to your Database...");
+      final supabase = Supabase.instance.client;
+      final res = await supabase.from('drugs').select('id, name, target_shelf').order('name');
+      _catalog = List<Map<String, dynamic>>.from(res as List);
+
+      final extractedItems = InvoiceParser.parseInvoice(_extractedText, _catalog);
+
+      for (var prefilled in extractedItems) {
+        _items.add({
+          'row_id': UniqueKey().toString(),
+          'drug_id': prefilled['id'],
+          'drug_name': prefilled['name'],
+          'target_shelf': prefilled['target_shelf'] ?? 'Unassigned',
+          'quantity': prefilled['qty'],
+          'destination': 'NAIROBI',
+        });
+      }
+
+      setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading catalog: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error processing invoice: $e')));
         setState(() => _isLoading = false);
       }
     }
@@ -151,7 +155,16 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
         title: Text('Manual Invoice Review', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
       ),
       body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: Colors.tealAccent),
+                const SizedBox(height: 16),
+                Text(_loadingText, style: GoogleFonts.inter(color: Colors.tealAccent)),
+              ],
+            ),
+          )
         : Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -170,7 +183,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                   child: Image.memory(widget.imageBytes, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
                 ),
               ),
-              if (widget.extractedText.isNotEmpty) ...[
+              if (_extractedText.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
@@ -183,7 +196,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                   ),
                   child: SingleChildScrollView(
                     child: Text(
-                      widget.extractedText,
+                      _extractedText,
                       style: GoogleFonts.robotoMono(color: Colors.white70, fontSize: 12),
                     ),
                   ),
@@ -222,9 +235,18 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
                                 Row(
                                   children: [
                                     Expanded(
-                                      child: Autocomplete<Map<String, dynamic>>(
-                                        key: ValueKey(item['row_id']),
-                                        displayStringForOption: (option) => '${option['name']} - Shelf ${option['target_shelf'] ?? 'Unassigned'}',
+                                      child: (item['drug_id'] != null && item['drug_name'] != null)
+                                          ? Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(item['drug_name'], style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                                                const SizedBox(height: 4),
+                                                Text('Target Shelf: ${item['target_shelf'] ?? 'Unassigned'}', style: const TextStyle(color: Colors.tealAccent, fontSize: 14)),
+                                              ],
+                                            )
+                                          : Autocomplete<Map<String, dynamic>>(
+                                              key: ValueKey(item['row_id']),
+                                              displayStringForOption: (option) => '${option['name']} - Shelf ${option['target_shelf'] ?? 'Unassigned'}',
                                         optionsBuilder: (TextEditingValue textEditingValue) {
                                           if (textEditingValue.text.isEmpty) {
                                             return const Iterable<Map<String, dynamic>>.empty();

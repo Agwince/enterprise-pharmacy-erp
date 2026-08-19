@@ -55,58 +55,19 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
 
   void _startScan([XFile? image]) async {
     if (image == null) return;
-
-    setState(() {
-      _isScanning = true;
-      _scanStatusText = kIsWeb ? 'Analyzing Invoice with Web OCR...' : 'Extracting Text (First run takes 10s)...';
-    });
-
-    String extractedRawText = '';
-
-    try {
-      if (kIsWeb) {
-        final imageBytes = await image.readAsBytes();
-        extractedRawText = await WebOcrService.extractText(imageBytes);
-      } else {
-        // Use Tesseract (Offline, no CORS, no rate limit)
-        extractedRawText = await FlutterTesseractOcr.extractText(
-          image.path, 
-          language: 'eng',
-          args: {
-            "preserve_interword_spaces": "1",
-          }
-        );
-      }
-    } catch (e) {
-      debugPrint('OCR Error: $e');
-    }
-
-    if (!mounted) return;
     
     setState(() {
-      _scanStatusText = 'Matching text to your Database...';
+      _isScanning = true;
     });
 
-    List<Map<String, dynamic>> extractedItems = [];
-    try {
-      final supabase = Supabase.instance.client;
-      final res = await supabase.from('drugs').select('name, id');
-      final catalog = res as List<dynamic>;
-      extractedItems = InvoiceParser.parseInvoice(extractedRawText, catalog);
-    } catch (e) {
-      debugPrint('Error matching DB: $e');
-    }
-
-    if (!mounted) return;
-
     final Uint8List imageBytesNav = await image.readAsBytes();
+    if (!mounted) return;
     
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => InvoiceReviewScreen(
         imageBytes: imageBytesNav,
-        extractedText: extractedRawText,
-        prefilledItems: extractedItems,
+        imagePath: image.path,
       )),
     );
   }

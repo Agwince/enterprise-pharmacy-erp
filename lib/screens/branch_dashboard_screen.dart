@@ -29,12 +29,22 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
     setState(() => _isLoading = true);
     try {
       final db = Supabase.instance.client;
+      // Get branch
+      final branchRes = await db.from('branches').select().limit(1);
+      final branchId = (branchRes as List).isNotEmpty ? branchRes[0]['id'] as String : null;
+
+      if (branchId == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
       // Fetch today's transactions for revenue
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day).toIso8601String();
       
       final txRes = await db.from('transactions')
           .select('*, drugs(name)')
+          .eq('branch_id', branchId)
           .order('transaction_date', ascending: false);
       
       final allTx = txRes as List<dynamic>;
@@ -77,21 +87,24 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         spots.add(FlSpot(i.toDouble(), (dailySales[i] ?? 0.0) / 1000.0)); // In thousands
       }
 
-      // Fetch low stock items from drugs directly since inventory uses branch_id and might be out of date
-      final invRes = await db.from('drugs').select('stock_quantity, min_threshold');
+      // Fetch low stock items from inventory
+      final invRes = await db.from('inventory')
+          .select('quantity, drugs!inner(min_threshold)')
+          .eq('branch_id', branchId);
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {
-         final qty = (inv['stock_quantity'] as num?)?.toInt() ?? 0;
-         final min = (inv['min_threshold'] as num?)?.toInt() ?? 0;
+         final qty = (inv['quantity'] as num).toInt();
+         final min = (inv['drugs']['min_threshold'] as num).toInt();
          if (qty < min) {
            lowStockCount++;
          }
       }
 
-      // Fetch pending orders globally
+      // Fetch pending orders
       final poRes = await db.from('purchase_orders')
           .select('id')
+          .eq('branch_id', branchId)
           .eq('status', 'draft');
           
       final pendingCount = (poRes as List).length;
@@ -109,6 +122,9 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
     } catch (e, st) {
       debugPrint('Branch Dashboard Live Data Error: $e\n$st');
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to load live data: $e'), backgroundColor: Colors.redAccent)
+        );
         setState(() => _isLoading = false);
       }
     }

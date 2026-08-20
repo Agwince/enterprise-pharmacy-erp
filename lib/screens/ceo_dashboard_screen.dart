@@ -33,6 +33,10 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
     try {
       final db = Supabase.instance.client;
       
+      // Fetch branches for Bar Chart
+      final branchRes = await db.from('branches').select();
+      final branches = branchRes as List<dynamic>;
+      
       // Fetch sales transactions with nested drug data
       final txRes = await db.from('transactions')
           .select('*, drugs!inner(category, name, sku, bin_location)')
@@ -75,17 +79,15 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
         drugSalesMap[sku]!['qty'] += qty;
       }
 
-      // Safe branch aggregation without branches table
       final List<Map<String, dynamic>> branchRevenues = [];
-      int branchCounter = 1;
-      for (var branchId in branchSales.keys) {
+      for (var b in branches) {
+        final id = b['id']?.toString() ?? 'Unknown';
         branchRevenues.add({
-          'id': branchId,
-          'code': 'BR $branchCounter',
-          'name': 'Branch $branchCounter',
-          'revenue': branchSales[branchId] ?? 0.0,
+          'id': id,
+          'code': b['code'] as String? ?? 'BR',
+          'name': b['name'] as String? ?? 'Unknown',
+          'revenue': branchSales[id] ?? 0.0,
         });
-        branchCounter++;
       }
 
       final topDrugsList = drugSalesMap.values.toList();
@@ -104,6 +106,9 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
     } catch (e, st) {
       debugPrint('CEO Dashboard Live Data Error: $e\n$st');
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Failed to load live data: $e'), backgroundColor: Colors.redAccent)
+        );
         setState(() => _isLoading = false);
       }
     }

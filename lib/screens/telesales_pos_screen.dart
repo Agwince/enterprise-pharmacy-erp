@@ -216,7 +216,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                                 color: const Color(0xFF0F172A),
                                 child: ListTile(
                                   title: Text(item['name'], style: const TextStyle(color: Colors.white)),
-                                  subtitle: Text('Qty: ${item['qty']} x \$${item['price']}', style: const TextStyle(color: Colors.tealAccent)),
+                                  subtitle: Text('Qty: ${item['qty']} x Ksh ${(item['price'] as double).toStringAsFixed(2)}', style: const TextStyle(color: Colors.tealAccent)),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.remove_circle, color: Colors.redAccent),
                                     onPressed: () {
@@ -236,7 +236,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Total:', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text('\$$_cartTotal', style: const TextStyle(color: Colors.tealAccent, fontSize: 18, fontWeight: FontWeight.bold)),
+                      Text('Ksh ${_cartTotal.toStringAsFixed(2)}', style: const TextStyle(color: Colors.tealAccent, fontSize: 18, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -303,7 +303,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
         backgroundColor: Colors.tealAccent,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.shopping_cart),
-        label: Text('Cart ($totalItems) - \$$_cartTotal', style: const TextStyle(fontWeight: FontWeight.bold)),
+        label: Text('Cart ($totalItems) - Ksh ${_cartTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
         onPressed: _showCartBottomSheet,
       ),
       body: Container(
@@ -336,20 +336,26 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         child: ListTile(
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: drug['image_url'] != null && drug['image_url'].toString().isNotEmpty
-                                ? Image.network(
-                                    drug['image_url'],
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
-                                  )
-                                : const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                          leading: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: drug['image_url'] != null && drug['image_url'].toString().isNotEmpty
+                                  ? Image.network(
+                                      drug['image_url'],
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                                    )
+                                  : const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                            ),
                           ),
                           title: Text(drug['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                          subtitle: Text('Price: \$${drug['price'] ?? 10.0}', style: const TextStyle(color: Colors.white54)),
+                          subtitle: Text('Price: Ksh ${drug['price'] != null ? (drug['price'] as num).toDouble().toStringAsFixed(2) : '10.00'}', style: const TextStyle(color: Colors.white54)),
                           trailing: IconButton(
                             icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
                             onPressed: () => _addToCart(drug),

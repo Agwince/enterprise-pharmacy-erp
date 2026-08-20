@@ -420,6 +420,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
+                const SizedBox(height: 10),
+
+                // Button 10: Rider
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsRider();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepOrangeAccent.withValues(alpha: 0.2),
+                    foregroundColor: Colors.deepOrangeAccent,
+                    side: const BorderSide(color: Colors.deepOrangeAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.two_wheeler_rounded, size: 18),
+                  label: Text(
+                    'Login as Rider (Dispatch)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
               ],
             ),
           ),

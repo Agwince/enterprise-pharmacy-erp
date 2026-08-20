@@ -12,6 +12,7 @@ enum UserRole {
   branchManager,
   telesales,
   secretary,
+  rider,
 }
 
 class AuthService extends ChangeNotifier {
@@ -88,6 +89,13 @@ class AuthService extends ChangeNotifier {
     _role = UserRole.secretary;
     _userEmail = 'secretary@pharmacy.com';
     _userName = 'Finance Secretary';
+    notifyListeners();
+  }
+
+  void loginAsRider() {
+    _role = UserRole.rider;
+    _userEmail = 'rider@pharmacy.com';
+    _userName = 'Motorbike Rider';
     notifyListeners();
   }
 

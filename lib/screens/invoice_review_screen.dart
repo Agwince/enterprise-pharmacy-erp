@@ -25,22 +25,10 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
     setState(() => _isSubmitting = true);
     try {
       final db = Supabase.instance.client;
-      final branches = await db.from('branches').select();
-      String? branchId;
-      for (var b in (branches as List)) {
-         if (b['name'].toString().toUpperCase().contains('NAIROBI')) {
-            branchId = b['id'];
-            break;
-         }
-      }
-      if (branchId == null && branches.isNotEmpty) {
-         branchId = branches[0]['id'];
-      }
       
       for (var item in widget.parsedItems) {
         if (item['id'] != null) {
           await db.from('transactions').insert({
-            'branch_id': branchId,
             'drug_id': item['id'],
             'transaction_type': 'receipt',
             'quantity': item['qty'],

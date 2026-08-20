@@ -95,13 +95,9 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
     setState(() => _isLoading = true);
     try {
       final db = Supabase.instance.client;
-      final branches = await db.from('branches').select();
-      String? branchId;
-      if (branches.isNotEmpty) branchId = branches[0]['id'];
 
       for (var item in _cart) {
         await db.from('transactions').insert({
-          'branch_id': branchId,
           'drug_id': item['id'],
           'transaction_type': 'sale',
           'quantity': item['qty'],

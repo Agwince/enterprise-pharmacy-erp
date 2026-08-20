@@ -62,7 +62,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
           'id': drug['id'],
           'name': drug['name'],
           'qty': 1,
-          'price': drug['price'] != null ? (drug['price'] as num).toDouble() : 10.0,
+          'price': drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0) : 0.0,
         });
       }
     });
@@ -347,7 +347,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: drug['image_url'] != null && drug['image_url'].toString().isNotEmpty
                                   ? Image.network(
-                                      drug['image_url'],
+                                      drug['image_url'].toString(),
                                       fit: BoxFit.cover,
                                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
                                     )
@@ -355,7 +355,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                             ),
                           ),
                           title: Text(drug['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                          subtitle: Text('Price: Ksh ${drug['price'] != null ? (drug['price'] as num).toDouble().toStringAsFixed(2) : '10.00'}', style: const TextStyle(color: Colors.white54)),
+                          subtitle: Text('Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}', style: const TextStyle(color: Colors.white54)),
                           trailing: IconButton(
                             icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
                             onPressed: () => _addToCart(drug),

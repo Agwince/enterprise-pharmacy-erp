@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../widgets/glass_container.dart';
 
 class SecretaryDashboardScreen extends StatefulWidget {
   const SecretaryDashboardScreen({super.key});
@@ -62,10 +63,10 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
+    return GradientScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text('Secretary Finance Board', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           IconButton(
@@ -74,7 +75,8 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
           ),
         ],
       ),
-      body: _isLoading
+      body: SafeArea(
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -84,12 +86,10 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
                 final status = tx['payment_status']?.toString().toUpperCase() ?? 'PENDING';
                 final isPaid = status == 'PAID';
                 
-                return Card(
-                  color: const Color(0xFF1E293B),
+                return GlassContainer(
                   margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
+                    contentPadding: EdgeInsets.zero,
                     title: Text(tx['client_name'] ?? 'Walk-in Client', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,6 +126,7 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
                 );
               },
             ),
+      ),
     );
   }
 }

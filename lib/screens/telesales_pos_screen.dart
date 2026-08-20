@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../widgets/glass_container.dart';
 
 class TelesalesPosScreen extends StatefulWidget {
   const TelesalesPosScreen({super.key});
@@ -283,10 +284,10 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   Widget build(BuildContext context) {
     int totalItems = _cart.fold(0, (sum, item) => sum + (item['qty'] as int));
     
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
+    return GradientScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text('Telesales POS', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           IconButton(
@@ -302,7 +303,8 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
         label: Text('Cart ($totalItems) - Ksh ${_cartTotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
         onPressed: _showCartBottomSheet,
       ),
-      body: Container(
+      body: SafeArea(
+        child: Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -315,7 +317,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                 hintStyle: const TextStyle(color: Colors.white54),
                 prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
                 filled: true,
-                fillColor: const Color(0xFF1E293B),
+                fillColor: Colors.white.withOpacity(0.08),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
               ),
             ),
@@ -327,10 +329,9 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                     itemCount: _filteredCatalog.length,
                     itemBuilder: (context, index) {
                       final drug = _filteredCatalog[index];
-                      return Card(
-                        color: const Color(0xFF1E293B),
+                      return GlassContainer(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.all(8),
                         child: ListTile(
                           leading: Container(
                             width: 50,
@@ -363,6 +364,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

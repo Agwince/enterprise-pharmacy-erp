@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../widgets/glass_container.dart';
 
 class RiderDispatchScreen extends StatefulWidget {
   const RiderDispatchScreen({super.key});
@@ -66,10 +67,10 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
+    return GradientScaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text('Rider Dispatch', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           IconButton(
@@ -78,7 +79,8 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
           ),
         ],
       ),
-      body: _isLoading
+      body: SafeArea(
+        child: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
           : _deliveries.isEmpty 
               ? Center(child: Text('No active deliveries.', style: GoogleFonts.inter(color: Colors.white54)))
@@ -88,12 +90,10 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                   itemBuilder: (context, index) {
                     final tx = _deliveries[index];
                     
-                    return Card(
-                      color: const Color(0xFF1E293B),
+                    return GlassContainer(
                       margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
+                        contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.motorcycle, color: Colors.tealAccent, size: 36),
                         title: Text(tx['client_name'] ?? 'Unknown Client', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
                         subtitle: Column(
@@ -114,6 +114,7 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                     );
                   },
                 ),
+      ),
     );
   }
 }

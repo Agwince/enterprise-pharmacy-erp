@@ -87,16 +87,15 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         spots.add(FlSpot(i.toDouble(), (dailySales[i] ?? 0.0) / 1000.0)); // In thousands
       }
 
-      // Fetch low stock items from inventory
-      final invRes = await db.from('inventory')
-          .select('quantity, drugs!inner(min_threshold)')
-          .eq('branch_id', branchId);
+      // Fetch low stock items from drugs directly since there is no inventory table and min_threshold
+      final invRes = await db.from('drugs')
+          .select('quantity_in_stock');
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {
-         final qty = (inv['quantity'] as num).toInt();
-         final min = (inv['drugs']['min_threshold'] as num).toInt();
-         if (qty < min) {
+         final qty = (inv['quantity_in_stock'] as num?)?.toInt() ?? 0;
+         // Hardcoded threshold since min_threshold doesn't exist
+         if (qty < 20) {
            lowStockCount++;
          }
       }

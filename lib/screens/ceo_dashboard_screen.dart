@@ -39,7 +39,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       
       // Fetch sales transactions with nested drug data
       final txRes = await db.from('transactions')
-          .select('*, drugs!inner(category, name, sku, bin_location)')
+          .select('*, drugs!inner(category, name, barcode, target_shelf)')
           .eq('transaction_type', 'sale');
       final transactions = txRes as List<dynamic>;
 
@@ -55,9 +55,9 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
         final drug = tx['drugs'] as Map<String, dynamic>;
         
         final category = drug['category'] as String? ?? 'Uncategorized';
-        final sku = drug['sku'] as String? ?? 'N/A';
+        final sku = drug['barcode'] as String? ?? 'N/A';
         final name = drug['name'] as String? ?? 'Unknown';
-        final bin = drug['bin_location'] as String? ?? 'N/A';
+        final bin = drug['target_shelf'] as String? ?? 'N/A';
         final price = (tx['unit_price'] as num).toDouble();
 
         total += amount;

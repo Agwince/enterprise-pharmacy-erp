@@ -126,15 +126,29 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
                           item['stock']!,
                           style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          item['status']!,
-                          style: GoogleFonts.inter(
-                            color: isCold ? Colors.cyanAccent : (isLow ? Colors.orangeAccent : Colors.tealAccent),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        const SizedBox(height: 4),
+                        if (isLow)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                            ),
+                            child: Text(
+                              'Expiry Check Required',
+                              style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else
+                          Text(
+                            item['status']!,
+                            style: GoogleFonts.inter(
+                              color: isCold ? Colors.cyanAccent : (isLow ? Colors.orangeAccent : Colors.tealAccent),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   );

@@ -18,6 +18,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   List<Map<String, dynamic>> _branchRevenues = [];
   Map<String, double> _categorySales = {};
   List<Map<String, dynamic>> _topDrugs = [];
+  List<Map<String, dynamic>> _liveActivities = [];
   double _totalRevenue = 0.0;
   int _totalTransactions = 0;
 
@@ -93,6 +94,22 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       final topDrugsList = drugSalesMap.values.toList();
       topDrugsList.sort((a, b) => (b['total_amount'] as double).compareTo(a['total_amount'] as double));
 
+      List<dynamic> sortedTx = List.from(transactions);
+      sortedTx.sort((a, b) {
+        final dateA = DateTime.tryParse(a['transaction_date'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = DateTime.tryParse(b['transaction_date'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA);
+      });
+      final recentActivities = sortedTx.take(10).map((tx) {
+        final amount = (tx['total_amount'] as num).toDouble();
+        final id = tx['id']?.toString().substring(0, 8) ?? 'Unknown';
+        return {
+          'id': id,
+          'amount': amount,
+          'date': tx['transaction_date'],
+        };
+      }).toList();
+
       if (mounted) {
         setState(() {
           _branchRevenues = branchRevenues;
@@ -100,6 +117,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           _totalTransactions = transactions.length;
           _categorySales = categorySales;
           _topDrugs = topDrugsList.take(5).toList();
+          _liveActivities = recentActivities;
           _isLoading = false;
         });
       }
@@ -411,6 +429,49 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                             }).toList(),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Live Activity Feed
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Live Activity Feed', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                        const SizedBox(height: 16),
+                        _liveActivities.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 32.0),
+                              child: Center(child: Text('No recent activity.', style: GoogleFonts.inter(color: Colors.white54, fontStyle: FontStyle.italic))),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _liveActivities.length,
+                              separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
+                              itemBuilder: (context, index) {
+                                final act = _liveActivities[index];
+                                return ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Colors.teal,
+                                    child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+                                  ),
+                                  title: Text('Transaction #${act['id']}', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  subtitle: Text('Completed at ${act['date'] != null ? act['date'].toString().substring(11, 16) : 'Unknown'}', style: GoogleFonts.inter(color: Colors.white54, fontSize: 12)),
+                                  trailing: Text('KES ${act['amount']}', style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                                );
+                              },
+                            ),
                       ],
                     ),
                   ),

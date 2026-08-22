@@ -19,8 +19,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
   double _dailyPettyCash = 0.0;
   List<Map<String, dynamic>> _ledgerEntries = [];
   
-  String _selectedBranch = 'All Branches';
-  final List<String> _branches = ['All Branches', 'Nairobi', 'Kisumu'];
+  String _selectedBranch = 'Nairobi'; // Branch Secretary is bound to their branch
 
   @override
   void initState() {
@@ -35,7 +34,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day).toIso8601String();
 
-      // Fetch daily revenue (could filter by branch too if needed, but the prompt says update imprest_ledger query)
+      // Fetch daily revenue
       var txQuery = db.from('transactions')
           .select('total_amount')
           .eq('transaction_type', 'sale')
@@ -51,11 +50,8 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
       // Fetch imprest ledger
       var ledgerQuery = db.from('imprest_ledger')
           .select()
-          .gte('created_at', startOfDay);
-          
-      if (_selectedBranch != 'All Branches') {
-        ledgerQuery = ledgerQuery.eq('branch', _selectedBranch);
-      }
+          .gte('created_at', startOfDay)
+          .eq('branch', _selectedBranch);
           
       final ledgerRes = await ledgerQuery.order('created_at', ascending: false);
           
@@ -89,7 +85,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
         'description': _descController.text,
         'amount': amount,
         'status': 'Approved',
-        'branch': _selectedBranch == 'All Branches' ? 'Nairobi' : _selectedBranch, // default to Nairobi if "All Branches" selected for insert
+        'branch': _selectedBranch,
       });
       _descController.clear();
       _amountController.clear();
@@ -104,7 +100,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
   Widget build(BuildContext context) {
     return GradientScaffold(
       appBar: AppBar(
-        title: Text('Central HR Global Ledger', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text('Branch Petty Cash', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -113,10 +109,8 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
-              // In this app AuthService().logout() is the canonical way to notify listeners.
-              // We'll also invoke that if possible or rely on the stream.
               if (context.mounted) {
-                 Navigator.of(context).popUntil((route) => route.isFirst);
+                 Navigator.of(context).pushReplacementNamed('/login');
               }
             },
           ),
@@ -130,33 +124,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Reconciliation Dashboard', style: GoogleFonts.inter(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
-                        DropdownButton<String>(
-                          value: _selectedBranch,
-                          dropdownColor: const Color(0xFF1E293B),
-                          style: const TextStyle(color: Colors.white),
-                          icon: const Icon(Icons.arrow_drop_down, color: Colors.tealAccent),
-                          underline: Container(height: 1, color: Colors.tealAccent),
-                          items: _branches.map((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            if (newValue != null) {
-                              setState(() {
-                                _selectedBranch = newValue;
-                              });
-                              _fetchData();
-                            }
-                          },
-                        ),
-                      ],
-                    ),
+                    Text('Reconciliation Dashboard', style: GoogleFonts.inter(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 16),
                     Row(
                       children: [

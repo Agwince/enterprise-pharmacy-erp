@@ -13,6 +13,69 @@ class AdminHrWorkspaceScreen extends StatefulWidget {
 
 class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
   final List<Map<String, dynamic>> _staffList = [];
+  
+  bool _isLoadingFinance = true;
+  double _dailyRevenue = 0.0;
+  double _dailyPettyCash = 0.0;
+  List<Map<String, dynamic>> _ledgerEntries = [];
+  
+  String _selectedFinanceBranch = 'All Branches';
+  final List<String> _financeBranches = const ['All Branches', 'Nairobi', 'Kisumu'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFinanceData();
+  }
+
+  Future<void> _fetchFinanceData() async {
+    setState(() => _isLoadingFinance = true);
+    try {
+      final db = Supabase.instance.client;
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day).toIso8601String();
+
+      var txQuery = db.from('transactions')
+          .select('total_amount')
+          .eq('transaction_type', 'sale')
+          .gte('transaction_date', startOfDay);
+          
+      final txRes = await txQuery;
+      
+      double rev = 0.0;
+      for (var tx in (txRes as List)) {
+        rev += (tx['total_amount'] as num).toDouble();
+      }
+
+      var ledgerQuery = db.from('imprest_ledger')
+          .select()
+          .gte('created_at', startOfDay);
+          
+      if (_selectedFinanceBranch != 'All Branches') {
+        ledgerQuery = ledgerQuery.eq('branch', _selectedFinanceBranch);
+      }
+          
+      final ledgerRes = await ledgerQuery.order('created_at', ascending: false);
+          
+      final ledger = ledgerRes as List<dynamic>;
+      double spent = 0.0;
+      for (var entry in ledger) {
+        spent += (entry['amount'] as num).toDouble();
+      }
+
+      if (mounted) {
+        setState(() {
+          _dailyRevenue = rev;
+          _dailyPettyCash = spent;
+          _ledgerEntries = List<Map<String, dynamic>>.from(ledger);
+          _isLoadingFinance = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error: $e');
+      if (mounted) setState(() => _isLoadingFinance = false);
+    }
+  }
 
   final List<String> _pharmacyRoles = const [
     // Executive
@@ -617,6 +680,112 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                       }).toList(),
                     ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Global Finance Ledger
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Global Finance Ledger',
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      DropdownButton<String>(
+                        value: _selectedFinanceBranch,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: GoogleFonts.inter(color: Colors.white),
+                        icon: const Icon(Icons.arrow_drop_down, color: Colors.tealAccent),
+                        underline: Container(height: 1, color: Colors.tealAccent),
+                        items: _financeBranches.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue != null) {
+                            setState(() {
+                              _selectedFinanceBranch = newValue;
+                            });
+                            _fetchFinanceData();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _isLoadingFinance
+                      ? const Center(child: CircularProgressIndicator())
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    const SizedBox(height: 8),
+                                    Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                 ],
               ),
             ),

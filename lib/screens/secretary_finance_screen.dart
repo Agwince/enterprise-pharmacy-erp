@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 import '../widgets/glass_container.dart';
 
 class SecretaryFinanceScreen extends StatefulWidget {
@@ -48,12 +49,11 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
       }
 
       // Fetch imprest ledger
-      var ledgerQuery = db.from('imprest_ledger')
+      final ledgerRes = await db.from('imprest_ledger')
           .select()
           .gte('created_at', startOfDay)
-          .eq('branch', _selectedBranch);
-          
-      final ledgerRes = await ledgerQuery.order('created_at', ascending: false);
+          .eq('branch', _selectedBranch)
+          .order('created_at', ascending: false);
           
       final ledger = ledgerRes as List<dynamic>;
       double spent = 0.0;
@@ -107,12 +107,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (context.mounted) {
-                 Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
+            onPressed: () => AuthService().logout(),
           ),
         ],
       ),

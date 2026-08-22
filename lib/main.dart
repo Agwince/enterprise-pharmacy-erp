@@ -15,7 +15,7 @@ import 'screens/storekeeper_home.dart';
 import 'screens/catalog_admin_home.dart';
 import 'screens/floor_worker_home.dart';
 import 'screens/telesales_pos_screen.dart';
-import 'screens/secretary_dashboard_screen.dart';
+import 'screens/secretary_finance_screen.dart';
 import 'screens/rider_dispatch_screen.dart';
 
 void main() async {
@@ -123,7 +123,7 @@ class StrictAuthRoleRouter extends StatelessWidget {
           case UserRole.telesales:
             return const TelesalesPosScreen();
           case UserRole.secretary:
-            return const SecretaryDashboardScreen();
+            return const SecretaryFinanceScreen();
           case UserRole.rider:
             return const RiderDispatchScreen();
           case UserRole.superAdmin:

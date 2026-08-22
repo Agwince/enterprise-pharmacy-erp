@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../widgets/glass_container.dart';
+import 'dispatch_map_screen.dart';
 
 class RiderDispatchScreen extends StatefulWidget {
   const RiderDispatchScreen({super.key});
@@ -73,6 +74,12 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
         elevation: 0,
         title: Text('Rider Dispatch', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.map, color: Colors.blueAccent),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const DispatchMapScreen()));
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: () => AuthService().logout(),

@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/glass_container.dart';
+import 'dispatch_map_screen.dart';
 
 class CeoDashboardScreen extends StatefulWidget {
   const CeoDashboardScreen({super.key});
@@ -197,6 +199,14 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
               onPressed: () => AuthService().logout(),
             ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const DispatchMapScreen()));
+        },
+        backgroundColor: Colors.blueAccent,
+        icon: const Icon(Icons.map, color: Colors.white),
+        label: Text('Live Fleet Map', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))

@@ -45,6 +45,7 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_tesseract_ocr: ^0.4.31
   http: ^1.6.0
+  google_maps_flutter: ^2.18.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

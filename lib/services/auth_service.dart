@@ -13,6 +13,7 @@ enum UserRole {
   telesales,
   secretary,
   rider,
+  marketer,
 }
 
 class AuthService extends ChangeNotifier {
@@ -99,6 +100,13 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  void loginAsMarketer() {
+    _role = UserRole.marketer;
+    _userEmail = 'marketer@pharmacy.com';
+    _userName = 'Field Marketer';
+    notifyListeners();
+  }
+
   Future<bool> signInWithEmailPassword(String email, String password) async {
     try {
       final response = await Supabase.instance.client.auth.signInWithPassword(
@@ -115,6 +123,9 @@ class AuthService extends ChangeNotifier {
                return true;
             } else if (dbRole == 'SECRETARY') {
                loginAsSecretary();
+               return true;
+            } else if (dbRole == 'MARKETER') {
+               loginAsMarketer();
                return true;
             }
           }

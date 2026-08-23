@@ -57,6 +57,9 @@ class _LoginScreenState extends State<LoginScreen> {
             case 'WAREHOUSE_PICKER':
               AuthService().loginAsWarehousePicker();
               break;
+            case 'MARKETER':
+              AuthService().loginAsMarketer();
+              break;
             default:
               if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unknown role in database.')));
               break;
@@ -424,6 +427,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: const Icon(Icons.two_wheeler_rounded, size: 18),
                   label: Text(
                     'Login as Rider (Dispatch)',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Button 11: Marketer
+                ElevatedButton.icon(
+                  onPressed: () {
+                    AuthService().loginAsMarketer();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.limeAccent.withOpacity(0.2),
+                    foregroundColor: Colors.limeAccent,
+                    side: const BorderSide(color: Colors.limeAccent, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.location_on_rounded, size: 18),
+                  label: Text(
+                    'Login as Marketer (Field Sales)',
                     style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),

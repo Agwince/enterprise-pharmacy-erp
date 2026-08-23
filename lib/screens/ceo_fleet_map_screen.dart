@@ -62,14 +62,9 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Inherits from parent shell or GradientScaffold
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => AiCopilotSheet.show(context),
-        backgroundColor: Colors.blueAccent,
-        child: const Icon(Icons.auto_awesome, color: Colors.white),
-      ),
+      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         title: Text('Live Fleet Tracking', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [

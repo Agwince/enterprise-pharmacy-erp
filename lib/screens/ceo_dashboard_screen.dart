@@ -6,6 +6,7 @@ import '../services/supabase_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/glass_container.dart';
 import 'ceo_fleet_map_screen.dart';
+import '../widgets/ai_copilot_sheet.dart';
 
 class CeoDashboardScreen extends StatefulWidget {
   const CeoDashboardScreen({super.key});
@@ -200,13 +201,27 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const CeoFleetMapScreen()));
-        },
-        backgroundColor: Colors.blueAccent,
-        icon: const Icon(Icons.map, color: Colors.white),
-        label: Text('Live Fleet Map', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'ai_copilot_fab',
+            onPressed: () => AiCopilotSheet.show(context),
+            backgroundColor: Colors.tealAccent,
+            child: const Icon(Icons.auto_awesome, color: Colors.black),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton.extended(
+            heroTag: 'live_fleet_fab',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const CeoFleetMapScreen()));
+            },
+            backgroundColor: Colors.blueAccent,
+            icon: const Icon(Icons.map, color: Colors.white),
+            label: Text('Live Fleet Map', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))

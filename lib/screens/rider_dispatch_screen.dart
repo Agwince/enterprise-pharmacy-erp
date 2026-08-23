@@ -25,43 +25,42 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
   Future<void> _fetchDeliveries() async {
     try {
       final res = await Supabase.instance.client
-          .from('transactions')
+          .from('deliveries')
           .select()
-          .eq('transaction_type', 'sale')
+          .neq('status', 'Delivered')
           .order('created_at', ascending: false)
           .limit(50);
           
-      // Filter out delivered ones locally to avoid schema issues if delivery_status doesn't exist
-      final filtered = (res as List).where((tx) => tx['payment_status']?.toString().toUpperCase() != 'DELIVERED').toList();
-          
       setState(() {
-        _deliveries = List<Map<String, dynamic>>.from(filtered);
+        _deliveries = List<Map<String, dynamic>>.from(res as List);
         _isLoading = false;
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading deliveries: ')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading deliveries: ${e.toString()}')));
         setState(() => _isLoading = false);
       }
     }
   }
 
-  Future<void> _markAsDelivered(String id) async {
+  Future<void> _updateDeliveryStatus(String id, String status) async {
     try {
-      // Repurposing payment_status to avoid schema issues, or just updating to indicate completion
       await Supabase.instance.client
-          .from('transactions')
-          .update({'payment_status': 'DELIVERED'})
+          .from('deliveries')
+          .update({'status': status})
           .eq('id', id);
           
       _fetchDeliveries();
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as Delivered!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Delivery marked as $status!', style: const TextStyle(color: Colors.white)),
+          backgroundColor: Colors.green,
+        ));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: '), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.red));
       }
     }
   }
@@ -97,25 +96,122 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                   itemBuilder: (context, index) {
                     final tx = _deliveries[index];
                     
-                    return GlassContainer(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.motorcycle, color: Colors.tealAccent, size: 36),
-                        title: Text(tx['client_name'] ?? 'Unknown Client', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                        subtitle: Column(
+                    return Card(
+                      color: const Color(0xFF1E293B),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.white.withOpacity(0.08)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.motorcycle, color: Colors.tealAccent, size: 28),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      tx['customer_name'] ?? 'Unknown Customer',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: (tx['status'] == 'In Transit') ? Colors.blue.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: (tx['status'] == 'In Transit') ? Colors.blueAccent : Colors.orangeAccent,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tx['status'] ?? 'Pending',
+                                    style: TextStyle(
+                                      color: (tx['status'] == 'In Transit') ? Colors.blueAccent : Colors.orangeAccent,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: Colors.redAccent, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(child: Text(tx['delivery_address'] ?? 'No address provided', style: const TextStyle(color: Colors.white70, fontSize: 14))),
+                              ],
+                            ),
                             const SizedBox(height: 8),
-                            Text('Invoice: #', style: const TextStyle(color: Colors.white54, fontSize: 14)),
-                            const SizedBox(height: 4),
-                            Text('Payment: ', style: TextStyle(color: tx['payment_status'] == 'PAID' ? Colors.green : Colors.orange, fontSize: 14)),
+                            Row(
+                              children: [
+                                const Icon(Icons.phone, color: Colors.greenAccent, size: 16),
+                                const SizedBox(width: 8),
+                                Text(tx['customer_phone'] ?? 'No phone', style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.receipt_long, color: Colors.white54, size: 16),
+                                const SizedBox(width: 8),
+                                Text('Order Ref: ${tx['order_reference'] ?? 'N/A'}', style: const TextStyle(color: Colors.white54, fontSize: 14)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Divider(color: Colors.white.withOpacity(0.1)),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Amount Due', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'KES ${tx['amount_due'] ?? 0}',
+                                      style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    if (tx['status'] == 'Pending Dispatch' || tx['status'] == null)
+                                      ElevatedButton(
+                                        onPressed: () => _updateDeliveryStatus(tx['id'].toString(), 'In Transit'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blueAccent,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        child: const Text('Accept Dispatch'),
+                                      ),
+                                    if (tx['status'] == 'In Transit' || tx['status'] == 'Pending Dispatch') ...[
+                                      if (tx['status'] == 'Pending Dispatch' || tx['status'] == null)
+                                        const SizedBox(width: 8),
+                                      ElevatedButton(
+                                        onPressed: () => _updateDeliveryStatus(tx['id'].toString(), 'Delivered'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        child: const Text('Mark Delivered'),
+                                      ),
+                                    ]
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
-                        ),
-                        trailing: ElevatedButton(
-                          onPressed: () => _markAsDelivered(tx['id'].toString()),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent, foregroundColor: Colors.black),
-                          child: const Text('Mark Delivered'),
                         ),
                       ),
                     );

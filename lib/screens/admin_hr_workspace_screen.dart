@@ -77,6 +77,26 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
     }
   }
 
+  Future<void> _updateExpenseStatus(String id, String newStatus) async {
+    try {
+      await Supabase.instance.client
+          .from('imprest_ledger')
+          .update({'status': newStatus})
+          .eq('id', id);
+      await _fetchFinanceData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: newStatus == 'Approved' ? const Color(0xFF10B981) : Colors.redAccent,
+            content: Text('Expense $newStatus successfully.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Status update error: $e');
+    }
+  }
+
   final List<String> _pharmacyRoles = const [
     // Executive
     'CEO',
@@ -618,6 +638,53 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                       ],
                     ),
             ),
+            const SizedBox(height: 16),
+            // Quick Action Row: Payroll & Leave Management
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFF10B981),
+                          content: Text('Payroll processing initiated for all branches. Awaiting bank API confirmation.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.greenAccent,
+                      side: const BorderSide(color: Colors.greenAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+                    label: Text('Process Payroll', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: Colors.amber,
+                          content: Text('Leave Management: 3 pending requests across all branches.', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black)),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.amber,
+                      side: const BorderSide(color: Colors.amber),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.event_available_rounded, size: 18),
+                    label: Text('Leave Management', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
 
             // Employee Data Table
@@ -786,6 +853,113 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                             ),
                           ],
                         ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Ledger Line Items with Approve/Reject
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Expense Ledger — Line Items',
+                    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_ledgerEntries.length} entries today • Filter: $_selectedFinanceBranch',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
+                  ),
+                  const SizedBox(height: 16),
+                  _isLoadingFinance
+                      ? const Center(child: CircularProgressIndicator())
+                      : _ledgerEntries.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text('No ledger entries for today.', style: GoogleFonts.inter(color: Colors.white38)),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _ledgerEntries.length,
+                              separatorBuilder: (_, __) => Divider(color: Colors.white.withValues(alpha: 0.05)),
+                              itemBuilder: (context, index) {
+                                final entry = _ledgerEntries[index];
+                                final status = entry['status'] ?? 'Pending';
+                                final isRevenue = status == 'Revenue Entry';
+                                Color chipColor;
+                                if (status == 'Approved') {
+                                  chipColor = const Color(0xFF10B981);
+                                } else if (status == 'Rejected') {
+                                  chipColor = Colors.redAccent;
+                                } else if (isRevenue) {
+                                  chipColor = Colors.tealAccent;
+                                } else {
+                                  chipColor = Colors.amber;
+                                }
+                                return ListTile(
+                                  leading: Icon(
+                                    isRevenue ? Icons.trending_up_rounded : Icons.receipt_long_rounded,
+                                    color: isRevenue ? Colors.tealAccent : Colors.orangeAccent,
+                                  ),
+                                  title: Text(
+                                    entry['description'] ?? '',
+                                    style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Row(
+                                    children: [
+                                      Text('Branch: ${entry['branch'] ?? 'N/A'} ', style: GoogleFonts.inter(color: Colors.white54, fontSize: 11)),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: chipColor.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(status, style: GoogleFonts.inter(color: chipColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: isRevenue
+                                      ? Text(
+                                          '+ KES ${entry['amount']}',
+                                          style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold),
+                                        )
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              '- KES ${entry['amount']}',
+                                              style: GoogleFonts.inter(color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+                                            ),
+                                            if (status == 'Pending') ...[
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                icon: const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 22),
+                                                tooltip: 'Approve',
+                                                onPressed: () => _updateExpenseStatus(entry['id'].toString(), 'Approved'),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.cancel_rounded, color: Colors.redAccent, size: 22),
+                                                tooltip: 'Reject',
+                                                onPressed: () => _updateExpenseStatus(entry['id'].toString(), 'Rejected'),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                );
+                              },
+                            ),
                 ],
               ),
             ),

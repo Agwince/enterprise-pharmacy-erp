@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/ai_copilot_sheet.dart';
 
 class CeoFleetMapScreen extends StatefulWidget {
   const CeoFleetMapScreen({super.key});
@@ -62,6 +63,11 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent, // Inherits from parent shell or GradientScaffold
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => AiCopilotSheet.show(context),
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.auto_awesome, color: Colors.white),
+      ),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

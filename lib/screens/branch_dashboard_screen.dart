@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../widgets/ai_copilot_sheet.dart';
 
 class BranchDashboardScreen extends StatefulWidget {
   const BranchDashboardScreen({super.key});
@@ -175,7 +176,12 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
-      body: _isLoading 
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => AiCopilotSheet.show(context),
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.auto_awesome, color: Colors.white),
+      ),
+      body: _isLoading
         ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
         : SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),

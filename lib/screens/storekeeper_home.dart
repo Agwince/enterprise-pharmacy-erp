@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import 'storekeeper_scanner_screen.dart';
 import 'store_mapping_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StorekeeperHome extends StatefulWidget {
   const StorekeeperHome({super.key});
@@ -14,6 +15,76 @@ class StorekeeperHome extends StatefulWidget {
 
 class _StorekeeperHomeState extends State<StorekeeperHome> {
   final ImagePicker _imagePicker = ImagePicker();
+  List<Map<String, dynamic>> _pendingRequisitions = [];
+  bool _isLoadingRequisitions = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRequisitions();
+  }
+
+  Future<void> _fetchRequisitions() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('internal_requisitions')
+          .select()
+          .eq('status', 'Pending')
+          .order('created_at', ascending: true);
+          
+      if (mounted) {
+        setState(() {
+          _pendingRequisitions = List<Map<String, dynamic>>.from(res as List);
+          _isLoadingRequisitions = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingRequisitions = false);
+      }
+    }
+  }
+
+  Future<void> _approveRequisition(Map<String, dynamic> req) async {
+    try {
+      final db = Supabase.instance.client;
+      await db.from('internal_requisitions').update({'status': 'Completed'}).eq('id', req['id']);
+      
+      // Update inventory based on item_name matching a drug
+      // deduct from store_quantity, add to pharmacy_quantity
+      final drugRes = await db.from('drugs').select('id, store_quantity, pharmacy_quantity').eq('name', req['item_name']).maybeSingle();
+      if (drugRes != null) {
+        final int currentStore = drugRes['store_quantity'] ?? 0;
+        final int currentPharm = drugRes['pharmacy_quantity'] ?? 0;
+        final int reqQty = (req['quantity_requested'] as num).toInt();
+        
+        await db.from('drugs').update({
+          'store_quantity': currentStore - reqQty,
+          'pharmacy_quantity': currentPharm + reqQty
+        }).eq('id', drugRes['id']);
+      }
+
+      _showSnackbar('Requisition Approved & Stock Transferred', Colors.green);
+      _fetchRequisitions();
+    } catch (e) {
+      _showSnackbar('Error approving: $e', Colors.redAccent);
+    }
+  }
+
+  Future<void> _rejectRequisition(Map<String, dynamic> req) async {
+    try {
+      await Supabase.instance.client.from('internal_requisitions').update({'status': 'Rejected'}).eq('id', req['id']);
+      _showSnackbar('Requisition Rejected', Colors.orange);
+      _fetchRequisitions();
+    } catch (e) {
+      _showSnackbar('Error rejecting: $e', Colors.redAccent);
+    }
+  }
+
+  void _showSnackbar(String msg, Color color) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: color));
+  }
 
   Future<void> _captureInvoice() async {
     try {
@@ -201,6 +272,57 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                 style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
+            const SizedBox(height: 32),
+            Text(
+              'Pending Pharmacy Requisitions',
+              style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (_isLoadingRequisitions)
+              const Center(child: CircularProgressIndicator(color: Colors.amberAccent))
+            else if (_pendingRequisitions.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text('No pending requests', style: GoogleFonts.inter(color: Colors.white54)),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _pendingRequisitions.length,
+                itemBuilder: (context, index) {
+                  final req = _pendingRequisitions[index];
+                  return Card(
+                    color: const Color(0xFF1E293B),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      title: Text(req['item_name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      subtitle: Text('Quantity Requested: ${req['quantity_requested']}', style: const TextStyle(color: Colors.amberAccent)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.check_circle, color: Colors.greenAccent),
+                            tooltip: 'Approve & Transfer',
+                            onPressed: () => _approveRequisition(req),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.cancel, color: Colors.redAccent),
+                            tooltip: 'Reject',
+                            onPressed: () => _rejectRequisition(req),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
           ],
         ),
       ),

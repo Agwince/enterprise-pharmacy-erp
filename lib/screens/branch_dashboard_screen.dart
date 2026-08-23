@@ -18,6 +18,10 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   int _pendingOrders = 0;
   List<Map<String, dynamic>> _transactions = [];
   List<FlSpot> _chartSpots = [];
+  
+  final TextEditingController _reqItemController = TextEditingController();
+  final TextEditingController _reqQtyController = TextEditingController();
+  List<Map<String, dynamic>> _myRequisitions = [];
 
   @override
   void initState() {
@@ -108,6 +112,12 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           
       final pendingCount = (poRes as List).length;
 
+      // Fetch active internal requisitions
+      final reqRes = await db.from('internal_requisitions')
+          .select()
+          .eq('requested_by_role', 'Pharmacist')
+          .order('created_at', ascending: false);
+
       if (mounted) {
         setState(() {
           _todayRevenue = todayRev;
@@ -115,6 +125,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           _pendingOrders = pendingCount;
           _transactions = recentTx;
           _chartSpots = spots;
+          _myRequisitions = List<Map<String, dynamic>>.from(reqRes as List);
           _isLoading = false;
         });
       }
@@ -124,6 +135,34 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(content: Text('Failed to load live data: $e'), backgroundColor: Colors.redAccent)
         );
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _submitRequisition() async {
+    if (_reqItemController.text.isEmpty || _reqQtyController.text.isEmpty) return;
+    
+    final qty = double.tryParse(_reqQtyController.text) ?? 0.0;
+    if (qty <= 0) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await Supabase.instance.client.from('internal_requisitions').insert({
+        'item_name': _reqItemController.text,
+        'quantity_requested': qty,
+        'status': 'Pending',
+        'requested_by_role': 'Pharmacist'
+      });
+      _reqItemController.clear();
+      _reqQtyController.clear();
+      await _loadDashboardData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Requisition submitted to Warehouse', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent));
         setState(() => _isLoading = false);
       }
     }
@@ -221,11 +260,110 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               },
             ),
             const SizedBox(height: 24),
+            _buildInternalRequisitionModule(),
+            const SizedBox(height: 24),
             _buildChartCard(),
             const SizedBox(height: 24),
             _buildTransactionsCard(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInternalRequisitionModule() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Internal Stock Requisition', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _reqItemController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Item Name',
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 1,
+                child: TextField(
+                  controller: _reqQtyController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Quantity Needed',
+                    labelStyle: const TextStyle(color: Colors.white54),
+                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _submitRequisition,
+                icon: const Icon(Icons.send_rounded, size: 18),
+                label: const Text('Request from Warehouse'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.tealAccent,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                ),
+              ),
+            ],
+          ),
+          if (_myRequisitions.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text('Active Requests', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _myRequisitions.length,
+              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              itemBuilder: (context, index) {
+                final req = _myRequisitions[index];
+                final status = req['status'] ?? 'Pending';
+                final isApproved = status == 'Completed';
+                final isRejected = status == 'Rejected';
+                
+                Color statusColor = Colors.orangeAccent;
+                if (isApproved) statusColor = Colors.greenAccent;
+                if (isRejected) statusColor = Colors.redAccent;
+
+                return ListTile(
+                  leading: Icon(isApproved ? Icons.check_circle : (isRejected ? Icons.cancel : Icons.pending), color: statusColor),
+                  title: Text(req['item_name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text('Requested: ${req['quantity_requested']}', style: const TextStyle(color: Colors.white54)),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                    ),
+                    child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
       ),
     );
   }

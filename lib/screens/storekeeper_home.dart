@@ -16,6 +16,7 @@ class StorekeeperHome extends StatefulWidget {
 class _StorekeeperHomeState extends State<StorekeeperHome> {
   final ImagePicker _imagePicker = ImagePicker();
   List<Map<String, dynamic>> _pendingRequisitions = [];
+  List<Map<String, dynamic>> _liveStock = [];
   bool _isLoadingRequisitions = true;
 
   @override
@@ -26,15 +27,21 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
 
   Future<void> _fetchRequisitions() async {
     try {
-      final res = await Supabase.instance.client
+      final db = Supabase.instance.client;
+      final res = await db
           .from('internal_requisitions')
           .select()
           .eq('status', 'Pending')
           .order('created_at', ascending: true);
           
+      final stockRes = await db
+          .from('drugs')
+          .select('name, store_quantity, pharmacy_quantity');
+          
       if (mounted) {
         setState(() {
           _pendingRequisitions = List<Map<String, dynamic>>.from(res as List);
+          _liveStock = List<Map<String, dynamic>>.from(stockRes as List);
           _isLoadingRequisitions = false;
         });
       }
@@ -323,8 +330,51 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                   );
                 },
               ),
+            const SizedBox(height: 32),
+            _buildLiveSplitInventoryView(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLiveSplitInventoryView() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Live Stock Locations', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          if (_liveStock.isEmpty)
+            Center(child: Text('No stock data available', style: GoogleFonts.inter(color: Colors.white54)))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _liveStock.length,
+              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              itemBuilder: (context, index) {
+                final stock = _liveStock[index];
+                return ListTile(
+                  leading: const Icon(Icons.warehouse_rounded, color: Colors.amberAccent),
+                  title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Row(
+                    children: [
+                      Text('On Shelf (Pharmacy): ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(width: 16),
+                      Text('In Warehouse (Store): ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
       ),
     );
   }

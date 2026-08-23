@@ -22,6 +22,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   final TextEditingController _reqItemController = TextEditingController();
   final TextEditingController _reqQtyController = TextEditingController();
   List<Map<String, dynamic>> _myRequisitions = [];
+  List<Map<String, dynamic>> _liveStock = [];
 
   @override
   void initState() {
@@ -93,7 +94,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
 
       // Fetch low stock items from drugs directly since there is no inventory table and min_threshold
       final invRes = await db.from('drugs')
-          .select('quantity_in_stock');
+          .select('name, quantity_in_stock, store_quantity, pharmacy_quantity');
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {
@@ -126,6 +127,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           _transactions = recentTx;
           _chartSpots = spots;
           _myRequisitions = List<Map<String, dynamic>>.from(reqRes as List);
+          _liveStock = List<Map<String, dynamic>>.from(invRes as List);
           _isLoading = false;
         });
       }
@@ -262,6 +264,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
             const SizedBox(height: 24),
             _buildInternalRequisitionModule(),
             const SizedBox(height: 24),
+            _buildLiveSplitInventoryView(),
+            const SizedBox(height: 24),
             _buildChartCard(),
             const SizedBox(height: 24),
             _buildTransactionsCard(),
@@ -287,7 +291,6 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           Row(
             children: [
               Expanded(
-                flex: 2,
                 child: TextField(
                   controller: _reqItemController,
                   style: const TextStyle(color: Colors.white),
@@ -299,9 +302,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               Expanded(
-                flex: 1,
                 child: TextField(
                   controller: _reqQtyController,
                   keyboardType: TextInputType.number,
@@ -314,7 +316,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: _submitRequisition,
                 icon: const Icon(Icons.send_rounded, size: 18),
@@ -363,6 +365,47 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               },
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveSplitInventoryView() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Live Stock Locations', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          if (_liveStock.isEmpty)
+            Center(child: Text('No stock data available', style: GoogleFonts.inter(color: Colors.white54)))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _liveStock.length,
+              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              itemBuilder: (context, index) {
+                final stock = _liveStock[index];
+                return ListTile(
+                  leading: const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent),
+                  title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Row(
+                    children: [
+                      Text('On Shelf (Pharmacy): ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(width: 16),
+                      Text('In Warehouse (Store): ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                    ],
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

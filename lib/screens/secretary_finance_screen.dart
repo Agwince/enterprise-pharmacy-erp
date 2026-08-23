@@ -14,12 +14,20 @@ class SecretaryFinanceScreen extends StatefulWidget {
 class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
   final _descController = TextEditingController();
   final _amountController = TextEditingController();
-  final _revenueController = TextEditingController();
+  
+  final _cashController = TextEditingController();
+  final _mpesaController = TextEditingController();
+  
+  final _checkNumberController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _checkAmountController = TextEditingController();
 
   bool _isLoading = true;
   double _dailyRevenue = 0.0;
   double _dailyPettyCash = 0.0;
   List<Map<String, dynamic>> _ledgerEntries = [];
+  
+  final List<Map<String, dynamic>> _checksList = [];
 
   final String _selectedBranch = 'Nairobi';
 
@@ -97,30 +105,59 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
     }
   }
 
-  Future<void> _submitDailyRevenue() async {
-    if (_revenueController.text.isEmpty) return;
+  void _addCheck() {
+    if (_checkNumberController.text.isEmpty || _bankNameController.text.isEmpty || _checkAmountController.text.isEmpty) return;
+    final amount = double.tryParse(_checkAmountController.text) ?? 0.0;
+    if (amount <= 0) return;
+    
+    setState(() {
+      _checksList.add({
+        'checkNumber': _checkNumberController.text,
+        'bankName': _bankNameController.text,
+        'amount': amount,
+      });
+      _checkNumberController.clear();
+      _bankNameController.clear();
+      _checkAmountController.clear();
+    });
+  }
+
+  Future<void> _submitEodReconciliation() async {
+    final cash = double.tryParse(_cashController.text) ?? 0.0;
+    final mpesa = double.tryParse(_mpesaController.text) ?? 0.0;
+    double checksTotal = _checksList.fold(0.0, (sum, check) => sum + (check['amount'] as double));
+    
+    final grandTotal = cash + mpesa + checksTotal;
+    
+    if (grandTotal <= 0) return;
 
     setState(() => _isLoading = true);
     try {
-      final amount = double.tryParse(_revenueController.text) ?? 0.0;
+      // Mock submitting the grand total to imprest_ledger as a Revenue Entry
       await Supabase.instance.client.from('imprest_ledger').insert({
-        'description': 'End of Day Revenue Entry',
-        'amount': amount,
+        'description': 'EOD Declaration (Cash: $cash, M-Pesa: $mpesa, Checks: $checksTotal)',
+        'amount': grandTotal,
         'status': 'Revenue Entry',
         'branch': _selectedBranch,
       });
-      _revenueController.clear();
+      
+      _cashController.clear();
+      _mpesaController.clear();
+      setState(() {
+        _checksList.clear();
+      });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF10B981),
-            content: Text('Daily revenue of KES ${amount.toStringAsFixed(2)} submitted.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            content: Text('EOD Reconciliation of KES ${grandTotal.toStringAsFixed(2)} submitted successfully.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
           ),
         );
       }
       await _fetchData();
     } catch (e) {
-      debugPrint('Revenue submit error: $e');
+      debugPrint('EOD submit error: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -145,152 +182,253 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
             ? const Center(child: CircularProgressIndicator())
             : Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- Summary Cards ---
-                    Text('Reconciliation Dashboard', style: GoogleFonts.inter(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GlassContainer(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70)),
-                                const SizedBox(height: 8),
-                                Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: GlassContainer(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70)),
-                                const SizedBox(height: 8),
-                                Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: GlassContainer(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70)),
-                                const SizedBox(height: 8),
-                                Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // --- End of Day Revenue Entry ---
-                    Text('End of Day Revenue Entry', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    GlassContainer(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
+                child: CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.point_of_sale_rounded, color: Colors.tealAccent),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: _revenueController,
-                              style: const TextStyle(color: Colors.white),
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Total Daily Sales (KES)',
-                                labelStyle: TextStyle(color: Colors.white70),
-                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                          // --- Summary Cards ---
+                          Text('Reconciliation Dashboard', style: GoogleFonts.inter(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70)),
+                                      const SizedBox(height: 8),
+                                      Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
                               ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70)),
+                                      const SizedBox(height: 8),
+                                      Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: GlassContainer(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70)),
+                                      const SizedBox(height: 8),
+                                      Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+
+                          // --- End-of-Day Till Declaration ---
+                          Text('End-of-Day Till Declaration', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          GlassContainer(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _cashController,
+                                        style: const TextStyle(color: Colors.white),
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Physical Cash on Hand (KES)',
+                                          labelStyle: TextStyle(color: Colors.white70),
+                                          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                                          prefixIcon: Icon(Icons.money, color: Colors.tealAccent),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _mpesaController,
+                                        style: const TextStyle(color: Colors.white),
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'M-Pesa Till Balance (KES)',
+                                          labelStyle: TextStyle(color: Colors.white70),
+                                          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                          focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
+                                          prefixIcon: Icon(Icons.phone_android, color: Colors.greenAccent),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                Text('Physical Checks Log', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: _checkNumberController,
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Check Number',
+                                          isDense: true,
+                                          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: _bankNameController,
+                                        style: const TextStyle(color: Colors.white),
+                                        decoration: const InputDecoration(
+                                          labelText: 'Bank Name',
+                                          isDense: true,
+                                          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: _checkAmountController,
+                                        style: const TextStyle(color: Colors.white),
+                                        keyboardType: TextInputType.number,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Amount (KES)',
+                                          isDense: true,
+                                          enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: _addCheck,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blueAccent,
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                      ),
+                                      child: const Icon(Icons.add, color: Colors.white),
+                                    ),
+                                  ],
+                                ),
+                                if (_checksList.isNotEmpty) ...[
+                                  const SizedBox(height: 16),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: _checksList.length,
+                                    itemBuilder: (context, index) {
+                                      final check = _checksList[index];
+                                      return ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.account_balance, color: Colors.blueAccent),
+                                        title: Text('${check['bankName']} - #${check['checkNumber']}', style: const TextStyle(color: Colors.white)),
+                                        trailing: Text('KES ${check['amount']}', style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold)),
+                                      );
+                                    },
+                                  ),
+                                ],
+                                const SizedBox(height: 24),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _submitEodReconciliation,
+                                    icon: const Icon(Icons.upload_rounded, size: 18),
+                                    label: Text('Submit EOD Reconciliation', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.tealAccent,
+                                      foregroundColor: Colors.black,
+                                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          ElevatedButton.icon(
-                            onPressed: _submitDailyRevenue,
-                            icon: const Icon(Icons.upload_rounded, size: 18),
-                            label: Text('Submit Daily Revenue', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.tealAccent,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                          const SizedBox(height: 32),
+
+                          // --- Petty Cash Expense Entry ---
+                          Text('Record Petty Cash Expense', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
+                          GlassContainer(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: TextField(
+                                    controller: _descController,
+                                    style: const TextStyle(color: Colors.white),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Description',
+                                      labelStyle: TextStyle(color: Colors.white70),
+                                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.orangeAccent)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 1,
+                                  child: TextField(
+                                    controller: _amountController,
+                                    style: const TextStyle(color: Colors.white),
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Amount (KES)',
+                                      labelStyle: TextStyle(color: Colors.white70),
+                                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.orangeAccent)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                ElevatedButton.icon(
+                                  onPressed: _submitExpense,
+                                  icon: const Icon(Icons.add_rounded, size: 18),
+                                  label: Text('Add Expense', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orangeAccent,
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          const SizedBox(height: 32),
+
+                          // --- Today's Ledger ---
+                          Text('Today\'s Ledger', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 12),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // --- Petty Cash Expense Entry ---
-                    Text('Record Petty Cash Expense', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    GlassContainer(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: TextField(
-                              controller: _descController,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                labelText: 'Description',
-                                labelStyle: TextStyle(color: Colors.white70),
-                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.orangeAccent)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            flex: 1,
-                            child: TextField(
-                              controller: _amountController,
-                              style: const TextStyle(color: Colors.white),
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Amount (KES)',
-                                labelStyle: TextStyle(color: Colors.white70),
-                                enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.orangeAccent)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton.icon(
-                            onPressed: _submitExpense,
-                            icon: const Icon(Icons.add_rounded, size: 18),
-                            label: Text('Add Expense', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orangeAccent,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // --- Today's Ledger ---
-                    Text('Today\'s Ledger', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    Expanded(
+                    SliverFillRemaining(
+                      hasScrollBody: true,
                       child: GlassContainer(
                         padding: const EdgeInsets.all(12),
                         child: ListView.separated(

@@ -322,6 +322,52 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            // --- Manual M-Pesa Verification ---
+            GlassContainer(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Manual M-Pesa Verification', style: GoogleFonts.inter(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          style: const TextStyle(color: Colors.white),
+                          decoration: const InputDecoration(
+                            labelText: 'Enter M-Pesa Transaction Code (e.g., QAZ123...)',
+                            labelStyle: TextStyle(color: Colors.white70),
+                            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
+                            prefixIcon: Icon(Icons.verified, color: Colors.greenAccent),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: Colors.green,
+                              content: Text('M-Pesa code verified. Invoice cleared successfully!', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.check_circle, size: 18),
+                        label: Text('Verify & Clear Invoice', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Expanded(
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))

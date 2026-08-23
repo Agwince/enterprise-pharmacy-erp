@@ -133,14 +133,36 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
 
     setState(() => _isLoading = true);
     try {
-      // Mock submitting the grand total to imprest_ledger as a Revenue Entry
-      await Supabase.instance.client.from('imprest_ledger').insert({
+      final db = Supabase.instance.client;
+      
+      // Insert into eod_declarations
+      final declarationRes = await db.from('eod_declarations').insert({
+        'branch': _selectedBranch,
+        'physical_cash': cash,
+        'mpesa_till_balance': mpesa,
+      }).select('id').single();
+      
+      final declarationId = declarationRes['id'];
+
+      // Insert checks if any
+      if (_checksList.isNotEmpty) {
+        final checksToInsert = _checksList.map((check) => {
+          'declaration_id': declarationId,
+          'check_number': check['checkNumber'],
+          'bank_name': check['bankName'],
+          'amount': check['amount'],
+        }).toList();
+        
+        await db.from('bank_checks').insert(checksToInsert);
+      }
+
+      // Also submit to imprest_ledger to keep the UI showing the total revenue
+      await db.from('imprest_ledger').insert({
         'description': 'EOD Declaration (Cash: $cash, M-Pesa: $mpesa, Checks: $checksTotal)',
         'amount': grandTotal,
         'status': 'Revenue Entry',
         'branch': _selectedBranch,
       });
-      
       _cashController.clear();
       _mpesaController.clear();
       setState(() {

@@ -18,6 +18,51 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _clientController = TextEditingController();
+  final TextEditingController _mpesaVerificationController = TextEditingController();
+
+  Future<void> _verifyMpesaPayment() async {
+    final code = _mpesaVerificationController.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final record = await Supabase.instance.client
+          .from('mpesa_transactions')
+          .select()
+          .eq('transaction_code', code)
+          .maybeSingle();
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (record != null) {
+          _mpesaVerificationController.clear();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('M-Pesa code verified. Invoice cleared successfully!', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text('Invalid or Unmatched M-Pesa Code', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('Error: $e', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -334,6 +379,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                     children: [
                       Expanded(
                         child: TextField(
+                          controller: _mpesaVerificationController,
                           style: const TextStyle(color: Colors.white),
                           decoration: const InputDecoration(
                             labelText: 'Enter M-Pesa Transaction Code (e.g., QAZ123...)',
@@ -346,14 +392,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                       ),
                       const SizedBox(width: 12),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: Colors.green,
-                              content: Text('M-Pesa code verified. Invoice cleared successfully!', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                            ),
-                          );
-                        },
+                        onPressed: _verifyMpesaPayment,
                         icon: const Icon(Icons.check_circle, size: 18),
                         label: Text('Verify & Clear Invoice', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(

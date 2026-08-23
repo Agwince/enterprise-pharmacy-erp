@@ -23,6 +23,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   final TextEditingController _reqQtyController = TextEditingController();
   List<Map<String, dynamic>> _myRequisitions = [];
   List<Map<String, dynamic>> _liveStock = [];
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -94,7 +95,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
 
       // Fetch low stock items from drugs directly since there is no inventory table and min_threshold
       final invRes = await db.from('drugs')
-          .select('name, quantity_in_stock, store_quantity, pharmacy_quantity');
+          .select('id, name, quantity_in_stock, store_quantity, pharmacy_quantity, image_url');
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {
@@ -288,35 +289,38 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         children: [
           Text('Internal Stock Requisition', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _reqItemController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Item Name',
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+          Form(
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: _reqItemController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Item Name',
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _reqQtyController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: 'Quantity Needed',
-                    labelStyle: const TextStyle(color: Colors.white54),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
-                    focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: _reqQtyController,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Quantity Needed',
+                      labelStyle: const TextStyle(color: Colors.white54),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
+                const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: _submitRequisition,
                 icon: const Icon(Icons.send_rounded, size: 18),
@@ -328,6 +332,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 ),
               ),
             ],
+          ),
           ),
           if (_myRequisitions.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -371,6 +376,11 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   }
 
   Widget _buildLiveSplitInventoryView() {
+    final filteredStock = _liveStock.where((s) {
+      final name = (s['name'] ?? '').toLowerCase();
+      return name.contains(_searchQuery.toLowerCase());
+    }).toList();
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -383,31 +393,139 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         children: [
           Text('Live Stock Locations', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          if (_liveStock.isEmpty)
+          TextField(
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search by item name...',
+              hintStyle: const TextStyle(color: Colors.white54),
+              prefixIcon: const Icon(Icons.search, color: Colors.white54),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+              focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+            ),
+            onChanged: (val) => setState(() => _searchQuery = val),
+          ),
+          const SizedBox(height: 16),
+          if (filteredStock.isEmpty)
             Center(child: Text('No stock data available', style: GoogleFonts.inter(color: Colors.white54)))
           else
-            ListView.separated(
+            ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _liveStock.length,
-              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              itemCount: filteredStock.length,
               itemBuilder: (context, index) {
-                final stock = _liveStock[index];
-                return ListTile(
-                  leading: const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent),
-                  title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  subtitle: Row(
-                    children: [
-                      Text('On Shelf (Pharmacy): ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                      const SizedBox(width: 16),
-                      Text('In Warehouse (Store): ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                    ],
-                  ),
+                final stock = filteredStock[index];
+                final hasImage = stock['image_url'] != null && stock['image_url'].toString().isNotEmpty;
+                return Column(
+                  children: [
+                    ListTile(
+                      leading: hasImage
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                stock['image_url'],
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent, size: 50),
+                              ),
+                            )
+                          : const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent, size: 50),
+                      title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      subtitle: Row(
+                        children: [
+                          Text('On Shelf: ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                          const SizedBox(width: 16),
+                          Text('In Warehouse: ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                        ],
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.amberAccent),
+                        onPressed: () => _showInitialStockDialog(stock),
+                      ),
+                    ),
+                    if (index < filteredStock.length - 1)
+                      Divider(color: Colors.white.withOpacity(0.05)),
+                  ],
                 );
               },
             ),
         ],
       ),
+    );
+  }
+
+  void _showInitialStockDialog(Map<String, dynamic> stock) {
+    final pharmController = TextEditingController(text: (stock['pharmacy_quantity'] ?? 0).toString());
+    final storeController = TextEditingController(text: (stock['store_quantity'] ?? 0).toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Text('Initial Stock Audit: ${stock['name']}', style: const TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: pharmController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Quantity on Shelf',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                  focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: storeController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Quantity in Warehouse',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                  focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final db = Supabase.instance.client;
+                  final pharmQty = int.tryParse(pharmController.text) ?? 0;
+                  final storeQty = int.tryParse(storeController.text) ?? 0;
+                  
+                  await db.from('drugs').update({
+                    'pharmacy_quantity': pharmQty,
+                    'store_quantity': storeQty,
+                  }).eq('id', stock['id']);
+                  
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    _loadDashboardData(); // Refresh data
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock updated successfully'), backgroundColor: Colors.green));
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating stock: $e'), backgroundColor: Colors.redAccent));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 

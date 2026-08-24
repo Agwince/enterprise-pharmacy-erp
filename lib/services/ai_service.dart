@@ -14,23 +14,47 @@ class AiService {
       'Content-Type': 'application/json',
     };
 
-    String liveContext = "Live Database Context: ";
+    int drugsCount = 0;
+    int lowStockCount = 0;
+    double totalSales = 0;
+    
+    final db = Supabase.instance.client;
+    
     try {
-      final db = Supabase.instance.client;
-      final drugsData = await db.from('drugs').select('id, store_quantity');
-      final drugsCount = drugsData.length;
-      final lowStockCount = drugsData.where((d) => (d['store_quantity'] as num? ?? 0) < 10).length;
-      
-      final salesData = await db.from('transactions').select('amount');
-      double totalSales = 0;
-      for (var sale in salesData) {
-        totalSales += (sale['amount'] as num?)?.toDouble() ?? 0;
-      }
-      
-      liveContext += "Total Drugs = $drugsCount, Low Stock = $lowStockCount, Total Sales = KES $totalSales.";
+      final drugsData = await db.from('drugs').select('id');
+      drugsCount = drugsData.length;
     } catch (e) {
-      liveContext += "Unavailable ($e).";
+      // Ignore failure to let context proceed safely
     }
+
+    try {
+      final drugsData = await db.from('drugs').select('store_quantity, pharmacy_quantity');
+      lowStockCount = drugsData.where((d) {
+        final storeQty = (d['store_quantity'] as num?)?.toInt() ?? 0;
+        final pharmacyQty = (d['pharmacy_quantity'] as num?)?.toInt() ?? 0;
+        return storeQty < 10 || pharmacyQty < 10;
+      }).length;
+    } catch (e) {
+      // Ignore
+    }
+
+    try {
+      final salesData = await db.from('transactions').select('total_amount');
+      for (var sale in salesData) {
+        totalSales += (sale['total_amount'] as num?)?.toDouble() ?? 0;
+      }
+    } catch (e) {
+      try {
+        final salesData2 = await db.from('transactions').select('amount');
+        for (var sale in salesData2) {
+          totalSales += (sale['amount'] as num?)?.toDouble() ?? 0;
+        }
+      } catch (e2) {
+        // Ignore
+      }
+    }
+
+    String liveContext = "Live ERP Context: Total Registered Drug SKUs: $drugsCount, Low Stock Count: $lowStockCount, Active Branches: 1.";
 
     final messages = [
       {

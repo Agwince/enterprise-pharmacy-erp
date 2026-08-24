@@ -64,6 +64,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   }
   final _nameController = TextEditingController();
   final _genericController = TextEditingController();
+  final _dosageFormController = TextEditingController();
   final _categoryController = TextEditingController(text: 'General Medicines');
   final _binController = TextEditingController(text: 'AISLE 1 - SHELF A1');
   final _unitController = TextEditingController(text: 'Box of 100');
@@ -255,11 +256,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         // UPDATE existing drug exactly by ID
         final updateData = <String, dynamic>{
           'name': name,
+          'brand_name': name,
           'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
           'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
           'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
           'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
           'generic_name': _genericController.text.trim(),
+          'dosage_form': _dosageFormController.text.trim(),
         };
         if (imageUrl != null) {
           updateData['box_image_url'] = imageUrl;
@@ -297,6 +300,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
           // INSERT new drug
           final drugData = {
             'name': name,
+            'brand_name': name,
             'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
             'inner_unit_type': _selectedInnerUnitType,
             'box_image_url': imageUrl,
@@ -306,6 +310,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
             'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
             'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
             'generic_name': _genericController.text.trim(),
+            'dosage_form': _dosageFormController.text.trim(),
           };
           await supabase.from('drugs').insert(drugData).select();
         }
@@ -314,6 +319,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
 
       _nameController.clear();
       _genericController.clear();
+      _dosageFormController.clear();
       _priceController.clear();
       setState(() {
         _barcode = '';

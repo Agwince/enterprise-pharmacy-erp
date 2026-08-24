@@ -404,7 +404,10 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   Widget _buildLiveSplitInventoryView() {
     final filteredStock = _liveStock.where((s) {
       final name = (s['name'] ?? '').toLowerCase();
-      return name.contains(_searchQuery.toLowerCase());
+      final brand = (s['brand_name'] ?? '').toLowerCase();
+      final generic = (s['generic_name'] ?? '').toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || brand.contains(query) || generic.contains(query);
     }).toList();
 
     return Container(
@@ -422,7 +425,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           TextField(
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
-              hintText: 'Search by item name...',
+              hintText: 'Search by brand or generic name...',
               hintStyle: const TextStyle(color: Colors.white54),
               prefixIcon: const Icon(Icons.search, color: Colors.white54),
               enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
@@ -441,6 +444,11 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               itemBuilder: (context, index) {
                 final stock = filteredStock[index];
                 final hasImage = stock['image_url'] != null && stock['image_url'].toString().isNotEmpty;
+                final brandName = stock['brand_name'] ?? stock['name'] ?? 'Unknown';
+                final genericName = stock['generic_name'] ?? '';
+                final dosageForm = stock['dosage_form'] ?? '';
+                final displayName = genericName.isNotEmpty ? '$brandName ($genericName $dosageForm)'.trim() : brandName;
+                
                 return Column(
                   children: [
                     ListTile(
@@ -456,7 +464,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                               ),
                             )
                           : const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent, size: 50),
-                      title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      title: Text(displayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       subtitle: Wrap(
                         spacing: 16,
                         runSpacing: 4,

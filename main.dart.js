@@ -123459,7 +123459,7 @@ g.push(A.O(["role","user","content",a],i,i))
 n=A.O(["model","minimaxai/minimax-m3","messages",g,"max_tokens",1024],i,t.K)
 p=4
 s=7
-return A.p(A.bDq(A.dV("https://integrate.api.nvidia.com/v1/chat/completions",0,null),B.as.w3(n,null),null,h),$async$Dg)
+return A.p(A.bDq(A.dV("https://corsproxy.io/?https://integrate.api.nvidia.com/v1/chat/completions",0,null),B.as.w3(n,null),null,h),$async$Dg)
 case 7:m=d
 if(m.b===200){i=m
 l=B.as.lP(0,A.fU(A.fT(i.e)).bs(0,i.w),null)

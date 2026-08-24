@@ -14,47 +14,37 @@ class AiService {
       'Content-Type': 'application/json',
     };
 
-    int drugsCount = 0;
-    int lowStockCount = 0;
-    double totalSales = 0;
+    int totalDrugs = 0;
+    int lowStock = 0;
+    double totalSales = 0.0;
     
-    final db = Supabase.instance.client;
+    final supabase = Supabase.instance.client;
     
     try {
-      final drugsData = await db.from('drugs').select('id');
-      drugsCount = drugsData.length;
-    } catch (e) {
-      // Ignore failure to let context proceed safely
-    }
-
-    try {
-      final drugsData = await db.from('drugs').select('store_quantity, pharmacy_quantity');
-      lowStockCount = drugsData.where((d) {
-        final storeQty = (d['store_quantity'] as num?)?.toInt() ?? 0;
-        final pharmacyQty = (d['pharmacy_quantity'] as num?)?.toInt() ?? 0;
-        return storeQty < 10 || pharmacyQty < 10;
-      }).length;
+      final drugsRes = await supabase.from('drugs').select('id').count(CountOption.exact);
+      totalDrugs = drugsRes.count ?? 0;
     } catch (e) {
       // Ignore
     }
 
     try {
-      final salesData = await db.from('transactions').select('total_amount');
-      for (var sale in salesData) {
-        totalSales += (sale['total_amount'] as num?)?.toDouble() ?? 0;
-      }
+      final lowStockRes = await supabase.from('drugs').select('id').or('store_quantity.lt.10,pharmacy_quantity.lt.10').count(CountOption.exact);
+      lowStock = lowStockRes.count ?? 0;
     } catch (e) {
-      try {
-        final salesData2 = await db.from('transactions').select('amount');
-        for (var sale in salesData2) {
-          totalSales += (sale['amount'] as num?)?.toDouble() ?? 0;
-        }
-      } catch (e2) {
-        // Ignore
-      }
+      // Ignore
     }
 
-    String liveContext = "Live ERP Context: Total Registered Drug SKUs: $drugsCount, Low Stock Count: $lowStockCount, Active Branches: 1.";
+    try {
+      final salesData = await supabase.from('transactions').select('amount, total_amount');
+      for (var sale in salesData) {
+        final amount = (sale['total_amount'] as num?)?.toDouble() ?? (sale['amount'] as num?)?.toDouble() ?? 0.0;
+        totalSales += amount;
+      }
+    } catch (e) {
+      totalSales = 0.0;
+    }
+
+    String liveContext = "Live ERP Status: Total Registered Drug SKUs: $totalDrugs, Low Stock Alerts: $lowStock. Use this live data to answer stock and inventory queries accurately.";
 
     final messages = [
       {

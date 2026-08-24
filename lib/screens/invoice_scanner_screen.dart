@@ -30,18 +30,8 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       setState(() => _isProcessing = true);
 
       final Uint8List imageBytes = await image.readAsBytes();
-      String extractedText = '';
-
-      if (kIsWeb) {
-        final base64Image = base64Encode(imageBytes);
-        extractedText = await AiService().extractTextFromImage(base64Image);
-      } else {
-        extractedText = await FlutterTesseractOcr.extractText(
-          image.path, 
-          language: 'eng',
-          args: {"preserve_interword_spaces": "1"}
-        );
-      }
+      final base64Image = base64Encode(imageBytes);
+      String extractedText = await AiService().extractTextFromImage(base64Image);
 
       final supabase = Supabase.instance.client;
       final res = await supabase.from('drugs').select('id, name, target_shelf').order('name');

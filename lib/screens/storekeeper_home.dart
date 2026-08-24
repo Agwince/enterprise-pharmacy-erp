@@ -380,10 +380,11 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                 return ListTile(
                   leading: const Icon(Icons.warehouse_rounded, color: Colors.amberAccent),
                   title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  subtitle: Row(
+                  subtitle: Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
                     children: [
                       Text('On Shelf (Pharmacy): ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                      const SizedBox(width: 16),
                       Text('In Warehouse (Store): ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
                     ],
                   ),

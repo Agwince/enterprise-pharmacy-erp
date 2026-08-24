@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AiService {
   static const String _endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -13,10 +14,28 @@ class AiService {
       'Content-Type': 'application/json',
     };
 
+    String liveContext = "Live Database Context: ";
+    try {
+      final db = Supabase.instance.client;
+      final drugsData = await db.from('drugs').select('id, store_quantity');
+      final drugsCount = drugsData.length;
+      final lowStockCount = drugsData.where((d) => (d['store_quantity'] as num? ?? 0) < 10).length;
+      
+      final salesData = await db.from('transactions').select('amount');
+      double totalSales = 0;
+      for (var sale in salesData) {
+        totalSales += (sale['amount'] as num?)?.toDouble() ?? 0;
+      }
+      
+      liveContext += "Total Drugs = $drugsCount, Low Stock = $lowStockCount, Total Sales = KES $totalSales.";
+    } catch (e) {
+      liveContext += "Unavailable ($e).";
+    }
+
     final messages = [
       {
         "role": "system",
-        "content": "You are Mediocare Genius, the AI assistant for an Enterprise Pharmacy ERP. Answer questions about stock, sales, and logistics concisely."
+        "content": "You are Mediocare Genius, the AI assistant for an Enterprise Pharmacy ERP. Answer questions about stock, sales, and logistics concisely. $liveContext"
       },
       ...conversationHistory,
       {
@@ -64,7 +83,7 @@ class AiService {
         {
           "role": "user",
           "content": [
-            {"type": "text", "text": "Extract all text and numbers from this image. Return only the raw text."},
+            {"type": "text", "text": "Extract all medicine names, quantities, and prices from this document into a clean structured list."},
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Image"}}
           ]
         }

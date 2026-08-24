@@ -316,10 +316,12 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           Text('Internal Stock Requisition', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Form(
-            child: Row(
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                Expanded(
-                  flex: 1,
+                SizedBox(
+                  width: 200,
                   child: TextField(
                     controller: _reqItemController,
                     style: const TextStyle(color: Colors.white),
@@ -331,9 +333,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 1,
+                SizedBox(
+                  width: 200,
                   child: TextField(
                     controller: _reqQtyController,
                     keyboardType: TextInputType.number,
@@ -346,19 +347,18 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: _submitRequisition,
-                icon: const Icon(Icons.send_rounded, size: 18),
-                label: const Text('Request from Warehouse'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.tealAccent,
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                ElevatedButton.icon(
+                  onPressed: _submitRequisition,
+                  icon: const Icon(Icons.send_rounded, size: 18),
+                  label: const Text('Request from Warehouse'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.tealAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
           ),
           if (_myRequisitions.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -457,10 +457,11 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                             )
                           : const Icon(Icons.medication_liquid_rounded, color: Colors.tealAccent, size: 50),
                       title: Text(stock['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      subtitle: Row(
+                      subtitle: Wrap(
+                        spacing: 16,
+                        runSpacing: 4,
                         children: [
                           Text('On Shelf: ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                          const SizedBox(width: 16),
                           Text('In Warehouse: ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
                         ],
                       ),

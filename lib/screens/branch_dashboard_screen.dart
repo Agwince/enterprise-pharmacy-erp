@@ -97,7 +97,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
 
       // Fetch low stock items from drugs directly since there is no inventory table and min_threshold
       final invRes = await db.from('drugs')
-          .select('id, name, quantity_in_stock, store_quantity, pharmacy_quantity, image_url');
+          .select('id, name, quantity_in_stock, warehouse_quantity, shelf_quantity, image_url');
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {
@@ -469,8 +469,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                         spacing: 16,
                         runSpacing: 4,
                         children: [
-                          Text('On Shelf: ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                          Text('In Warehouse: ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                          Text('On Shelf: ${stock['shelf_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                          Text('In Warehouse: ${stock['warehouse_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
                         ],
                       ),
                       trailing: IconButton(
@@ -490,8 +490,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
   }
 
   void _showInitialStockDialog(Map<String, dynamic> stock) {
-    final pharmController = TextEditingController(text: (stock['pharmacy_quantity'] ?? 0).toString());
-    final storeController = TextEditingController(text: (stock['store_quantity'] ?? 0).toString());
+    final pharmController = TextEditingController(text: (stock['shelf_quantity'] ?? 0).toString());
+    final storeController = TextEditingController(text: (stock['warehouse_quantity'] ?? 0).toString());
 
     showDialog(
       context: context,
@@ -540,8 +540,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   final storeQty = int.tryParse(storeController.text) ?? 0;
                   
                   await db.from('drugs').update({
-                    'pharmacy_quantity': pharmQty,
-                    'store_quantity': storeQty,
+                    'shelf_quantity': pharmQty,
+                    'warehouse_quantity': storeQty,
                   }).eq('id', stock['id']);
                   
                   if (ctx.mounted) {

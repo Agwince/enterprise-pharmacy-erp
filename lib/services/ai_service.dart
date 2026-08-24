@@ -28,7 +28,7 @@ class AiService {
     }
 
     try {
-      final lowStockRes = await supabase.from('drugs').select('id').or('store_quantity.lt.10,pharmacy_quantity.lt.10').count(CountOption.exact);
+      final lowStockRes = await supabase.from('drugs').select('id').or('shelf_quantity.lt.10,warehouse_quantity.lt.10').count(CountOption.exact);
       lowStock = lowStockRes.count ?? 0;
     } catch (e) {
       // Ignore

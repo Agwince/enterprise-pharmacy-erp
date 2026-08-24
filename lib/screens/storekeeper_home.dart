@@ -37,7 +37,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
           
       final stockRes = await db
           .from('drugs')
-          .select('name, store_quantity, pharmacy_quantity');
+          .select('name, warehouse_quantity, shelf_quantity');
           
       if (mounted) {
         setState(() {
@@ -59,16 +59,16 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
       await db.from('internal_requisitions').update({'status': 'Completed'}).eq('id', req['id']);
       
       // Update inventory based on item_name matching a drug
-      // deduct from store_quantity, add to pharmacy_quantity
-      final drugRes = await db.from('drugs').select('id, store_quantity, pharmacy_quantity').eq('name', req['item_name']).maybeSingle();
+      // deduct from warehouse_quantity, add to shelf_quantity
+      final drugRes = await db.from('drugs').select('id, warehouse_quantity, shelf_quantity').eq('name', req['item_name']).maybeSingle();
       if (drugRes != null) {
-        final int currentStore = drugRes['store_quantity'] ?? 0;
-        final int currentPharm = drugRes['pharmacy_quantity'] ?? 0;
+        final int currentStore = drugRes['warehouse_quantity'] ?? 0;
+        final int currentPharm = drugRes['shelf_quantity'] ?? 0;
         final int reqQty = (req['quantity_requested'] as num).toInt();
         
         await db.from('drugs').update({
-          'store_quantity': currentStore - reqQty,
-          'pharmacy_quantity': currentPharm + reqQty
+          'warehouse_quantity': currentStore - reqQty,
+          'shelf_quantity': currentPharm + reqQty
         }).eq('id', drugRes['id']);
       }
 
@@ -384,8 +384,8 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                     spacing: 16,
                     runSpacing: 4,
                     children: [
-                      Text('On Shelf (Pharmacy): ${stock['pharmacy_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
-                      Text('In Warehouse (Store): ${stock['store_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                      Text('On Shelf (Pharmacy): ${stock['shelf_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
+                      Text('In Warehouse (Store): ${stock['warehouse_quantity'] ?? 0}', style: const TextStyle(color: Colors.white70)),
                     ],
                   ),
                 );

@@ -51,4 +51,45 @@ class AiService {
       return 'Request failed: $e';
     }
   }
+
+  Future<String> extractTextFromImage(String base64Image) async {
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+
+    final payload = {
+      "model": "minimaxai/minimax-m3",
+      "messages": [
+        {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "Extract all text and numbers from this image. Return only the raw text."},
+            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Image"}}
+          ]
+        }
+      ],
+      "max_tokens": 1024,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse(_endpoint),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['choices'] != null && data['choices'].isNotEmpty) {
+          return data['choices'][0]['message']['content'] ?? 'No response content.';
+        }
+        return 'No response from AI.';
+      } else {
+        return 'API Error: ${response.statusCode} - ${response.body}';
+      }
+    } catch (e) {
+      return 'Request failed: $e';
+    }
+  }
 }

@@ -5,7 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../services/web_ocr_service.dart';
+import 'dart:convert';
+import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../utils/invoice_parser.dart';
 import 'invoice_review_screen.dart';
@@ -32,7 +33,8 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       String extractedText = '';
 
       if (kIsWeb) {
-        extractedText = await WebOcrService.extractText(imageBytes);
+        final base64Image = base64Encode(imageBytes);
+        extractedText = await AiService().extractTextFromImage(base64Image);
       } else {
         extractedText = await FlutterTesseractOcr.extractText(
           image.path, 

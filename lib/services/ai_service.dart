@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:enterprise_pharmacy_erp/services/auth_service.dart';
+import 'package:pharmacy_erp/services/auth_service.dart';
 
 class AiService {
   static const String _endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/leave_application_form.dart';
 
 class TelesalesPosScreen extends StatefulWidget {
   const TelesalesPosScreen({super.key});
@@ -335,6 +336,21 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
         elevation: 0,
         title: Text('Telesales POS', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
+            tooltip: 'Request Leave',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                  child: LeaveApplicationForm(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: () => AuthService().logout(),

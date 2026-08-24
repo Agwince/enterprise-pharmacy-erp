@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import 'storekeeper_scanner_screen.dart';
 import 'store_mapping_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../widgets/leave_application_form.dart';
 
 class StorekeeperHome extends StatefulWidget {
   const StorekeeperHome({super.key});
@@ -162,6 +163,21 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
+            tooltip: 'Request Leave',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                  child: LeaveApplicationForm(),
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: OutlinedButton.icon(

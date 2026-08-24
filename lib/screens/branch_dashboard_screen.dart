@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../widgets/ai_copilot_sheet.dart';
+import '../widgets/leave_application_form.dart';
 
 class BranchDashboardScreen extends StatefulWidget {
   const BranchDashboardScreen({super.key});
@@ -199,10 +200,29 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                     color: Colors.white,
                   ),
                 ),
-                IconButton(
-                  onPressed: _loadDashboardData,
-                  icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-                  tooltip: 'Refresh Dashboard',
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
+                      tooltip: 'Request Leave',
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => Padding(
+                            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                            child: LeaveApplicationForm(),
+                          ),
+                        );
+                      },
+                    ),
+                    IconButton(
+                      onPressed: _loadDashboardData,
+                      icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+                      tooltip: 'Refresh Dashboard',
+                    ),
+                  ],
                 )
               ],
             ),

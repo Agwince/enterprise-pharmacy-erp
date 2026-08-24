@@ -466,6 +466,136 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
     );
   }
 
+  void _showLeaveManagementModal() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Text('Leave Management', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 600,
+            height: 400,
+            child: FutureBuilder(
+              future: Supabase.instance.client.from('leave_requests').select().eq('status', 'Pending').order('created_at', ascending: false),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return const Text('Error loading requests', style: TextStyle(color: Colors.red));
+                final data = snapshot.data as List<dynamic>? ?? [];
+                if (data.isEmpty) return const Center(child: Text('No pending leave requests.', style: TextStyle(color: Colors.white54)));
+
+                return ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (context, index) {
+                    final req = data[index];
+                    return Card(
+                      color: const Color(0xFF0F172A),
+                      child: ListTile(
+                        title: Text('${req['employee_name']} (${req['role']})', style: const TextStyle(color: Colors.white)),
+                        subtitle: Text('From: ${req['start_date']} To: ${req['end_date']}\nReason: ${req['reason']}', style: const TextStyle(color: Colors.white70)),
+                        isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.check, color: Colors.green),
+                              onPressed: () async {
+                                await Supabase.instance.client.from('leave_requests').update({'status': 'Approved'}).eq('id', req['id']);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  _showLeaveManagementModal(); // refresh
+                                }
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () async {
+                                await Supabase.instance.client.from('leave_requests').update({'status': 'Rejected'}).eq('id', req['id']);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  _showLeaveManagementModal(); // refresh
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close', style: TextStyle(color: Colors.white54)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showProcessPayrollModal() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: Text('Consolidated Branch Payouts', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 600,
+            height: 400,
+            child: FutureBuilder(
+              future: Supabase.instance.client.from('payroll_disbursements').select().eq('status', 'Pending Clearance'),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
+                if (snapshot.hasError) return const Text('Error loading payrolls', style: TextStyle(color: Colors.red));
+                final data = snapshot.data as List<dynamic>? ?? [];
+                if (data.isEmpty) return const Center(child: Text('No pending payrolls to clear.', style: TextStyle(color: Colors.white54)));
+
+                return ListView.builder(
+                  itemCount: data.length,
+                  itemBuilder: (context, index) {
+                    final payroll = data[index];
+                    return Card(
+                      color: const Color(0xFF0F172A),
+                      child: ListTile(
+                        title: Text('${payroll['branch_name']} - Period: ${payroll['payroll_period']}', style: const TextStyle(color: Colors.white)),
+                        subtitle: Text('Total: KES ${payroll['total_amount']}', style: const TextStyle(color: Colors.white70)),
+                        trailing: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                          onPressed: () async {
+                            await Supabase.instance.client.from('payroll_disbursements').update({
+                              'status': 'Cleared',
+                              'cleared_at': DateTime.now().toIso8601String()
+                            }).eq('id', payroll['id']);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              _showProcessPayrollModal(); // refresh
+                            }
+                          },
+                          child: const Text('Clear Funds & Disburse', style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close', style: TextStyle(color: Colors.white54)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
@@ -644,14 +774,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: const Color(0xFF10B981),
-                          content: Text('Payroll processing initiated for all branches. Awaiting bank API confirmation.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                        ),
-                      );
-                    },
+                    onPressed: _showProcessPayrollModal,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.greenAccent,
                       side: const BorderSide(color: Colors.greenAccent),
@@ -665,14 +788,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: Colors.amber,
-                          content: Text('Leave Management: 3 pending requests across all branches.', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black)),
-                        ),
-                      );
-                    },
+                    onPressed: _showLeaveManagementModal,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.amber,
                       side: const BorderSide(color: Colors.amber),

@@ -91,133 +91,220 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> _fetchFullHistory() async {
+    final user = _supabase.auth.currentUser;
+    if (user != null) {
+      return await _supabase
+          .from('ai_chat_messages')
+          .select('role, content, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', ascending: true);
+    }
+    return [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: EdgeInsets.only(bottom: bottomInset),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.blueAccent.withOpacity(0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.auto_awesome, color: Colors.blueAccent),
-                const SizedBox(width: 12),
-                Text(
-                  'Mediocare Genius',
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54),
-                  onPressed: () => Navigator.pop(context),
-                )
-              ],
-            ),
-          ),
-          
-          // Chat Area
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.4,
-            child: _messages.isEmpty
-                ? Center(
-                    child: Text(
-                      'Ask me about stock, sales, or logistics.',
-                      style: GoogleFonts.inter(color: Colors.white54),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = _messages[index];
-                      final isUser = msg['role'] == 'user';
-                      return Align(
-                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isUser ? Colors.blueAccent.withOpacity(0.2) : Colors.black26,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isUser ? Colors.blueAccent.withOpacity(0.5) : Colors.white10,
-                            ),
-                          ),
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          child: Text(
-                            msg['content'] ?? '',
-                            style: GoogleFonts.inter(
-                              color: isUser ? Colors.white : Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
+    return DefaultTabController(
+      length: 2,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(bottom: bottomInset),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.blueAccent.withOpacity(0.1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.blueAccent),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Mediocare Genius',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const TabBar(
+                    labelColor: Colors.blueAccent,
+                    unselectedLabelColor: Colors.white54,
+                    indicatorColor: Colors.blueAccent,
+                    tabs: [
+                      Tab(icon: Icon(Icons.chat), text: "Live Chat"),
+                      Tab(icon: Icon(Icons.history), text: "History"),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // TabBarView
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.45,
+              child: TabBarView(
+                children: [
+                  // Tab 1: Live Chat
+                  Column(
+                    children: [
+                      Expanded(
+                        child: _messages.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'Ask me about stock, sales, or logistics.',
+                                  style: GoogleFonts.inter(color: Colors.white54),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount: _messages.length,
+                                itemBuilder: (context, index) {
+                                  final msg = _messages[index];
+                                  final isUser = msg['role'] == 'user';
+                                  return Align(
+                                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: isUser ? Colors.blueAccent.withOpacity(0.2) : Colors.black26,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isUser ? Colors.blueAccent.withOpacity(0.5) : Colors.white10,
+                                        ),
+                                      ),
+                                      constraints: BoxConstraints(
+                                        maxWidth: MediaQuery.of(context).size.width * 0.75,
+                                      ),
+                                      child: Text(
+                                        msg['content'] ?? '',
+                                        style: GoogleFonts.inter(
+                                          color: isUser ? Colors.white : Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                      if (_isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: CircularProgressIndicator(color: Colors.blueAccent),
+                        ),
+                      // Input Area
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _controller,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: 'Type your message...',
+                                  hintStyle: const TextStyle(color: Colors.white38),
+                                  filled: true,
+                                  fillColor: Colors.black.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                ),
+                                onSubmitted: (_) => _sendMessage(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            CircleAvatar(
+                              backgroundColor: Colors.blueAccent,
+                              child: IconButton(
+                                icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                                onPressed: _isLoading ? null : _sendMessage,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                  
+                  // Tab 2: History
+                  FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _fetchFullHistory(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: Colors.blueAccent));
+                      }
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error loading history', style: GoogleFonts.inter(color: Colors.white54)));
+                      }
+                      final historyData = snapshot.data ?? [];
+                      if (historyData.isEmpty) {
+                        return Center(child: Text('No history found.', style: GoogleFonts.inter(color: Colors.white54)));
+                      }
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: historyData.length,
+                        itemBuilder: (context, index) {
+                          final msg = historyData[index];
+                          final isUser = msg['role'] == 'user';
+                          return Align(
+                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isUser ? Colors.blueAccent.withOpacity(0.2) : Colors.black26,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isUser ? Colors.blueAccent.withOpacity(0.5) : Colors.white10,
+                                ),
+                              ),
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                              ),
+                              child: Text(
+                                msg['content']?.toString() ?? '',
+                                style: GoogleFonts.inter(
+                                  color: isUser ? Colors.white : Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
-          ),
-          
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: CircularProgressIndicator(color: Colors.blueAccent),
+                ],
+              ),
             ),
-          
-          // Input Area
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Type your message...',
-                      hintStyle: const TextStyle(color: Colors.white38),
-                      filled: true,
-                      fillColor: Colors.black.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: Colors.blueAccent,
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: _isLoading ? null : _sendMessage,
-                  ),
-                ),
-              ],
-            ),
-          )
-        ],
+          ],
+        ),
       ),
     );
   }

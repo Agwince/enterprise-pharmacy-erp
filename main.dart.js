@@ -119653,7 +119653,7 @@ for(a6=0;a6<7;++a6){e=a6
 b6=J.Y(c,a6)
 if(b6==null)b6=0
 J.cM(a5,new A.eb(e,b6/1000,null,null))}s=9
-return A.p(m.bg("drugs").f7(0,"id, name, quantity_in_stock, store_quantity, pharmacy_quantity, image_url"),$async$lA)
+return A.p(m.bg("drugs").f7(0,"id, name, quantity_in_stock, warehouse_quantity, shelf_quantity, image_url"),$async$lA)
 case 9:a7=c7
 c2=b5.b=0
 for(e=J.aZ(a7);e.u();){a8=e.gM(e)
@@ -119736,10 +119736,10 @@ r=m.length
 if(r===0)s.push(A.cJ(A.q("No stock data available",p,p,p,A.r().$1$color(B.O),p,p,p),p,p))
 else s.push(A.mw(p,new A.aMH(q,m),r,p,B.dw,!0))
 return A.ax(p,A.aI(s,B.D,B.l,B.o),B.n,p,p,new A.aF(B.B,p,n,o,p,p,B.y),p,p,p,p,B.aH,p,p,p)},
-aEZ(a){var s,r,q=null,p=J.a9(a),o=p.h(a,"pharmacy_quantity")
+aEZ(a){var s,r,q=null,p=J.a9(a),o=p.h(a,"shelf_quantity")
 o=J.bw(o==null?0:o)
 s=$.aw()
-p=p.h(a,"store_quantity")
+p=p.h(a,"warehouse_quantity")
 p=J.bw(p==null?0:p)
 r=this.c
 r.toString
@@ -119850,9 +119850,9 @@ if(r==null)r=""
 q=J.eD(s)?B.c.c9(A.j(f)+" ("+A.j(s)+" "+A.j(r)+")"):f
 g=h?A.oX(A.a5(8),A.b6o(i.h(j,m),new A.aMC(),B.dI,50,50),B.bU):B.yE
 p=A.q(q,l,l,l,B.kC,l,l,l)
-o=i.h(j,"pharmacy_quantity")
+o=i.h(j,"shelf_quantity")
 o=A.q("On Shelf: "+A.j(o==null?0:o),l,l,l,B.dC,l,l,l)
-i=i.h(j,"store_quantity")
+i=i.h(j,"warehouse_quantity")
 n=t.p
 n=A.c([A.hC(l,l,l,!0,!0,l,g,l,l,l,l,l,A.a46(A.c([o,A.q("In Warehouse: "+A.j(i==null?0:i),l,l,l,B.dC,l,l,l)],n),4,16),l,p,A.cT(l,l,B.a_j,l,l,new A.aMD(this.a,j),l,l,l),l)],n)
 if(b<k.length-1)n.push(A.mh(A.am(13,B.e.q()>>>16&255,B.e.q()>>>8&255,B.e.q()&255),l))
@@ -119886,7 +119886,7 @@ h=A.i5(o.c.a.a,null)
 l=h==null?0:h
 j=t.z
 s=6
-return A.p(n.bg("drugs").c2(0,A.M(["pharmacy_quantity",m,"store_quantity",l],j,j)).dY("id",J.Y(o.d,"id")),$async$$0)
+return A.p(n.bg("drugs").c2(0,A.M(["shelf_quantity",m,"warehouse_quantity",l],j,j)).dY("id",J.Y(o.d,"id")),$async$$0)
 case 6:j=o.e
 if(j.e!=null){A.bX(j,!1).cc(null)
 j=o.a
@@ -122194,7 +122194,7 @@ s=6
 return A.p(n.bg("internal_requisitions").hv(0).dY("status","Pending").m3(0,"created_at",!0),$async$rr)
 case 6:m=b
 s=7
-return A.p(n.bg("drugs").f7(0,"name, store_quantity, pharmacy_quantity"),$async$rr)
+return A.p(n.bg("drugs").f7(0,"name, warehouse_quantity, shelf_quantity"),$async$rr)
 case 7:l=b
 if(o.c!=null)o.J(new A.aZg(o,m,l))
 q=1
@@ -122222,17 +122222,17 @@ g=J.a9(a)
 s=6
 return A.p(n.bg("internal_requisitions").c2(0,A.M(["status","Completed"],h,h)).dY("id",g.h(a,"id")),$async$uF)
 case 6:s=7
-return A.p(n.bg("drugs").f7(0,"id, store_quantity, pharmacy_quantity").dY("name",g.h(a,"item_name")).wM(),$async$uF)
+return A.p(n.bg("drugs").f7(0,"id, warehouse_quantity, shelf_quantity").dY("name",g.h(a,"item_name")).wM(),$async$uF)
 case 7:m=a0
 s=m!=null?8:9
 break
-case 8:f=J.Y(m,"store_quantity")
+case 8:f=J.Y(m,"warehouse_quantity")
 l=f==null?0:f
-e=J.Y(m,"pharmacy_quantity")
+e=J.Y(m,"shelf_quantity")
 k=e==null?0:e
 j=B.d.cO(A.eh(g.h(a,"quantity_requested")))
 s=10
-return A.p(n.bg("drugs").c2(0,A.M(["store_quantity",l-j,"pharmacy_quantity",k+j],h,h)).dY("id",J.Y(m,"id")),$async$uF)
+return A.p(n.bg("drugs").c2(0,A.M(["warehouse_quantity",l-j,"shelf_quantity",k+j],h,h)).dY("id",J.Y(m,"id")),$async$uF)
 case 10:case 9:o.FR("Requisition Approved & Stock Transferred",B.b8)
 o.rr()
 q=1
@@ -122389,9 +122389,9 @@ $S:65}
 A.aZe.prototype={
 $2(a,b){var s,r=null,q=this.a.f[b],p=J.a9(q),o=p.h(q,"name")
 o=A.q(o==null?"Unknown":o,r,r,r,B.kC,r,r,r)
-s=p.h(q,"pharmacy_quantity")
+s=p.h(q,"shelf_quantity")
 s=A.q("On Shelf (Pharmacy): "+A.j(s==null?0:s),r,r,r,B.dC,r,r,r)
-p=p.h(q,"store_quantity")
+p=p.h(q,"warehouse_quantity")
 return A.hC(r,r,r,!0,!0,r,B.a_2,r,r,r,r,r,A.a46(A.c([s,A.q("In Warehouse (Store): "+A.j(p==null?0:p),r,r,r,B.dC,r,r,r)],t.p),4,16),r,o,r,r)},
 $S:44}
 A.xT.prototype={
@@ -123285,7 +123285,7 @@ break
 case 6:p=9
 a6=n.bg("drugs").f7(0,"id")
 s=12
-return A.p(A.lG(a6.mt(a6.mC("or","(store_quantity.lt.10,pharmacy_quantity.lt.10)")),a6.$ti.c).a8e(0,B.wK),$async$qV)
+return A.p(A.lG(a6.mt(a6.mC("or","(shelf_quantity.lt.10,warehouse_quantity.lt.10)")),a6.$ti.c).a8e(0,B.wK),$async$qV)
 case 12:l=b4
 b=l.b
 a4=b

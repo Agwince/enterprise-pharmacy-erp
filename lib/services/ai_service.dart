@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AiService {
-  static const String _endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+  static const String _endpoint = 'https://corsproxy.io/?https://integrate.api.nvidia.com/v1/chat/completions';
   
   // Actual API key provided by user
   static String apiKey = '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';

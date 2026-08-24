@@ -163,7 +163,7 @@ class AiService {
         {
           "role": "user",
           "content": [
-            {"type": "text", "text": "Extract all medicine names, quantities, and prices from this document into a clean structured list."},
+            {"type": "text", "text": "You are a strict data extraction tool. Transcribe EVERY single word, number, and medicine name from this image exactly as it appears. Do not summarize, do not skip items, and do not format it into conversational text. Output the raw data only."},
             {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,$base64Image"}}
           ]
         }

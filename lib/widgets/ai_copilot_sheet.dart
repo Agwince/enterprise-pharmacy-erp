@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/ai_service.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 class AiCopilotSheet extends StatefulWidget {
   const AiCopilotSheet({super.key});
 
@@ -23,6 +25,37 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
   final _aiService = AiService();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+  final _supabase = Supabase.instance.client;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchHistory();
+  }
+
+  Future<void> _fetchHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user != null) {
+        final data = await _supabase.from('ai_chat_messages').select('role, content').eq('user_id', user.id).order('created_at', ascending: true);
+        final List<Map<String, String>> history = [];
+        for (var row in data) {
+          history.add({
+            'role': row['role'].toString(),
+            'content': row['content'].toString(),
+          });
+        }
+        setState(() {
+          _messages.addAll(history);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching history: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
@@ -34,6 +67,13 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
     });
     _controller.clear();
 
+    final user = _supabase.auth.currentUser;
+    if (user != null) {
+      try {
+        await _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'user', 'content': text});
+      } catch (e) {}
+    }
+
     // Prepare history to send (excluding the very last user message which is passed directly)
     final history = _messages.take(_messages.length - 1).toList();
     final response = await _aiService.sendMessage(text, history);
@@ -43,6 +83,11 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
         _messages.add({"role": "assistant", "content": response});
         _isLoading = false;
       });
+      if (user != null) {
+        try {
+          _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'assistant', 'content': response});
+        } catch (e) {}
+      }
     }
   }
 

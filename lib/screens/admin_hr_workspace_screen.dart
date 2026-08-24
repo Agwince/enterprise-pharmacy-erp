@@ -820,48 +820,73 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                     style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: [
-                        DataColumn(label: Text('Employee Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Email Address', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Branch Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Role (RBAC)', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                        DataColumn(label: Text('Status', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                      ],
-                      rows: _staffList.map((staff) {
-                        final bool isActive = staff['status'] == 'Active';
-
-                        return DataRow(
-                          cells: [
-                            DataCell(Text(staff['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600))),
-                            DataCell(Text(staff['email'], style: GoogleFonts.inter(color: Colors.white70))),
-                            DataCell(Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-                              child: Text(staff['branch'], style: GoogleFonts.inter(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.w600)),
-                            )),
-                            DataCell(_buildRoleBadge(staff['role'])),
-                            DataCell(Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isActive ? const Color(0xFF10B981).withOpacity(0.15) : Colors.redAccent.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                staff['status'],
-                                style: GoogleFonts.inter(
-                                  color: isActive ? const Color(0xFF10B981) : Colors.redAccent,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _staffList.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Row(
+                            children: [
+                              Expanded(flex: 2, child: Text('Employee Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                              Expanded(flex: 2, child: Text('Email Address', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                              Expanded(flex: 2, child: Text('Branch Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                              Expanded(flex: 2, child: Text('Role (RBAC)', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                              Expanded(flex: 1, child: Text('Status', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                            ],
+                          ),
+                        );
+                      }
+                      final staff = _staffList[index - 1];
+                      final bool isActive = staff['status'] == 'Active';
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 2, child: Text(staff['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12))),
+                            Expanded(flex: 2, child: Text(staff['email'], style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
+                                  child: FittedBox(fit: BoxFit.scaleDown, child: Text(staff['branch'], style: GoogleFonts.inter(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.w600))),
                                 ),
                               ),
-                            )),
+                            ),
+                            Expanded(flex: 2, child: Align(alignment: Alignment.centerLeft, child: _buildRoleBadge(staff['role']))),
+                            Expanded(
+                              flex: 1,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isActive ? const Color(0xFF10B981).withOpacity(0.15) : Colors.redAccent.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      staff['status'],
+                                      style: GoogleFonts.inter(
+                                        color: isActive ? const Color(0xFF10B981) : Colors.redAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
-                        );
-                      }).toList(),
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -924,9 +949,9 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
                                     const SizedBox(height: 8),
-                                    Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.tealAccent, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                               ),
@@ -942,9 +967,9 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
                                     const SizedBox(height: 8),
-                                    Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.orangeAccent, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                               ),
@@ -960,9 +985,9 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
                                     const SizedBox(height: 8),
-                                    Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.greenAccent, fontWeight: FontWeight.bold))),
                                   ],
                                 ),
                               ),

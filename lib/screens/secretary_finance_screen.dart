@@ -221,9 +221,9 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70))),
                                       const SizedBox(height: 8),
-                                      Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.tealAccent, fontWeight: FontWeight.bold)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.tealAccent, fontWeight: FontWeight.bold))),
                                     ],
                                   ),
                                 ),
@@ -235,9 +235,9 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70))),
                                       const SizedBox(height: 8),
-                                      Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.orangeAccent, fontWeight: FontWeight.bold))),
                                     ],
                                   ),
                                 ),
@@ -249,9 +249,9 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70))),
                                       const SizedBox(height: 8),
-                                      Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                                      FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 22, color: Colors.greenAccent, fontWeight: FontWeight.bold))),
                                     ],
                                   ),
                                 ),

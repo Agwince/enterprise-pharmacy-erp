@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'branch_dashboard_screen.dart';
 import 'location_manager_screen.dart';
 import 'store_mapping_screen.dart';
+import 'wholesale_catalog_screen.dart';
 
 class BranchManagerWorkspace extends StatefulWidget {
   const BranchManagerWorkspace({Key? key}) : super(key: key);
@@ -20,15 +21,7 @@ class _BranchManagerWorkspaceState extends State<BranchManagerWorkspace> {
       case 0:
         return const BranchDashboardScreen();
       case 1:
-        return Center(
-          child: Text(
-            'Local Inventory Module — Coming Soon',
-            style: GoogleFonts.inter(
-              color: Colors.white54,
-              fontSize: 16,
-            ),
-          ),
-        );
+        return const WholesaleCatalogScreen();
       case 2:
         return const LocationManagerScreen();
       case 3:

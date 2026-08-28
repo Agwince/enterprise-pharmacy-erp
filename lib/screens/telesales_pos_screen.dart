@@ -145,10 +145,13 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
 
       for (var item in _cart) {
         await db.from('transactions').insert({
+          'branch_id': '9bdf6137-8825-4bc2-8bbd-f128c975c7a5',
           'drug_id': item['id'],
           'transaction_type': 'sale',
           'quantity': item['qty'],
+          'unit_price': item['price'],
           'total_amount': item['qty'] * item['price'],
+          'amount': item['qty'] * item['price'],
           'client_name': _clientController.text.trim(),
           'payment_status': paymentStatus,
           'payment_method': 'MPESA',

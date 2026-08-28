@@ -45,11 +45,11 @@ class Drug {
 
   factory Drug.fromJson(Map<String, dynamic> json) {
     return Drug(
-      id: json['id'] as String,
-      sku: (json['barcode'] ?? json['sku'] ?? '') as String,
-      name: json['name'] as String,
+      id: (json['id'] ?? '') as String,
+      sku: (json['barcode'] ?? json['sku'] ?? 'SKU-GEN') as String,
+      name: (json['name'] ?? 'Pharmaceutical Drug') as String,
       genericName: json['generic_name'] as String?,
-      category: json['category'] as String? ?? 'General',
+      category: json['category'] as String? ?? 'General Medicines',
       unit: (json['package_unit'] ?? json['unit'] ?? 'Box') as String,
       binLocation: (json['target_shelf'] ?? json['bin_location'] ?? 'AISLE 1 - SHELF A1') as String,
       unitPrice: json['price'] != null ? double.tryParse(json['price'].toString()) ?? 0.0 : ((json['unit_price'] as num?)?.toDouble() ?? 0.0),

@@ -209,7 +209,81 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
+
+                // Prominent Executive One-Click Launcher for CEO
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0D9488), Color(0xFF1E3A8A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.tealAccent.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.stars_rounded, color: Colors.tealAccent, size: 28),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'One-Click CEO Executive Demo',
+                                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Instant access to Analytics, Fleet Map & Mobile Runner views',
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => AuthService().loginAsCeo(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.tealAccent,
+                            foregroundColor: const Color(0xFF0F172A),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 4,
+                          ),
+                          icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                          label: Text(
+                            'Launch Executive ERP Experience',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Pitch Demo Quick-Login Header
                 Row(
@@ -438,7 +512,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     AuthService().loginAsMarketer();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.limeAccent.withOpacity(0.2),
+                    backgroundColor: Colors.limeAccent.withValues(alpha: 0.2),
                     foregroundColor: Colors.limeAccent,
                     side: const BorderSide(color: Colors.limeAccent, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 14),

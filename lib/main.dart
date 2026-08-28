@@ -8,8 +8,6 @@ import 'screens/login_screen.dart';
 import 'screens/super_admin_workspace.dart';
 import 'screens/ceo_dashboard_screen.dart';
 import 'screens/admin_hr_workspace_screen.dart';
-import 'screens/invoice_scanner_screen.dart';
-import 'screens/stock_putaway_screen.dart';
 import 'screens/branch_manager_workspace.dart';
 import 'screens/storekeeper_home.dart';
 import 'screens/catalog_admin_home.dart';
@@ -18,6 +16,7 @@ import 'screens/telesales_pos_screen.dart';
 import 'screens/secretary_finance_screen.dart';
 import 'screens/rider_dispatch_screen.dart';
 import 'screens/marketer_dashboard_screen.dart';
+import 'widgets/executive_presentation_shell.dart';
 
 void main() async {
   try {
@@ -29,8 +28,7 @@ void main() async {
         url: SupabaseConfig.url,
         anonKey: SupabaseConfig.anonKey,
       );
-      // Force clear any corrupted session token from localStorage
-      // so the app correctly defaults to the working anonKey.
+      // Force clear any stale session tokens from localStorage
       await Supabase.instance.client.auth.signOut();
     } catch (e) {
       debugPrint('Supabase initialization note: $e');
@@ -119,34 +117,50 @@ class StrictAuthRoleRouter extends StatelessWidget {
           return const LoginScreen();
         }
 
-        // Strict Role Routing - Dedicated Workspaces (No Shared Global Sidebar)
+        Widget workspaceWidget;
+
+        // Strict Role Routing - Dedicated Workspaces
         switch (auth.role) {
           case UserRole.telesales:
-            return const TelesalesPosScreen();
+            workspaceWidget = const TelesalesPosScreen();
+            break;
           case UserRole.secretary:
-            return const SecretaryFinanceScreen();
+            workspaceWidget = const SecretaryFinanceScreen();
+            break;
           case UserRole.rider:
-            return const RiderDispatchScreen();
+            workspaceWidget = const RiderDispatchScreen();
+            break;
           case UserRole.superAdmin:
-            return const SuperAdminWorkspaceScreen();
+            workspaceWidget = const SuperAdminWorkspaceScreen();
+            break;
           case UserRole.ceo:
-            return const CeoDashboardScreen();
+            workspaceWidget = const CeoDashboardScreen();
+            break;
           case UserRole.hr:
-            return const AdminHrWorkspaceScreen();
+            workspaceWidget = const AdminHrWorkspaceScreen();
+            break;
           case UserRole.warehousePicker:
-            return const FloorWorkerHome();
+            workspaceWidget = const FloorWorkerHome();
+            break;
           case UserRole.catalogAdmin:
-            return const CatalogAdminHome();
+            workspaceWidget = const CatalogAdminHome();
+            break;
           case UserRole.storekeeper:
-            return const StorekeeperHome();
+            workspaceWidget = const StorekeeperHome();
+            break;
           case UserRole.branchManager:
-            return const BranchManagerWorkspace();
+            workspaceWidget = const BranchManagerWorkspace();
+            break;
           case UserRole.marketer:
-            return const MarketerDashboardScreen();
+            workspaceWidget = const MarketerDashboardScreen();
+            break;
           case UserRole.none:
           default:
             return const LoginScreen();
         }
+
+        // Present all authenticated views within the Executive Presentation Shell
+        return ExecutivePresentationShell(child: workspaceWidget);
       },
     );
   }

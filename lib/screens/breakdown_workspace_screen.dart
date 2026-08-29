@@ -113,7 +113,7 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.cyanAccent, width: 2),
                       borderRadius: BorderRadius.circular(12),
-                      color: Colors.cyanAccent.withOpacity(0.05),
+                      color: Colors.cyanAccent.withValues(alpha: 0.05),
                     ),
                     child: Stack(
                       children: [
@@ -206,7 +206,7 @@ class _BreakdownWorkspaceScreenState extends State<BreakdownWorkspaceScreen>
                             color: checked ? const Color(0xFF0F2942) : const Color(0xFF0F172A),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: checked ? Colors.cyanAccent.withOpacity(0.4) : Colors.white10,
+                              color: checked ? Colors.cyanAccent.withValues(alpha: 0.4) : Colors.white10,
                             ),
                           ),
                           child: Row(

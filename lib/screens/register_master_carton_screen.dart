@@ -181,7 +181,8 @@ class _RegisterMasterCartonScreenState extends State<RegisterMasterCartonScreen>
 
                   // Link to Catalog
                   DropdownButtonFormField<String>(
-                    value: _selectedDrugId,
+                    key: ValueKey(_selectedDrugId),
+                    initialValue: _selectedDrugId,
                     dropdownColor: const Color(0xFF1E293B),
                     style: GoogleFonts.inter(color: Colors.white),
                     decoration: InputDecoration(

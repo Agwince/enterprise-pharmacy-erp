@@ -43,7 +43,8 @@ class SupabaseService {
           'branch_id': branch.id,
           'branch_name': branch.name,
           'code': branch.code,
-          'revenue': totalRev > 0 ? totalRev : (branch.code == 'BR-HQ-01' ? 14500.0 : branch.code == 'BR-WS-02' ? 11200.0 : 7800.0),
+          // No fallback figures: a branch with no posted sales reports zero.
+          'revenue': totalRev,
         });
       }
       return results;

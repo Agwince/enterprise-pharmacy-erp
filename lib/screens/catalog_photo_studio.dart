@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/supabase_service.dart';
-import 'register_product_screen.dart';
 
 class CatalogPhotoStudioScreen extends StatefulWidget {
   const CatalogPhotoStudioScreen({super.key});
@@ -15,9 +12,6 @@ class CatalogPhotoStudioScreen extends StatefulWidget {
 }
 
 class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
-  final ImagePicker _picker = ImagePicker();
-  final SupabaseService _supabaseService = SupabaseService();
-  bool _isLoading = true;
   List<Map<String, dynamic>> _catalog = [];
 
   @override
@@ -27,7 +21,6 @@ class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
   }
 
   Future<void> _loadLiveCatalog() async {
-    setState(() => _isLoading = true);
     try {
       final client = Supabase.instance.client;
       final response = await client.from('drugs').select();
@@ -46,44 +39,19 @@ class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
             'loose_unit_image_url': null,
           };
         }).toList();
-      } else {
-        final drugs = await _supabaseService.fetchDrugs();
-        items = drugs.map((drug) {
-          return {
-            'id': drug.id,
-            'name': drug.name,
-            'sku': drug.sku,
-            'category': drug.category,
-            'box_image_url': drug.imageUrl,
-            'barcode_string': drug.sku,
-            'loose_unit_image_url': null,
-          };
-        }).toList();
       }
 
       if (mounted) {
         setState(() {
           _catalog = items;
-          _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() {
           _catalog = [];
-          _isLoading = false;
         });
       }
-    }
-  }
-
-  void _openRegisterNewMedicineScreen() async {
-    final res = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const RegisterProductScreen()),
-    );
-    if (res == true) {
-      _loadLiveCatalog();
     }
   }
 

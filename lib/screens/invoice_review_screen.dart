@@ -74,7 +74,7 @@ class _InvoiceReviewScreenState extends State<InvoiceReviewScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(widget.imageBytes, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
+                child: Image.memory(widget.imageBytes, fit: BoxFit.cover, errorBuilder: (_, _, _) => const Center(child: Icon(Icons.image_not_supported, color: Colors.white38))),
               ),
             ),
             const SizedBox(height: 16),

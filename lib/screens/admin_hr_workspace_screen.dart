@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
+import 'finance_gl_screen.dart';
+import 'hr_payroll_workspace_screen.dart';
 
 class AdminHrWorkspaceScreen extends StatefulWidget {
   const AdminHrWorkspaceScreen({super.key});
@@ -307,13 +309,13 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                           });
                         }
                       } catch (e) {
-                        debugPrint('Real Auth provisioning error: \$e');
-                        if (mounted) {
+                        debugPrint('Real Auth provisioning error: $e');
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               backgroundColor: Colors.redAccent,
                               content: Text(
-                                'Provisioning failed: \$e',
+                                'Provisioning failed: $e',
                                 style: GoogleFonts.inter(fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -322,7 +324,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                         return;
                       }
 
-                      if (mounted) {
+                      if (context.mounted) {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
 
@@ -627,6 +629,54 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
           ],
         ),
         actions: [
+          if (isDesktop)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const HrPayrollWorkspaceScreen()),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.purpleAccent,
+                  side: const BorderSide(color: Colors.purpleAccent),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.badge_rounded, size: 16),
+                label: const Text('Payroll Workspace'),
+              ),
+            )
+          else
+            IconButton(
+              tooltip: 'Payroll Workspace',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HrPayrollWorkspaceScreen()),
+              ),
+              icon: const Icon(Icons.badge_rounded, color: Colors.purpleAccent),
+            ),
+          if (isDesktop)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FinanceGlScreen()),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.amberAccent,
+                  side: const BorderSide(color: Colors.amberAccent),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.account_balance_rounded, size: 16),
+                label: const Text('Finance & GL'),
+              ),
+            )
+          else
+            IconButton(
+              tooltip: 'Finance & GL',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FinanceGlScreen()),
+              ),
+              icon: const Icon(Icons.account_balance_rounded, color: Colors.amberAccent),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: isDesktop 
@@ -658,7 +708,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: isDesktop
                   ? Row(
@@ -810,7 +860,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -820,73 +870,83 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                     style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   const SizedBox(height: 16),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _staffList.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Row(
-                            children: [
-                              Expanded(flex: 2, child: Text('Employee Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
-                              Expanded(flex: 2, child: Text('Email Address', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
-                              Expanded(flex: 2, child: Text('Branch Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
-                              Expanded(flex: 2, child: Text('Role (RBAC)', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
-                              Expanded(flex: 1, child: Text('Status', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
-                            ],
-                          ),
-                        );
-                      }
-                      final staff = _staffList[index - 1];
-                      final bool isActive = staff['status'] == 'Active';
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Row(
-                          children: [
-                            Expanded(flex: 2, child: Text(staff['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12))),
-                            Expanded(flex: 2, child: Text(staff['email'], style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
-                            Expanded(
-                              flex: 2,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.15), borderRadius: BorderRadius.circular(4)),
-                                  child: FittedBox(fit: BoxFit.scaleDown, child: Text(staff['branch'], style: GoogleFonts.inter(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.w600))),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 620),
+                      child: SizedBox(
+                        width: 620,
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _staffList.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: Row(
+                                  children: [
+                                    Expanded(flex: 2, child: Text('Employee Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                                    Expanded(flex: 2, child: Text('Email Address', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                                    Expanded(flex: 2, child: Text('Branch Location', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                                    Expanded(flex: 2, child: Text('Role (RBAC)', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                                    Expanded(flex: 1, child: Text('Status', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12))),
+                                  ],
                                 ),
-                              ),
-                            ),
-                            Expanded(flex: 2, child: Align(alignment: Alignment.centerLeft, child: _buildRoleBadge(staff['role']))),
-                            Expanded(
-                              flex: 1,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isActive ? const Color(0xFF10B981).withOpacity(0.15) : Colors.redAccent.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Text(
-                                      staff['status'],
-                                      style: GoogleFonts.inter(
-                                        color: isActive ? const Color(0xFF10B981) : Colors.redAccent,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
+                              );
+                            }
+                            final staff = _staffList[index - 1];
+                            final bool isActive = staff['status'] == 'Active';
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Row(
+                                children: [
+                                  Expanded(flex: 2, child: Text(staff['name'], style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12))),
+                                  Expanded(flex: 2, child: Text(staff['email'], style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                                        child: FittedBox(fit: BoxFit.scaleDown, child: Text(staff['branch'], style: GoogleFonts.inter(color: Colors.blueAccent, fontSize: 11, fontWeight: FontWeight.w600))),
                                       ),
                                     ),
                                   ),
-                                ),
+                                  Expanded(flex: 2, child: Align(alignment: Alignment.centerLeft, child: _buildRoleBadge(staff['role']))),
+                                  Expanded(
+                                    flex: 1,
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isActive ? const Color(0xFF10B981).withValues(alpha: 0.15) : Colors.redAccent.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(
+                                            staff['status'],
+                                            style: GoogleFonts.inter(
+                                              color: isActive ? const Color(0xFF10B981) : Colors.redAccent,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -899,7 +959,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -907,10 +967,14 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Global Finance Ledger',
-                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      Expanded(
+                        child: Text(
+                          'Global Finance Ledger',
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       DropdownButton<String>(
                         value: _selectedFinanceBranch,
                         dropdownColor: const Color(0xFF1E293B),
@@ -937,62 +1001,30 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   const SizedBox(height: 16),
                   _isLoadingFinance
                       ? const Center(child: CircularProgressIndicator())
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Daily Revenue', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
-                                    const SizedBox(height: 8),
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyRevenue.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.tealAccent, fontWeight: FontWeight.bold))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Petty Cash Spent', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
-                                    const SizedBox(height: 8),
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${_dailyPettyCash.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.orangeAccent, fontWeight: FontWeight.bold))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Net Cash on Hand', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12))),
-                                    const SizedBox(height: 8),
-                                    FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 20, color: Colors.greenAccent, fontWeight: FontWeight.bold))),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            final isNarrow = constraints.maxWidth < 520;
+                            if (isNarrow) {
+                              return Column(
+                                children: [
+                                  _buildFinanceLedgerKpi('Daily Revenue', 'KES ${_dailyRevenue.toStringAsFixed(2)}', Colors.tealAccent),
+                                  const SizedBox(height: 10),
+                                  _buildFinanceLedgerKpi('Petty Cash Spent', 'KES ${_dailyPettyCash.toStringAsFixed(2)}', Colors.orangeAccent),
+                                  const SizedBox(height: 10),
+                                  _buildFinanceLedgerKpi('Net Cash on Hand', 'KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', Colors.greenAccent),
+                                ],
+                              );
+                            }
+                            return Row(
+                              children: [
+                                Expanded(child: _buildFinanceLedgerKpi('Daily Revenue', 'KES ${_dailyRevenue.toStringAsFixed(2)}', Colors.tealAccent)),
+                                const SizedBox(width: 14),
+                                Expanded(child: _buildFinanceLedgerKpi('Petty Cash Spent', 'KES ${_dailyPettyCash.toStringAsFixed(2)}', Colors.orangeAccent)),
+                                const SizedBox(width: 14),
+                                Expanded(child: _buildFinanceLedgerKpi('Net Cash on Hand', 'KES ${(_dailyRevenue - _dailyPettyCash).toStringAsFixed(2)}', Colors.greenAccent)),
+                              ],
+                            );
+                          },
                         ),
                 ],
               ),
@@ -1033,7 +1065,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: _ledgerEntries.length,
-                              separatorBuilder: (_, __) => Divider(color: Colors.white.withValues(alpha: 0.05)),
+                              separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05)),
                               itemBuilder: (context, index) {
                                 final entry = _ledgerEntries[index];
                                 final status = entry['status'] ?? 'Pending';
@@ -1115,16 +1147,16 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
     Color fg;
 
     if (role == 'CEO' || role == 'General Manager') {
-      bg = Colors.purpleAccent.withOpacity(0.2);
+      bg = Colors.purpleAccent.withValues(alpha: 0.2);
       fg = Colors.purpleAccent;
     } else if (role.contains('Manager')) {
-      bg = Colors.amber.withOpacity(0.2);
+      bg = Colors.amber.withValues(alpha: 0.2);
       fg = Colors.amber;
     } else if (role.contains('Pharmacist')) {
-      bg = Colors.cyanAccent.withOpacity(0.2);
+      bg = Colors.cyanAccent.withValues(alpha: 0.2);
       fg = Colors.cyanAccent;
     } else {
-      bg = Colors.blueAccent.withOpacity(0.2);
+      bg = Colors.blueAccent.withValues(alpha: 0.2);
       fg = Colors.blueAccent;
     }
 
@@ -1132,6 +1164,38 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
       child: Text(role, style: GoogleFonts.inter(color: fg, fontSize: 12, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildFinanceLedgerKpi(String title, String value, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(title, style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 18, color: color, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

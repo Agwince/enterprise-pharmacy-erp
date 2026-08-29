@@ -327,6 +327,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         _looseImageBytes = null;
       });
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(

@@ -12,7 +12,6 @@ class DispatchMapScreen extends StatefulWidget {
 }
 
 class _DispatchMapScreenState extends State<DispatchMapScreen> {
-  GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
   RealtimeChannel? _subscription;
   
@@ -94,7 +93,6 @@ class _DispatchMapScreenState extends State<DispatchMapScreen> {
       body: GoogleMap(
         initialCameraPosition: _initialCamera,
         markers: _markers,
-        onMapCreated: (controller) => _mapController = controller,
         myLocationEnabled: false,
         zoomControlsEnabled: true,
       ),

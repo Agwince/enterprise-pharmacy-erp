@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/ai_service.dart';
-
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AiCopilotSheet extends StatefulWidget {
@@ -22,10 +21,18 @@ class AiCopilotSheet extends StatefulWidget {
 
 class _AiCopilotSheetState extends State<AiCopilotSheet> {
   final _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final _aiService = AiService();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
   final _supabase = Supabase.instance.client;
+
+  final List<String> _quickPrompts = [
+    '📊 Multi-Branch Sales & Revenue Breakdown',
+    '💊 Top Antibiotics & Diabetes Medications',
+    '🧊 Cold-Chain & Insulin Temperature Audit',
+    '🛵 Live Dispatch Routes in Nairobi',
+  ];
 
   @override
   void initState() {
@@ -33,12 +40,35 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
     _fetchHistory();
   }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   Future<void> _fetchHistory() async {
     setState(() => _isLoading = true);
     try {
       final user = _supabase.auth.currentUser;
       if (user != null) {
-        final data = await _supabase.from('ai_chat_messages').select('role, content').eq('user_id', user.id).order('created_at', ascending: true);
+        final data = await _supabase
+            .from('ai_chat_messages')
+            .select('role, content')
+            .eq('user_id', user.id)
+            .order('created_at', ascending: true);
         final List<Map<String, String>> history = [];
         for (var row in data) {
           history.add({
@@ -51,30 +81,41 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching history: $e');
+      debugPrint('AI history fetch note: $e');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        if (_messages.isEmpty) {
+          _messages.add({
+            'role': 'assistant',
+            'content': '👋 Greetings Executive. I am your Mediocare Operations Copilot powered by Minimax M3.\n\nI have real-time synchronization with your 782 pharmaceutical SKUs, 4 regional hubs (Nairobi, Kisumu, Mombasa, Eldoret), and live GPS telemetry. Ask any question below or pick a prompt to analyze.'
+          });
+        }
+        setState(() => _isLoading = false);
+        _scrollToBottom();
+      }
     }
   }
 
-  Future<void> _sendMessage() async {
-    final text = _controller.text.trim();
+  Future<void> _sendMessage([String? presetText]) async {
+    final text = (presetText ?? _controller.text).trim();
     if (text.isEmpty) return;
 
     setState(() {
       _messages.add({"role": "user", "content": text});
       _isLoading = true;
     });
-    _controller.clear();
+    if (presetText == null) {
+      _controller.clear();
+    }
+    _scrollToBottom();
 
     final user = _supabase.auth.currentUser;
     if (user != null) {
       try {
         await _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'user', 'content': text});
-      } catch (e) {}
+      } catch (_) {}
     }
 
-    // Prepare history to send (excluding the very last user message which is passed directly)
     final history = _messages.take(_messages.length - 1).toList();
     final response = await _aiService.sendMessage(text, history);
 
@@ -83,10 +124,11 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
         _messages.add({"role": "assistant", "content": response});
         _isLoading = false;
       });
+      _scrollToBottom();
       if (user != null) {
         try {
-          _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'assistant', 'content': response});
-        } catch (e) {}
+          await _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'assistant', 'content': response});
+        } catch (_) {}
       }
     }
   }
@@ -106,204 +148,334 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return DefaultTabController(
-      length: 2,
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 800;
+
+    return Center(
       child: Container(
-        margin: const EdgeInsets.all(16),
-        padding: EdgeInsets.only(bottom: bottomInset),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        constraints: BoxConstraints(
+          maxWidth: isDesktop ? 700 : double.infinity,
+          maxHeight: screenHeight * 0.85,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.auto_awesome, color: Colors.blueAccent),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Mediocare Genius',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white54),
-                        onPressed: () => Navigator.pop(context),
-                      )
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const TabBar(
-                    labelColor: Colors.blueAccent,
-                    unselectedLabelColor: Colors.white54,
-                    indicatorColor: Colors.blueAccent,
-                    tabs: [
-                      Tab(icon: Icon(Icons.chat), text: "Live Chat"),
-                      Tab(icon: Icon(Icons.history), text: "History"),
-                    ],
-                  ),
-                ],
-              ),
+        margin: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
             ),
-            
-            // TabBarView
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.45,
-              child: TabBarView(
-                children: [
-                  // Tab 1: Live Chat
-                  Column(
-                    children: [
-                      Expanded(
-                        child: _messages.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'Ask me about stock, sales, or logistics.',
-                                  style: GoogleFonts.inter(color: Colors.white54),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: _messages.length,
-                                itemBuilder: (context, index) {
-                                  final msg = _messages[index];
-                                  final isUser = msg['role'] == 'user';
-                                  return Align(
-                                    alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: isUser ? Colors.blueAccent.withOpacity(0.2) : Colors.black26,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: isUser ? Colors.blueAccent.withOpacity(0.5) : Colors.white10,
-                                        ),
-                                      ),
-                                      constraints: BoxConstraints(
-                                        maxWidth: MediaQuery.of(context).size.width * 0.75,
-                                      ),
-                                      child: Text(
-                                        msg['content'] ?? '',
-                                        style: GoogleFonts.inter(
-                                          color: isUser ? Colors.white : Colors.white70,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                      if (_isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: CircularProgressIndicator(color: Colors.blueAccent),
-                        ),
-                      // Input Area
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _controller,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  hintText: 'Type your message...',
-                                  hintStyle: const TextStyle(color: Colors.white38),
-                                  filled: true,
-                                  fillColor: Colors.black.withOpacity(0.3),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                ),
-                                onSubmitted: (_) => _sendMessage(),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            CircleAvatar(
-                              backgroundColor: Colors.blueAccent,
-                              child: IconButton(
-                                icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                                onPressed: _isLoading ? null : _sendMessage,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    ],
-                  ),
-                  
-                  // Tab 2: History
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: _fetchFullHistory(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator(color: Colors.blueAccent));
-                      }
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error loading history', style: GoogleFonts.inter(color: Colors.white54)));
-                      }
-                      final historyData = snapshot.data ?? [];
-                      if (historyData.isEmpty) {
-                        return Center(child: Text('No history found.', style: GoogleFonts.inter(color: Colors.white54)));
-                      }
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: historyData.length,
-                        itemBuilder: (context, index) {
-                          final msg = historyData[index];
-                          final isUser = msg['role'] == 'user';
-                          return Align(
-                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isUser ? Colors.blueAccent.withOpacity(0.2) : Colors.black26,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: isUser ? Colors.blueAccent.withOpacity(0.5) : Colors.white10,
-                                ),
-                              ),
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.75,
-                              ),
-                              child: Text(
-                                msg['content']?.toString() ?? '',
-                                style: GoogleFonts.inter(
-                                  color: isUser ? Colors.white : Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
+            BoxShadow(
+              color: Colors.tealAccent.withValues(alpha: 0.1),
+              blurRadius: 20,
+              spreadRadius: 2,
             ),
           ],
+        ),
+        child: DefaultTabController(
+          length: 2,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [const Color(0xFF0D9488).withValues(alpha: 0.2), const Color(0xFF1E293B)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.tealAccent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.auto_awesome, color: Colors.tealAccent, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Mediocare Operations Copilot',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Powered by Minimax M3 • Live Telemetry & ERP Synced',
+                                style: GoogleFonts.inter(
+                                  color: Colors.tealAccent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white54, size: 20),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const TabBar(
+                      labelColor: Colors.tealAccent,
+                      unselectedLabelColor: Colors.white54,
+                      indicatorColor: Colors.tealAccent,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      tabs: [
+                        Tab(icon: Icon(Icons.chat_bubble_outline_rounded, size: 16), text: "Live Operations Chat"),
+                        Tab(icon: Icon(Icons.history_rounded, size: 16), text: "Executive Audit Log"),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Body: Live Chat vs History
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // Tab 1: Live Chat
+                    Column(
+                      children: [
+                        // Quick Prompt Suggestion Pills
+                        Container(
+                          height: 44,
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B).withValues(alpha: 0.5),
+                            border: Border(
+                              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                          ),
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            itemCount: _quickPrompts.length,
+                            separatorBuilder: (context, index) => const SizedBox(width: 8),
+                            itemBuilder: (context, index) {
+                              final prompt = _quickPrompts[index];
+                              return ActionChip(
+                                label: Text(
+                                  prompt,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11,
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                backgroundColor: const Color(0xFF1E293B),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                                ),
+                                onPressed: _isLoading ? null : () => _sendMessage(prompt),
+                              );
+                            },
+                          ),
+                        ),
+
+                        // Message Stream
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = _messages[index];
+                              final isUser = msg['role'] == 'user';
+                              return Align(
+                                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isUser
+                                        ? const Color(0xFF0F766E).withValues(alpha: 0.35)
+                                        : const Color(0xFF1E293B),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isUser
+                                          ? Colors.tealAccent.withValues(alpha: 0.4)
+                                          : Colors.white.withValues(alpha: 0.1),
+                                    ),
+                                  ),
+                                  constraints: BoxConstraints(
+                                    maxWidth: isDesktop ? 550 : screenWidth * 0.82,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            isUser ? Icons.person_outline_rounded : Icons.auto_awesome,
+                                            size: 14,
+                                            color: isUser ? Colors.tealAccent : Colors.cyanAccent,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            isUser ? 'You' : 'Minimax AI Copilot',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isUser ? Colors.tealAccent : Colors.cyanAccent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        msg['content'] ?? '',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          height: 1.45,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        if (_isLoading)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.tealAccent),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Minimax M3 analyzing live ERP metrics...',
+                                  style: GoogleFonts.inter(fontSize: 12, color: Colors.tealAccent),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        // Input Area
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            border: Border(
+                              top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                            ),
+                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _controller,
+                                  style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                                  decoration: InputDecoration(
+                                    hintText: 'Ask about 782 SKUs, branch revenues, or rider telemetry...',
+                                    hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                                    filled: true,
+                                    fillColor: const Color(0xFF0F172A),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                  ),
+                                  onSubmitted: (_) => _sendMessage(),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF0D9488), Color(0xFF2563EB)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                  onPressed: _isLoading ? null : () => _sendMessage(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Tab 2: History
+                    FutureBuilder<List<Map<String, dynamic>>>(
+                      future: _fetchFullHistory(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(color: Colors.tealAccent));
+                        }
+                        final historyData = snapshot.data ?? [];
+                        if (historyData.isEmpty) {
+                          return Center(
+                            child: Text('No historical queries recorded for this session.',
+                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 13)),
+                          );
+                        }
+                        return ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: historyData.length,
+                          separatorBuilder: (context, index) => const Divider(color: Colors.white10),
+                          itemBuilder: (context, index) {
+                            final msg = historyData[index];
+                            final isUser = msg['role'] == 'user';
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isUser ? Colors.blueAccent : Colors.teal,
+                                radius: 14,
+                                child: Icon(isUser ? Icons.person : Icons.auto_awesome, size: 14, color: Colors.white),
+                              ),
+                              title: Text(
+                                msg['content']?.toString() ?? '',
+                                style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                              ),
+                              subtitle: Text(
+                                isUser ? 'CEO Query' : 'Minimax Advisory',
+                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

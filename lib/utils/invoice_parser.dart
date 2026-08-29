@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 class InvoiceParser {
   static List<Map<String, dynamic>> parseInvoice(String rawOcrText, List<dynamic> catalog) {
     final List<Map<String, dynamic>> matchedItems = [];

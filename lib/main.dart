@@ -26,7 +26,7 @@ void main() async {
     try {
       await Supabase.initialize(
         url: SupabaseConfig.url,
-        anonKey: SupabaseConfig.anonKey,
+        publishableKey: SupabaseConfig.anonKey,
       );
       // Force clear any stale session tokens from localStorage
       await Supabase.instance.client.auth.signOut();
@@ -155,7 +155,6 @@ class StrictAuthRoleRouter extends StatelessWidget {
             workspaceWidget = const MarketerDashboardScreen();
             break;
           case UserRole.none:
-          default:
             return const LoginScreen();
         }
 

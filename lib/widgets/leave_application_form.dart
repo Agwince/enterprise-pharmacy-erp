@@ -4,8 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
 class LeaveApplicationForm extends StatefulWidget {
+  const LeaveApplicationForm({super.key});
+
   @override
-  _LeaveApplicationFormState createState() => _LeaveApplicationFormState();
+  State<LeaveApplicationForm> createState() => _LeaveApplicationFormState();
 }
 
 class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
@@ -26,8 +28,11 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) _startDate = picked;
-        else _endDate = picked;
+        if (isStart) {
+          _startDate = picked;
+        } else {
+          _endDate = picked;
+        }
       });
     }
   }
@@ -35,7 +40,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   Future<void> _submitLeave() async {
     if (!_formKey.currentState!.validate() || _startDate == null || _endDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fill all fields and select dates.')),
+        const SnackBar(content: Text('Please fill all fields and select dates.')),
       );
       return;
     }
@@ -54,7 +59,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Leave request submitted successfully.'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Leave request submitted successfully.'), backgroundColor: Colors.green),
       );
       
       _nameController.clear();
@@ -65,6 +70,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
         _endDate = null;
       });
       
+      if (!mounted) return;
       Navigator.pop(context); // Close the form/modal
     } catch (e) {
       if (!mounted) return;
@@ -81,9 +87,9 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF1E293B),
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -94,81 +100,81 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Leave Application', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
                 labelText: 'Employee Name',
                 labelStyle: TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
               ),
               validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _roleController,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
                 labelText: 'Role',
                 labelStyle: TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
               ),
               validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _selectDate(context, true),
-                    icon: Icon(Icons.calendar_today, size: 16),
+                    icon: const Icon(Icons.calendar_today, size: 16),
                     label: Text(_startDate == null ? 'Start Date' : DateFormat('yyyy-MM-dd').format(_startDate!)),
-                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F172A), foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
                   ),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _selectDate(context, false),
-                    icon: Icon(Icons.calendar_today, size: 16),
+                    icon: const Icon(Icons.calendar_today, size: 16),
                     label: Text(_endDate == null ? 'End Date' : DateFormat('yyyy-MM-dd').format(_endDate!)),
-                    style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF0F172A), foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _reasonController,
-              style: TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white),
               maxLines: 3,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Reason',
                 labelStyle: TextStyle(color: Colors.grey),
                 filled: true,
                 fillColor: Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
               ),
               validator: (v) => v!.isEmpty ? 'Required' : null,
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submitLeave,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: _isSubmitting
-                    ? CircularProgressIndicator(color: Colors.white)
-                    : Text('Submit Leave Request', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Submit Leave Request', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

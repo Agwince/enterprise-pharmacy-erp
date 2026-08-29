@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
-import 'receive_delivery_scanner.dart';
-import 'register_product_screen.dart';
 import 'catalog_list_screen.dart';
 
 class CatalogAdminHome extends StatefulWidget {

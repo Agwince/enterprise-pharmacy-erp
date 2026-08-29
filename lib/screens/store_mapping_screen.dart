@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/auth_service.dart';
 
 class StoreMappingScreen extends StatefulWidget {
   const StoreMappingScreen({super.key});

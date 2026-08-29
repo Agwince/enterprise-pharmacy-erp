@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/drug.dart';
-import '../services/supabase_service.dart';
 import '../services/auth_service.dart';
 import 'register_product_screen.dart';
 
@@ -16,13 +15,11 @@ class StockPutawayScreen extends StatefulWidget {
 
 class _StockPutawayScreenState extends State<StockPutawayScreen> {
   final ImagePicker _picker = ImagePicker();
-  final SupabaseService _supabaseService = SupabaseService();
 
   bool _isLoading = true;
   List<Drug> _drugsCatalog = [];
   Drug? _selectedDrug;
   String? _capturedImageLocalPath;
-  int _currentStep = 1;
   bool _isUploading = false;
   final _quantityController = TextEditingController(text: '50');
 
@@ -110,7 +107,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
       setState(() {
         _selectedDrug = drug;
         _capturedImageLocalPath = null;
-        _currentStep = 2;
       });
     }
   }
@@ -158,9 +154,9 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
     setState(() {
       _isUploading = false;
       _capturedImageLocalPath = path;
-      _currentStep = 2;
     });
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -200,9 +196,9 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
     setState(() {
       _selectedDrug = null;
       _capturedImageLocalPath = null;
-      _currentStep = 1;
     });
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Column(

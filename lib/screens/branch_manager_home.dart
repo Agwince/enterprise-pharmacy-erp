@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import 'branch_dashboard_screen.dart';
+import 'kisumu_in_transit_screen.dart';
 import 'location_manager_screen.dart';
 import 'catalog_photo_studio.dart';
 import 'store_mapping_screen.dart';
+import 'wholesale_catalog_screen.dart';
+import 'ppb_compliance_screen.dart';
 
 class BranchManagerHome extends StatefulWidget {
   const BranchManagerHome({super.key});
@@ -21,144 +24,20 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
       case 0:
         return const BranchDashboardScreen();
       case 1:
-        return const LocationManagerScreen();
+        return const KisumuInTransitScreen();
       case 2:
-        return _buildLocalInventoryView();
+        return const PpbComplianceScreen();
       case 3:
-        return const CatalogPhotoStudioScreen();
+        return const WholesaleCatalogScreen();
       case 4:
+        return const LocationManagerScreen();
+      case 5:
+        return const CatalogPhotoStudioScreen();
+      case 6:
         return const StoreMappingScreen();
       default:
         return const BranchDashboardScreen();
     }
-  }
-
-  Widget _buildLocalInventoryView() {
-    final mockInventory = [
-      {'sku': 'SKU-1001', 'name': 'Amoxicillin 500mg', 'location': 'Aisle 1 - Shelf A', 'stock': '50 Cartons', 'status': 'Optimal'},
-      {'sku': 'SKU-1002', 'name': 'Paracetamol 500mg', 'location': 'Aisle 1 - Shelf A', 'stock': '120 Cartons', 'status': 'Optimal'},
-      {'sku': 'SKU-1003', 'name': 'Ibuprofen 400mg', 'location': 'Aisle 1 - Shelf B', 'stock': '35 Cartons', 'status': 'Optimal'},
-      {'sku': 'SKU-1004', 'name': 'Azithromycin 250mg', 'location': 'Aisle 2 - Shelf A', 'stock': '25 Cartons', 'status': 'Low Stock'},
-      {'sku': 'SKU-1005', 'name': 'Insulin Glargine', 'location': 'Aisle 3 - Shelf A', 'stock': '15 Vials', 'status': 'Critical Cold'},
-    ];
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Local Branch Inventory',
-                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Nairobi Central Branch • Stock Control',
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.tealAccent, fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.tealAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    '5 SKUs Live',
-                    style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: mockInventory.length,
-                separatorBuilder: (context, index) => Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
-                itemBuilder: (context, index) {
-                  final item = mockInventory[index];
-                  final isLow = item['status'] == 'Low Stock';
-                  final isCold = item['status'] == 'Critical Cold';
-
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        isCold ? Icons.ac_unit_rounded : Icons.inventory_2_rounded,
-                        color: isCold ? Colors.cyanAccent : (isLow ? Colors.orangeAccent : Colors.tealAccent),
-                      ),
-                    ),
-                    title: Text(
-                      item['name']!,
-                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                    subtitle: Text(
-                      '${item['sku']} • ${item['location']}',
-                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
-                    ),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          item['stock']!,
-                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        if (isLow)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.redAccent.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
-                            ),
-                            child: Text(
-                              'Expiry Check Required',
-                              style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 9, fontWeight: FontWeight.bold),
-                            ),
-                          )
-                        else
-                          Text(
-                            item['status']!,
-                            style: GoogleFonts.inter(
-                              color: isCold ? Colors.cyanAccent : (isLow ? Colors.orangeAccent : Colors.tealAccent),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -228,8 +107,8 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
           selectedItemColor: Colors.tealAccent,
           unselectedItemColor: Colors.white54,
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: GoogleFonts.inter(fontSize: 11),
+          selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: GoogleFonts.inter(fontSize: 10),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_rounded),
@@ -237,14 +116,24 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.location_city_rounded),
-              activeIcon: Icon(Icons.location_city_rounded, color: Colors.tealAccent),
-              label: 'Locations',
+              icon: Icon(Icons.local_shipping_rounded),
+              activeIcon: Icon(Icons.local_shipping_rounded, color: Colors.tealAccent),
+              label: 'Kisumu Transit',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.verified_user_rounded),
+              activeIcon: Icon(Icons.verified_user_rounded, color: Colors.tealAccent),
+              label: 'PPB Expiry',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.inventory_2_rounded),
               activeIcon: Icon(Icons.inventory_2_rounded, color: Colors.tealAccent),
-              label: 'Inventory',
+              label: 'Catalog',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.location_city_rounded),
+              activeIcon: Icon(Icons.location_city_rounded, color: Colors.tealAccent),
+              label: 'Locations',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.camera_enhance_rounded),

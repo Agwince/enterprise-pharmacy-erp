@@ -167,7 +167,7 @@ class _MarketerDashboardScreenState extends State<MarketerDashboardScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.2),
+                                      color: Colors.green.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(color: Colors.green),
                                     ),
@@ -176,7 +176,7 @@ class _MarketerDashboardScreenState extends State<MarketerDashboardScreen> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              Divider(color: Colors.white.withOpacity(0.1)),
+                              Divider(color: Colors.white.withValues(alpha: 0.1)),
                               const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -217,7 +217,7 @@ class _MarketerDashboardScreenState extends State<MarketerDashboardScreen> {
                           labelText: 'Client / Clinic Name',
                           labelStyle: const TextStyle(color: Colors.white54),
                           filled: true,
-                          fillColor: Colors.black.withOpacity(0.3),
+                          fillColor: Colors.black.withValues(alpha: 0.3),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           prefixIcon: const Icon(Icons.person, color: Colors.white54),
                         ),

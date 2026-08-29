@@ -173,7 +173,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                 backgroundColor: Colors.transparent,
                 builder: (context) => Padding(
                   padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                  child: LeaveApplicationForm(),
+                  child: const LeaveApplicationForm(),
                 ),
               );
             },
@@ -286,7 +286,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.tealAccent.withOpacity(0.5)),
+                  side: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.5)),
                 ),
               ),
               icon: const Icon(Icons.warehouse_rounded, size: 28, color: Colors.tealAccent),
@@ -360,7 +360,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,7 +374,7 @@ class _StorekeeperHomeState extends State<StorekeeperHome> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _liveStock.length,
-              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05)),
               itemBuilder: (context, index) {
                 final stock = _liveStock[index];
                 return ListTile(

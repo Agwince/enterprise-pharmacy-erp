@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/drug.dart';
 import '../services/supabase_service.dart';
-import '../services/auth_service.dart';
 
 class DeliveryRoutingScreen extends StatefulWidget {
   const DeliveryRoutingScreen({super.key});
@@ -129,7 +128,7 @@ class _DeliveryRoutingScreenState extends State<DeliveryRoutingScreen> {
                     final String? destination = item['route_destination'];
 
                     return Card(
-                      color: isRouted ? const Color(0xFF1E293B).withOpacity(0.5) : const Color(0xFF1E293B),
+                      color: isRouted ? const Color(0xFF1E293B).withValues(alpha: 0.5) : const Color(0xFF1E293B),
                       margin: const EdgeInsets.only(bottom: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -234,8 +233,8 @@ class _DeliveryRoutingScreenState extends State<DeliveryRoutingScreen> {
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: destination == 'STORE'
-                                      ? Colors.blueAccent.withOpacity(0.1)
-                                      : Colors.tealAccent.withOpacity(0.1),
+                                      ? Colors.blueAccent.withValues(alpha: 0.1)
+                                      : Colors.tealAccent.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Column(

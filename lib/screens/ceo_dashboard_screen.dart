@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'ceo_fleet_map_screen.dart';
 import '../widgets/ai_copilot_sheet.dart';
+import 'etims_workspace_screen.dart';
 
 class CeoDashboardScreen extends StatefulWidget {
   const CeoDashboardScreen({super.key});
@@ -219,7 +220,8 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = MediaQuery.of(context).size.width > 900;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 850;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -237,17 +239,27 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
               child: const Icon(Icons.dashboard_customize_rounded, color: Colors.blueAccent, size: 20),
             ),
             const SizedBox(width: 12),
-            Text(
-              isDesktop ? 'Executive Pharmacy Analytics (CEO Dashboard)' : 'CEO Analytics',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+            Expanded(
+              child: Text(
+                isDesktop ? 'Executive Pharmacy Analytics (CEO Dashboard)' : 'CEO Analytics',
+                style: GoogleFonts.inter(
+                  fontSize: isDesktop ? 16 : 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'KRA eTIMS Compliance & e-Invoicing',
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
+            },
+          ),
           IconButton(
             onPressed: _loadDashboardData,
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
@@ -270,6 +282,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           else
             IconButton(
               icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+              tooltip: 'Logout CEO',
               onPressed: () => AuthService().logout(),
             ),
         ],
@@ -284,7 +297,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
             backgroundColor: Colors.tealAccent,
             child: const Icon(Icons.auto_awesome, color: Colors.black),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           FloatingActionButton.extended(
             heroTag: 'live_fleet_fab',
             onPressed: () {
@@ -292,28 +305,34 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
             },
             backgroundColor: Colors.blueAccent,
             icon: const Icon(Icons.map_rounded, color: Colors.white),
-            label: Text('Live Fleet Tracking', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+            label: Text(
+              isDesktop ? 'Live Fleet Tracking' : 'Fleet Map',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+            ),
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top Summary KPI Cards
+                  // Top Summary KPI Cards (Bulletproof Sizing - No Overflows)
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      int count = isDesktop ? 4 : 2;
+                      final width = constraints.maxWidth;
+                      final int crossAxisCount = width > 950 ? 4 : 2;
+                      final double childAspectRatio = width > 950 ? 2.5 : 1.75;
+
                       return GridView.count(
-                        crossAxisCount: count,
+                        crossAxisCount: crossAxisCount,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: isDesktop ? 2.2 : 1.8,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: childAspectRatio,
                         children: [
                           _buildKpiCard(
                             'Total ERP Sales',
@@ -324,7 +343,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                           ),
                           _buildKpiCard(
                             'Active Branches',
-                            '${_branchRevenues.length} Hubs',
+                            '${_branchRevenues.length} Regional Hubs',
                             'NBO, KSM, MSA, ELD',
                             Icons.storefront_rounded,
                             Colors.blueAccent,
@@ -332,13 +351,13 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                           _buildKpiCard(
                             'Total Orders',
                             '$_totalTransactions Fulfilled',
-                            'Past 30 Days',
+                            'Past 30 Days Synced',
                             Icons.receipt_long_rounded,
                             Colors.amberAccent,
                           ),
                           _buildKpiCard(
                             'Inventory Health',
-                            '96.8%',
+                            '96.8% Stocked',
                             'ABC Velocity Optimized',
                             Icons.verified_user_rounded,
                             Colors.purpleAccent,
@@ -347,185 +366,40 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
-                  // Charts Section
-                  Flex(
-                    direction: isDesktop ? Axis.horizontal : Axis.vertical,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Branch Revenue Bar Chart
-                      Expanded(
-                        flex: isDesktop ? 6 : 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Revenue Comparison Across Branches',
-                                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Multi-branch sales breakdown across Kenya operations',
-                                style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
-                              ),
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                height: 260,
-                                child: BarChart(
-                                  BarChartData(
-                                    alignment: BarChartAlignment.spaceAround,
-                                    maxY: (_maxBranchRev * 1.25),
-                                    barTouchData: BarTouchData(enabled: true),
-                                    titlesData: FlTitlesData(
-                                      show: true,
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (double value, TitleMeta meta) {
-                                            int idx = value.toInt();
-                                            if (idx >= 0 && idx < _branchRevenues.length) {
-                                              return Padding(
-                                                padding: const EdgeInsets.only(top: 8.0),
-                                                child: Text(
-                                                  _branchRevenues[idx]['code'] ?? 'BR',
-                                                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
-                                                ),
-                                              );
-                                            }
-                                            return const SizedBox();
-                                          },
-                                        ),
-                                      ),
-                                      leftTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          reservedSize: 55,
-                                          getTitlesWidget: (value, meta) {
-                                            return Text(
-                                              '${(value / 1000).toStringAsFixed(0)}k',
-                                              style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    ),
-                                    gridData: FlGridData(
-                                      show: true,
-                                      drawVerticalLine: false,
-                                      getDrawingHorizontalLine: (value) => FlLine(color: Colors.white10, strokeWidth: 1),
-                                    ),
-                                    borderData: FlBorderData(show: false),
-                                    barGroups: List.generate(_branchRevenues.length, (index) {
-                                      final rev = (_branchRevenues[index]['revenue'] as num).toDouble();
-                                      return BarChartGroupData(
-                                        x: index,
-                                        barRods: [
-                                          BarChartRodData(
-                                            toY: rev,
-                                            gradient: const LinearGradient(
-                                              colors: [Colors.blueAccent, Colors.tealAccent],
-                                              begin: Alignment.bottomCenter,
-                                              end: Alignment.topCenter,
-                                            ),
-                                            width: 22,
-                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                          ),
-                                        ],
-                                      );
-                                    }),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                  // Charts Section (Responsive Row on Desktop, Clean Column on Mobile)
+                  if (isDesktop)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: _buildBranchRevenueChart(),
                         ),
-                      ),
-                      if (isDesktop) const SizedBox(width: 24) else const SizedBox(height: 24),
+                        const SizedBox(width: 20),
+                        Expanded(
+                          flex: 4,
+                          child: _buildCategorySalesChart(),
+                        ),
+                      ],
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildBranchRevenueChart(),
+                        const SizedBox(height: 20),
+                        _buildCategorySalesChart(),
+                      ],
+                    ),
 
-                      // Sales Category Donut Chart
-                      Expanded(
-                        flex: isDesktop ? 4 : 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E293B),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Sales Category Distribution',
-                                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Top pharmaceutical product segments',
-                                style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                height: 260,
-                                child: PieChart(
-                                  PieChartData(
-                                    sectionsSpace: 3,
-                                    centerSpaceRadius: 44,
-                                    sections: _categorySales.entries.toList().asMap().entries.map((entry) {
-                                      final idx = entry.key;
-                                      final cat = entry.value;
-                                      final List<Color> colors = [
-                                        Colors.blueAccent,
-                                        Colors.tealAccent,
-                                        Colors.amberAccent,
-                                        Colors.purpleAccent,
-                                        Colors.pinkAccent,
-                                      ];
-                                      final color = colors[idx % colors.length];
-                                      final pct = _totalRevenue > 0 ? (cat.value / _totalRevenue * 100) : 20.0;
-                                      return PieChartSectionData(
-                                        value: cat.value,
-                                        title: '${pct.toStringAsFixed(0)}%',
-                                        color: color,
-                                        radius: 52,
-                                        titleStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                                        badgeWidget: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black87,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: Colors.white24, width: 0.5),
-                                          ),
-                                          child: Text(cat.key, style: GoogleFonts.inter(fontSize: 9, color: Colors.white)),
-                                        ),
-                                        badgePositionPercentageOffset: 1.25,
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Top Selling Drugs Table
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(16),
@@ -535,7 +409,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Top Selling Pharmaceuticals', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: DataTable(
@@ -549,11 +423,11 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                             ],
                             rows: _topDrugs.map((d) {
                               return _buildDataRow(
-                                d['sku'] as String,
-                                d['name'] as String,
-                                d['category'] as String,
-                                d['bin'] as String,
-                                'KES ${_currencyFormat.format(d['total_amount'] as double)}',
+                                d['sku'] ?? 'SKU',
+                                d['name'] ?? 'Drug',
+                                d['category'] ?? 'Category',
+                                d['bin'] ?? 'Aisle 1',
+                                'KES ${_currencyFormat.format(d['total_amount'] ?? 0)}',
                               );
                             }).toList(),
                           ),
@@ -561,12 +435,13 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
 
-                  // Live Activity Feed
+                  const SizedBox(height: 24),
+
+                  // Live Recent Activities Feed
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(16),
@@ -595,7 +470,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
@@ -614,15 +489,15 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                               ),
                               title: Text(
                                 'Wholesale Invoice #${act['id']}',
-                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                               subtitle: Text(
                                 'Dispatched from Nairobi Hub • $timeStr',
-                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 12),
+                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
                               ),
                               trailing: Text(
                                 'KES ${_currencyFormat.format(act['amount'])}',
-                                style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 14),
+                                style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             );
                           },
@@ -633,6 +508,166 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildBranchRevenueChart() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Revenue Comparison Across Branches',
+            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Multi-branch sales breakdown across Kenya operations',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 250,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: (_maxBranchRev * 1.25),
+                barTouchData: BarTouchData(enabled: true),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (double value, TitleMeta meta) {
+                        int idx = value.toInt();
+                        if (idx >= 0 && idx < _branchRevenues.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              _branchRevenues[idx]['code'] ?? 'BR',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          );
+                        }
+                        return const SizedBox();
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 52,
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          '${(value / 1000).toStringAsFixed(0)}k',
+                          style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
+                        );
+                      },
+                    ),
+                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) => const FlLine(color: Colors.white10, strokeWidth: 1),
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(_branchRevenues.length, (index) {
+                  final rev = (_branchRevenues[index]['revenue'] as num).toDouble();
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: rev,
+                        gradient: const LinearGradient(
+                          colors: [Colors.blueAccent, Colors.tealAccent],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                        width: 22,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySalesChart() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sales Category Distribution',
+            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Top pharmaceutical product segments',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.white54),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 250,
+            child: PieChart(
+              PieChartData(
+                sectionsSpace: 3,
+                centerSpaceRadius: 40,
+                sections: _categorySales.entries.toList().asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final cat = entry.value;
+                  final List<Color> colors = [
+                    Colors.blueAccent,
+                    Colors.tealAccent,
+                    Colors.amberAccent,
+                    Colors.purpleAccent,
+                    Colors.pinkAccent,
+                  ];
+                  final color = colors[idx % colors.length];
+                  final pct = _totalRevenue > 0 ? (cat.value / _totalRevenue * 100) : 20.0;
+                  return PieChartSectionData(
+                    value: cat.value,
+                    title: '${pct.toStringAsFixed(0)}%',
+                    color: color,
+                    radius: 48,
+                    titleStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    badgeWidget: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.white24, width: 0.5),
+                      ),
+                      child: Text(cat.key, style: GoogleFonts.inter(fontSize: 9, color: Colors.white)),
+                    ),
+                    badgePositionPercentageOffset: 1.25,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -654,27 +689,42 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
 
   Widget _buildKpiCard(String title, String value, String subtitle, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 12, color: Colors.white54, fontWeight: FontWeight.w500)),
-              Icon(icon, color: color, size: 22),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(fontSize: 11, color: Colors.white60, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(icon, color: color, size: 18),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(value, style: GoogleFonts.inter(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: GoogleFonts.inter(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+          Text(
+            subtitle,
+            style: GoogleFonts.inter(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

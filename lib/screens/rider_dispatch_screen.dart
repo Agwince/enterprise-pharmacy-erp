@@ -101,7 +101,7 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                       margin: const EdgeInsets.only(bottom: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: Colors.white.withOpacity(0.08)),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -124,7 +124,7 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: (tx['status'] == 'In Transit') ? Colors.blue.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                                    color: (tx['status'] == 'In Transit') ? Colors.blue.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: (tx['status'] == 'In Transit') ? Colors.blueAccent : Colors.orangeAccent,
@@ -166,7 +166,7 @@ class _RiderDispatchScreenState extends State<RiderDispatchScreen> {
                               ],
                             ),
                             const SizedBox(height: 12),
-                            Divider(color: Colors.white.withOpacity(0.1)),
+                            Divider(color: Colors.white.withValues(alpha: 0.1)),
                             const SizedBox(height: 8),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,

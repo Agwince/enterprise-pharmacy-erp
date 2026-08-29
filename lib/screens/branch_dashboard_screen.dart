@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 import '../widgets/ai_copilot_sheet.dart';
 import '../widgets/leave_application_form.dart';
+import 'kisumu_in_transit_screen.dart';
+import 'etims_workspace_screen.dart';
 
 class BranchDashboardScreen extends StatefulWidget {
   const BranchDashboardScreen({super.key});
@@ -173,6 +174,96 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
     }
   }
 
+  void _openMedicineSelectorModal() {
+    String search = '';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filtered = _liveStock.where((d) {
+              final name = (d['name'] ?? '').toString().toLowerCase();
+              final generic = (d['generic_name'] ?? '').toString().toLowerCase();
+              final brand = (d['brand_name'] ?? '').toString().toLowerCase();
+              final q = search.toLowerCase();
+              return name.contains(q) || generic.contains(q) || brand.contains(q);
+            }).toList();
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.7,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Select Registered Medicine (Supabase Catalog)',
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    onChanged: (v) => setModalState(() => search = v),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Search 782 products by brand or formula...',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05)),
+                      itemBuilder: (context, idx) {
+                        final drug = filtered[idx];
+                        final name = drug['name'] ?? drug['brand_name'] ?? 'Medicine';
+                        final generic = drug['generic_name'] ?? '';
+                        final stock = drug['quantity_in_stock'] ?? drug['shelf_quantity'] ?? 0;
+
+                        return ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: Colors.tealAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                            child: const Icon(Icons.medication_rounded, color: Colors.tealAccent, size: 20),
+                          ),
+                          title: Text(name, style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text(generic.isNotEmpty ? generic : 'In Stock: $stock Units', style: GoogleFonts.inter(color: Colors.white54, fontSize: 11)),
+                          trailing: const Icon(Icons.add_circle_outline, color: Colors.tealAccent, size: 22),
+                          onTap: () {
+                            setState(() {
+                              _reqItemController.text = name;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -212,9 +303,16 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                           backgroundColor: Colors.transparent,
                           builder: (context) => Padding(
                             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                            child: LeaveApplicationForm(),
+                            child: const LeaveApplicationForm(),
                           ),
                         );
+                      },
+                    ),
+                    IconButton(
+                      tooltip: 'KRA eTIMS e-Invoicing',
+                      icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
                       },
                     ),
                     IconButton(
@@ -226,7 +324,91 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 )
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
+
+            // Live Incoming Kisumu Dispatch Alert Card (Never Overflows)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0D9488), Color(0xFF1E3A8A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.tealAccent.withValues(alpha: 0.15),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(9),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: const Icon(Icons.local_shipping_rounded, color: Colors.tealAccent, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Incoming Kisumu Cold-Chain #TRK-9482',
+                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Toyota HiAce Reefer (KDC 482J) • 3.2°C • ETA 34m',
+                              style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const KisumuInTransitScreen()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.tealAccent,
+                        foregroundColor: const Color(0xFF0F172A),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        elevation: 3,
+                      ),
+                      icon: const Icon(Icons.radar_rounded, size: 16),
+                      label: Text(
+                        'Track Medicines En Route',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {
                 if (constraints.maxWidth > 800) {
@@ -308,42 +490,73 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Internal Stock Requisition', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text('Internal Stock Requisition & Transfer', style: GoogleFonts.inter(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const KisumuInTransitScreen()));
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.tealAccent,
+                  side: const BorderSide(color: Colors.tealAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                icon: const Icon(Icons.local_shipping_rounded, size: 16),
+                label: Text('Kisumu Transit Radar', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11)),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           Form(
             child: Wrap(
-              spacing: 10,
-              runSpacing: 10,
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 SizedBox(
-                  width: 200,
+                  width: 240,
                   child: TextField(
                     controller: _reqItemController,
+                    readOnly: true,
+                    onTap: _openMedicineSelectorModal,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Item Name',
-                      labelStyle: const TextStyle(color: Colors.white54),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
-                      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                      labelText: 'Select Registered Medicine',
+                      hintText: 'Tap to pick from 782 SKUs',
+                      labelStyle: const TextStyle(color: Colors.tealAccent),
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      prefixIcon: const Icon(Icons.medication_rounded, color: Colors.tealAccent, size: 20),
+                      suffixIcon: const Icon(Icons.arrow_drop_down, color: Colors.tealAccent),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.3))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.tealAccent)),
                     ),
                   ),
                 ),
                 SizedBox(
-                  width: 200,
+                  width: 160,
                   child: TextField(
                     controller: _reqQtyController,
                     keyboardType: TextInputType.number,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      labelText: 'Quantity Needed',
+                      labelText: 'Quantity',
                       labelStyle: const TextStyle(color: Colors.white54),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
-                      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.tealAccent)),
                     ),
                   ),
                 ),
@@ -354,7 +567,8 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.tealAccent,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ],
@@ -368,7 +582,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _myRequisitions.length,
-              separatorBuilder: (_, __) => Divider(color: Colors.white.withOpacity(0.05)),
+              separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05)),
               itemBuilder: (context, index) {
                 final req = _myRequisitions[index];
                 final status = req['status'] ?? 'Pending';
@@ -386,9 +600,9 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                      border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
@@ -415,7 +629,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,7 +642,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               hintText: 'Search by brand or generic name...',
               hintStyle: const TextStyle(color: Colors.white54),
               prefixIcon: const Icon(Icons.search, color: Colors.white54),
-              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+              enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.3))),
               focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
             ),
             onChanged: (val) => setState(() => _searchQuery = val),
@@ -479,7 +693,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                       ),
                     ),
                     if (index < filteredStock.length - 1)
-                      Divider(color: Colors.white.withOpacity(0.05)),
+                      Divider(color: Colors.white.withValues(alpha: 0.05)),
                   ],
                 );
               },
@@ -509,7 +723,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 decoration: InputDecoration(
                   labelText: 'Quantity on Shelf',
                   labelStyle: const TextStyle(color: Colors.white54),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.3))),
                   focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
                 ),
               ),
@@ -521,7 +735,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 decoration: InputDecoration(
                   labelText: 'Quantity in Warehouse',
                   labelStyle: const TextStyle(color: Colors.white54),
-                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withOpacity(0.3))),
+                  enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent.withValues(alpha: 0.3))),
                   focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.tealAccent)),
                 ),
               ),
@@ -547,11 +761,11 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   if (ctx.mounted) {
                     Navigator.pop(ctx);
                     _loadDashboardData(); // Refresh data
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock updated successfully'), backgroundColor: Colors.green));
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Stock updated successfully'), backgroundColor: Colors.green));
                   }
                 } catch (e) {
                   if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating stock: $e'), backgroundColor: Colors.redAccent));
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error updating stock: $e'), backgroundColor: Colors.redAccent));
                   }
                 }
               },
@@ -576,7 +790,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -646,13 +860,13 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                   horizontalInterval: maxY / 5 > 0 ? maxY / 5 : 1,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       strokeWidth: 1,
                     );
                   },
                   getDrawingVerticalLine: (value) {
                     return FlLine(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       strokeWidth: 1,
                     );
                   },
@@ -714,7 +928,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.tealAccent.withOpacity(0.1),
+                      color: Colors.tealAccent.withValues(alpha: 0.1),
                     ),
                   ),
                 ],
@@ -774,7 +988,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                       leading: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isPositive ? Colors.tealAccent.withOpacity(0.1) : Colors.redAccent.withOpacity(0.1),
+                          color: isPositive ? Colors.tealAccent.withValues(alpha: 0.1) : Colors.redAccent.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

@@ -455,7 +455,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen> {
                         padding: const EdgeInsets.all(12),
                         child: ListView.separated(
                           itemCount: _ledgerEntries.length,
-                          separatorBuilder: (_, __) => Divider(color: Colors.white.withValues(alpha: 0.05)),
+                          separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05)),
                           itemBuilder: (context, index) {
                             final entry = _ledgerEntries[index];
                             final isRevenue = entry['status'] == 'Revenue Entry';

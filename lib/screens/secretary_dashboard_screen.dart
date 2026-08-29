@@ -36,7 +36,7 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading transactions: ')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading transactions: $e')));
         setState(() => _isLoading = false);
       }
     }
@@ -56,7 +56,7 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: '), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -95,14 +95,14 @@ class _SecretaryDashboardScreenState extends State<SecretaryDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 8),
-                        Text('Total: Ksh ', style: const TextStyle(color: Colors.tealAccent, fontSize: 16)),
+                        const Text('Total: Ksh ', style: TextStyle(color: Colors.tealAccent, fontSize: 16)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isPaid ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                                color: isPaid ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(color: isPaid ? Colors.green : Colors.orange),
                               ),

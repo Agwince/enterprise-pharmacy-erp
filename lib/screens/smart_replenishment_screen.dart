@@ -69,10 +69,10 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.2),
+                color: const Color(0xFF10B981).withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.auto_awesome_rounded, color: const Color(0xFF10B981)),
+              child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF10B981)),
             ),
             const SizedBox(width: 12),
             Text(
@@ -90,7 +90,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: const Color(0xFF10B981)))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF10B981)))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -100,11 +100,11 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [const Color(0xFF1E293B), const Color(0xFF0F2942)],
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E293B), Color(0xFF0F2942)],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                      border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -119,7 +119,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Fast (Top 20% velocity) • Dead Stock ($deadStockCount zero-sales items flagged)',
+                                'Fast ($fastStockCount top 20% velocity) • Dead Stock ($deadStockCount zero-sales items flagged)',
                                 style: GoogleFonts.inter(fontSize: 12, color: Colors.white60),
                               ),
                             ],
@@ -150,13 +150,13 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.1),
+                        color: const Color(0xFF10B981).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: const Color(0xFF10B981), size: 24),
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 24),
                           const SizedBox(width: 12),
                           Text(
                             'Active Draft Order: ${_lastPoResult!['po_number']} | Added ${_lastPoResult!['items_added']} items | Total Value: \$${(_lastPoResult!['total_amount'] as num).toStringAsFixed(2)}',
@@ -175,7 +175,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -241,18 +241,18 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
 
     switch (abcClass) {
       case 'Fast':
-        bg = const Color(0xFF10B981).withOpacity(0.2);
+        bg = const Color(0xFF10B981).withValues(alpha: 0.2);
         fg = const Color(0xFF10B981);
         icon = Icons.bolt_rounded;
         break;
       case 'Steady':
-        bg = Colors.blueAccent.withOpacity(0.2);
+        bg = Colors.blueAccent.withValues(alpha: 0.2);
         fg = Colors.blueAccent;
         icon = Icons.show_chart_rounded;
         break;
       case 'Dead':
       default:
-        bg = Colors.redAccent.withOpacity(0.2);
+        bg = Colors.redAccent.withValues(alpha: 0.2);
         fg = Colors.redAccent;
         icon = Icons.warning_amber_rounded;
         break;
@@ -260,7 +260,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: fg.withOpacity(0.5))),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: fg.withValues(alpha: 0.5))),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -281,7 +281,7 @@ class _SmartReplenishmentScreenState extends State<SmartReplenishmentScreen> {
     } else if (isLowStock) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(color: Colors.amber.withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
         child: Text('Reorder Suggested', style: GoogleFonts.inter(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold)),
       );
     } else {

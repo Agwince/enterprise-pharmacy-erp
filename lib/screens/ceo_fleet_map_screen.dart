@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -125,88 +124,36 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
               ),
               child: const Icon(Icons.satellite_alt_rounded, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Live Telematics & Fleet Dispatch',
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                ),
-                Text(
-                  'Kenya National Logistics Grid • Real-time GPS',
-                  style: GoogleFonts.inter(fontSize: 11, color: Colors.tealAccent),
-                ),
-              ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isDesktop ? 'Live Telematics & Fleet Dispatch' : 'Fleet Dispatch Radar',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: isDesktop ? 16 : 14, color: Colors.white),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Kenya National Logistics Grid • Real-time GPS',
+                    style: GoogleFonts.inter(fontSize: 10, color: Colors.tealAccent),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          // View Mode Switcher: Map vs Telematics Cards
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InkWell(
-                  onTap: () => setState(() => _showMap = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _showMap ? Colors.tealAccent : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.map_rounded, size: 16, color: _showMap ? Colors.black : Colors.white70),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Radar Map',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: _showMap ? FontWeight.bold : FontWeight.normal,
-                            color: _showMap ? Colors.black : Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () => setState(() => _showMap = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: !_showMap ? Colors.tealAccent : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.list_alt_rounded, size: 16, color: !_showMap ? Colors.black : Colors.white70),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Fleet List',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: !_showMap ? FontWeight.bold : FontWeight.normal,
-                            color: !_showMap ? Colors.black : Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
+          // View Mode Switcher
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.tealAccent),
+            tooltip: _showMap ? 'Switch to Fleet List' : 'Switch to Radar Map',
+            icon: Icon(_showMap ? Icons.list_alt_rounded : Icons.map_rounded, color: Colors.tealAccent),
+            onPressed: () => setState(() => _showMap = !_showMap),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             onPressed: _fetchFleet,
             tooltip: 'Ping Fleet Satellites',
           ),
@@ -233,21 +180,27 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
 
   Widget _buildLogisticsRibbon() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFF0B132B),
         border: Border(
           bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem('Active Dispatch', '${_fleet.length} Units', Icons.two_wheeler_rounded, Colors.tealAccent),
-          _buildStatItem('Cold-Chain Temp', '100% Compliant', Icons.thermostat_rounded, Colors.cyanAccent),
-          _buildStatItem('On-Time Rate', '98.6%', Icons.verified_rounded, const Color(0xFF10B981)),
-          _buildStatItem('Nairobi HQ Pings', 'Live (3s)', Icons.wifi_tethering_rounded, Colors.amberAccent),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            _buildStatItem('Active Dispatch', '${_fleet.length} Units', Icons.two_wheeler_rounded, Colors.tealAccent),
+            const SizedBox(width: 24),
+            _buildStatItem('Cold-Chain Temp', '100% Compliant', Icons.thermostat_rounded, Colors.cyanAccent),
+            const SizedBox(width: 24),
+            _buildStatItem('On-Time Rate', '98.6%', Icons.verified_rounded, const Color(0xFF10B981)),
+            const SizedBox(width: 24),
+            _buildStatItem('Nairobi HQ Pings', 'Live (3s)', Icons.wifi_tethering_rounded, Colors.amberAccent),
+          ],
+        ),
       ),
     );
   }
@@ -557,13 +510,17 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
           Icon(icon, size: 16, color: Colors.white54),
           const SizedBox(width: 10),
           Text(title, style: GoogleFonts.inter(fontSize: 12, color: Colors.white54)),
-          const Spacer(),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? Colors.white,
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? Colors.white,
+              ),
             ),
           ),
         ],

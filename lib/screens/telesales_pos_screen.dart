@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/accounting_service.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/leave_application_form.dart';
+import 'etims_workspace_screen.dart';
 
 class TelesalesPosScreen extends StatefulWidget {
   const TelesalesPosScreen({super.key});
@@ -15,7 +17,7 @@ class TelesalesPosScreen extends StatefulWidget {
 class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   List<Map<String, dynamic>> _catalog = [];
   List<Map<String, dynamic>> _filteredCatalog = [];
-  List<Map<String, dynamic>> _cart = [];
+  final List<Map<String, dynamic>> _cart = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _clientController = TextEditingController();
@@ -129,7 +131,13 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
     return total;
   }
 
-  Future<void> _checkout(String paymentStatus, String? receiptNumber) async {
+  final AccountingService _accounting = AccountingService();
+
+  Future<void> _checkout(
+    String paymentStatus,
+    String? receiptNumber, {
+    Map<String, dynamic>? insurance,
+  }) async {
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart is empty!')));
       return;
@@ -142,21 +150,65 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
     setState(() => _isLoading = true);
     try {
       final db = Supabase.instance.client;
+      const branchId = '9bdf6137-8825-4bc2-8bbd-f128c975c7a5';
+      final isInsurance = insurance != null;
 
-      for (var item in _cart) {
-        await db.from('transactions').insert({
-          'branch_id': '9bdf6137-8825-4bc2-8bbd-f128c975c7a5',
+      final payloads = _cart.map((item) {
+        final lineTotal = (item['qty'] as int) * (item['price'] as double);
+        return <String, dynamic>{
+          'branch_id': branchId,
           'drug_id': item['id'],
           'transaction_type': 'sale',
           'quantity': item['qty'],
           'unit_price': item['price'],
-          'total_amount': item['qty'] * item['price'],
-          'amount': item['qty'] * item['price'],
+          'total_amount': lineTotal,
+          'amount': lineTotal,
           'client_name': _clientController.text.trim(),
           'payment_status': paymentStatus,
-          'payment_method': 'MPESA',
+          'payment_method': isInsurance ? 'INSURANCE' : 'MPESA',
           'mpesa_receipt_number': receiptNumber,
-        });
+          if (isInsurance) 'insurer': insurance['insurer'],
+          if (isInsurance) 'member_number': insurance['member_number'],
+          if (isInsurance) 'pre_auth_code': insurance['pre_auth_code'],
+          if (isInsurance) 'insurance_covered': insurance['covered_amount'],
+          if (isInsurance) 'copay_amount': insurance['copay_amount'],
+        };
+      }).toList();
+
+      final inserted = await db.from('transactions').insert(payloads).select();
+      final rows = (inserted as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+
+      // Persist a real insurance / SHA claim record (insurer receivable).
+      if (isInsurance && rows.isNotEmpty) {
+        try {
+          await db.from('insurance_claims').insert({
+            'transaction_id': rows.first['id'],
+            'branch_id': branchId,
+            'client_name': _clientController.text.trim(),
+            'insurer': insurance['insurer'],
+            'member_number': insurance['member_number'],
+            'pre_auth_code': insurance['pre_auth_code'],
+            'gross_amount': _cartTotal,
+            'covered_amount': insurance['covered_amount'],
+            'copay_amount': insurance['copay_amount'],
+            if (insurance['copay_percent'] != null)
+              'copay_percent': (insurance['copay_percent'] as num).toDouble() * 100,
+            'claim_status': 'SUBMITTED',
+          });
+        } catch (e) {
+          debugPrint('Insurance claim record skipped: $e');
+        }
+      }
+
+      // Post the real sale into the general ledger (never blocks dispensing).
+      for (final row in rows) {
+        try {
+          await _accounting.postSaleToGl(row);
+        } catch (e) {
+          debugPrint('GL posting skipped: $e');
+        }
       }
       
       setState(() {
@@ -213,6 +265,223 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _showInsuranceCheckoutDialog() {
+    String selectedInsurer = 'Social Health Authority (SHA)';
+    final memberNoCtrl = TextEditingController();
+    final preAuthCtrl = TextEditingController(text: 'AUTH-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}');
+    double copayPct = 0.10;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final totalBill = _cartTotal;
+          final copayAmount = totalBill * copayPct;
+          final insuranceCovered = totalBill - copayAmount;
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blueAccent.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.health_and_safety_rounded, color: Colors.blueAccent, size: 22),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Healthcare Insurance & SHA Copay',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Select Healthcare Scheme / Underwriter', style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedInsurer,
+                        isExpanded: true,
+                        dropdownColor: const Color(0xFF1E293B),
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
+                        items: [
+                          'Social Health Authority (SHA)',
+                          'Jubilee Health Insurance',
+                          'AAR Insurance Kenya',
+                          'Old Mutual Health',
+                          'Britam Mediflex',
+                          'CIC Medical Cover',
+                        ].map((ins) => DropdownMenuItem(value: ins, child: Text(ins))).toList(),
+                        onChanged: (v) {
+                          if (v != null) setModalState(() => selectedInsurer = v);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: memberNoCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Member / Card / Policy Number',
+                      labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                      hintText: 'e.g. SHA-94819024',
+                      hintStyle: TextStyle(color: Colors.white30, fontSize: 12),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: preAuthCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      labelText: 'Pre-Authorization Code (Smart / EDI)',
+                      labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.blueAccent)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Copay Tier Selector
+                  Text('Patient Copay Percentage', style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _buildCopayChip('0% Full', 0.0, copayPct, (p) => setModalState(() => copayPct = p)),
+                      const SizedBox(width: 6),
+                      _buildCopayChip('10% Copay', 0.10, copayPct, (p) => setModalState(() => copayPct = p)),
+                      const SizedBox(width: 6),
+                      _buildCopayChip('20% Copay', 0.20, copayPct, (p) => setModalState(() => copayPct = p)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Billing Split Breakdown Card
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Gross Prescription:', style: GoogleFonts.inter(fontSize: 12, color: Colors.white54)),
+                            Text('Ksh ${totalBill.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Covered by Insurer:', style: GoogleFonts.inter(fontSize: 12, color: Colors.cyanAccent)),
+                            Text('Ksh ${insuranceCovered.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 12, color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const Divider(color: Colors.white12, height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Patient M-Pesa Copay:', style: GoogleFonts.inter(fontSize: 13, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                            Text('Ksh ${copayAmount.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 14, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  if (memberNoCtrl.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ Please enter patient Member / Card Number')));
+                    return;
+                  }
+                  Navigator.pop(ctx);
+                  _checkout(
+                    'APPROVED_INSURANCE',
+                    '${selectedInsurer.substring(0, 3).toUpperCase()}-${preAuthCtrl.text.trim()}',
+                    insurance: {
+                      'insurer': selectedInsurer,
+                      'member_number': memberNoCtrl.text.trim(),
+                      'pre_auth_code': preAuthCtrl.text.trim(),
+                      'covered_amount': insuranceCovered,
+                      'copay_amount': copayAmount,
+                      'copay_percent': copayPct,
+                    },
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                icon: const Icon(Icons.verified_rounded, size: 16),
+                label: const Text('Adjudicate & Dispense', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCopayChip(String label, double pct, double current, Function(double) onSelect) {
+    final isSelected = current == pct;
+    return Expanded(
+      child: InkWell(
+        onTap: () => onSelect(pct),
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blueAccent.withValues(alpha: 0.25) : const Color(0xFF0F172A),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white12),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              color: isSelected ? Colors.white : Colors.white54,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -319,6 +588,24 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                       child: const Text('Instant MPesa Payment', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () {
+                         Navigator.pop(context);
+                         _showInsuranceCheckoutDialog();
+                      },
+                      icon: const Icon(Icons.health_and_safety_rounded, size: 18),
+                      label: const Text('Insurance & SHA Split-Bill (Copay)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -340,6 +627,13 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
         title: Text('Telesales POS', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
         actions: [
           IconButton(
+            tooltip: 'KRA eTIMS e-Invoicing',
+            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
             tooltip: 'Request Leave',
             onPressed: () {
@@ -349,7 +643,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                 backgroundColor: Colors.transparent,
                 builder: (context) => Padding(
                   padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                  child: LeaveApplicationForm(),
+                  child: const LeaveApplicationForm(),
                 ),
               );
             },
@@ -381,7 +675,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                 hintStyle: const TextStyle(color: Colors.white54),
                 prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
                 filled: true,
-                fillColor: Colors.white.withOpacity(0.08),
+                fillColor: Colors.white.withValues(alpha: 0.08),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
               ),
             ),

@@ -428,29 +428,29 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                         }
                       }
 
-                      if (mounted) {
+                      if (context.mounted) {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
                         messenger.showSnackBar(
                           SnackBar(
                             backgroundColor: Colors.greenAccent,
                             content: Text(
-                              'Successfully provisioned \${companyNameController.text} (Live Auth)',
+                              'Successfully provisioned ${companyNameController.text} (Live Auth)',
                               style: GoogleFonts.inter(color: Colors.black, fontWeight: FontWeight.bold),
                             )
                           )
                         );
                       }
                     } catch (e) {
-                      debugPrint('Live Auth provisioning error: \$e');
-                      if (mounted) {
+                      debugPrint('Live Auth provisioning error: $e');
+                      if (context.mounted) {
                         final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
                         messenger.showSnackBar(
                           SnackBar(
                             backgroundColor: Colors.redAccent,
                             content: Text(
-                              'Provisioning Failed: \$e',
+                              'Provisioning Failed: $e',
                               style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold),
                             )
                           )

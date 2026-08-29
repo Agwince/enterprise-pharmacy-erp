@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 import 'register_product_screen.dart';
 import 'register_master_carton_screen.dart';
 
@@ -159,10 +158,10 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                       .from('drugs')
                       .delete()
                       .eq('id', drug['id']);
-                  if (mounted) Navigator.pop(context);
+                  if (context.mounted) Navigator.pop(context);
                   _loadDrugs();
                 } catch (e) {
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
                   }
                 }
@@ -376,7 +375,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
                               itemCount: filteredMissing.length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 12),
+                              separatorBuilder: (_, _) => const SizedBox(width: 12),
                               itemBuilder: (context, index) {
                                 final drug = filteredMissing[index];
                                 final name = drug['name'] as String;
@@ -517,7 +516,7 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: filteredCompleted.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
+                            separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final drug = filteredCompleted[index];
                               final name = drug['name'] as String;

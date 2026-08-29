@@ -16,7 +16,7 @@ class AiService {
   Future<String> sendMessage(String userMessage, List<Map<String, String>> conversationHistory) async {
     final role = AuthService().role;
     
-    // 1. Fetch or retrieve cached live database context in parallel (non-blocking)
+    // 1. Fetch or retrieve cached live database context (non-blocking)
     final systemPrompt = await _getOptimizedContext(role);
 
     final headers = {
@@ -39,7 +39,7 @@ class AiService {
     final payload = {
       "model": "minimaxai/minimax-m3",
       "messages": messages,
-      "max_tokens": 512, // Faster generation without truncation
+      "max_tokens": 512,
       "temperature": 0.6,
     };
 
@@ -82,30 +82,21 @@ class AiService {
 
     try {
       if (role == UserRole.hr) {
-        final res = await Future.wait([
-          supabase.from('roles').select('id').count(CountOption.exact),
-          supabase.from('leave_requests').select('id').eq('status', 'Pending').count(CountOption.exact),
-          supabase.from('payroll_disbursements').select('id').eq('status', 'Pending Clearance').count(CountOption.exact),
-        ]);
-        final emp = res[0].count ?? 0;
-        final leaves = res[1].count ?? 0;
-        final disb = res[2].count ?? 0;
+        final empRes = await supabase.from('roles').select('id').count(CountOption.exact);
+        final leavesRes = await supabase.from('leave_requests').select('id').eq('status', 'Pending').count(CountOption.exact);
+        final disbRes = await supabase.from('payroll_disbursements').select('id').eq('status', 'Pending Clearance').count(CountOption.exact);
+        final emp = empRes.count;
+        final leaves = leavesRes.count;
+        final disb = disbRes.count;
         prompt = "You are the Mediocare Pro HR & Operations Advisor. Active Employees: $emp, Pending Leaves: $leaves, Pending Payroll: $disb. Provide concise, professional executive advice.";
       } else if (role == UserRole.branchManager) {
-        final res = await Future.wait([
-          supabase.from('drugs').select('name, shelf_quantity').lt('shelf_quantity', 15).limit(5),
-          supabase.from('transactions').select('total_amount').limit(20),
-        ]);
         prompt = "You are the Mediocare Pro Head Pharmacist & Supply Chain Copilot. Guide on drug stock thresholds, batch expiry, and branch requisitions.";
       } else {
         // CEO & General Management
-        final res = await Future.wait([
-          supabase.from('branches').select('id').count(CountOption.exact),
-          supabase.from('transactions').select('total_amount').limit(50),
-          supabase.from('fleet_vehicles').select('id').count(CountOption.exact),
-        ]);
-        final branchCount = res[0].count ?? 4;
-        final fleetCount = res[2].count ?? 6;
+        final branchRes = await supabase.from('branches').select('id').count(CountOption.exact);
+        final fleetRes = await supabase.from('fleet_vehicles').select('id').count(CountOption.exact);
+        final branchCount = branchRes.count;
+        final fleetCount = fleetRes.count;
         prompt = "You are the Mediocare Pro Executive AI Advisor for the CEO. Global Active Branches: $branchCount, Active GPS Fleet: $fleetCount vehicles. Advise authoritatively on revenue optimization, logistics, and pharmacy expansion across Kenya.";
       }
     } catch (_) {

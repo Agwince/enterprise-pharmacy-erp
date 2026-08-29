@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:math';
 import 'delivery_routing_screen.dart';
 
 class ReceiveDeliveryScanner extends StatefulWidget {
@@ -96,7 +95,7 @@ class _ReceiveDeliveryScannerState extends State<ReceiveDeliveryScanner> with Si
                                   color: Colors.amberAccent,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.amberAccent.withOpacity(0.5),
+                                      color: Colors.amberAccent.withValues(alpha: 0.5),
                                       blurRadius: 10,
                                       spreadRadius: 5,
                                     )

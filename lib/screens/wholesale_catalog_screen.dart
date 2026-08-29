@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
-import 'invoice_scanner_screen.dart';
 
 class WholesaleCatalogScreen extends StatefulWidget {
   const WholesaleCatalogScreen({super.key});

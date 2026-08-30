@@ -1,3 +1,5 @@
+import 'etims_invoice.dart';
+
 class Supplier {
   final String id;
   final String name;
@@ -72,8 +74,9 @@ class PurchaseOrderItem {
   final String drugId;
   final int quantityRequested;
   final int quantityReceived;
-  final double unitCost; // Contracted/Budgeted PO Cost
-  final double? realGrnCost; // Actual Real Cost Price captured at Goods Receipt
+  final double unitCost; // Contracted/Budgeted PO Cost (VAT Exclusive)
+  final double? realGrnCost; // Actual Real Cost Price captured at Goods Receipt (VAT Exclusive)
+  final TIMSTaxCode taxCode;
   final String? batchNo;
   final DateTime? expiryDate;
   final double? invoiceUnitCost;
@@ -89,6 +92,7 @@ class PurchaseOrderItem {
     required this.quantityReceived,
     required this.unitCost,
     this.realGrnCost,
+    this.taxCode = TIMSTaxCode.B, // Strict default: 16% Standard VAT
     this.batchNo,
     this.expiryDate,
     this.invoiceUnitCost,
@@ -98,7 +102,11 @@ class PurchaseOrderItem {
   });
 
   double get requestedTotal => quantityRequested * unitCost;
-  double get receivedTotal => quantityReceived * (realGrnCost ?? unitCost);
+  double get netReceivedTotal => quantityReceived * (realGrnCost ?? unitCost);
+  double get inputVatRate => taxCode.allowsInputCredit ? taxCode.rate : 0.0;
+  double get inputVatAmount => netReceivedTotal * inputVatRate;
+  double get grossReceivedTotal => netReceivedTotal + inputVatAmount;
+  double get receivedTotal => netReceivedTotal;
   double get invoicedTotal => (invoiceQuantity ?? quantityReceived) * (invoiceUnitCost ?? realGrnCost ?? unitCost);
 
   factory PurchaseOrderItem.fromJson(Map<String, dynamic> json) {
@@ -110,6 +118,7 @@ class PurchaseOrderItem {
       quantityReceived: (json['quantity_received'] as num?)?.toInt() ?? 0,
       unitCost: (json['unit_cost'] as num?)?.toDouble() ?? 0.0,
       realGrnCost: (json['real_grn_cost'] as num?)?.toDouble(),
+      taxCode: TIMSTaxCode.fromCode(json['tax_code']?.toString()),
       batchNo: json['batch_no']?.toString(),
       expiryDate: DateTime.tryParse(json['expiry_date']?.toString() ?? ''),
       invoiceUnitCost: (json['invoice_unit_cost'] as num?)?.toDouble(),
@@ -127,6 +136,7 @@ class PurchaseOrderItem {
       'quantity_requested': quantityRequested,
       'quantity_received': quantityReceived,
       'unit_cost': unitCost,
+      'tax_code': taxCode.code,
       if (realGrnCost != null) 'real_grn_cost': realGrnCost,
       if (batchNo != null) 'batch_no': batchNo,
       if (expiryDate != null) 'expiry_date': expiryDate!.toIso8601String().substring(0, 10),

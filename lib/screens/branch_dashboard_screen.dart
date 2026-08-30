@@ -281,56 +281,132 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Branch Dashboard',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Row(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 480;
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
-                      tooltip: 'Request Leave',
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) => Padding(
-                            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                            child: const LeaveApplicationForm(),
+                    Expanded(
+                      child: Text(
+                        'Branch Dashboard',
+                        style: GoogleFonts.inter(
+                          fontSize: isCompact ? 18 : 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isCompact)
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+                        color: const Color(0xFF1E293B),
+                        itemBuilder: (ctx) => [
+                          const PopupMenuItem(
+                            value: 'procurement',
+                            child: Row(
+                              children: [
+                                Icon(Icons.local_shipping_rounded, color: Colors.blueAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Procurement & LPO Hub', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              ],
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                    IconButton(
-                      tooltip: 'Procurement & LPO Hub',
-                      icon: const Icon(Icons.local_shipping_rounded, color: Colors.blueAccent),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcurementLpoScreen()));
-                      },
-                    ),
-                    IconButton(
-                      tooltip: 'KRA eTIMS e-Invoicing',
-                      icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
-                      },
-                    ),
-                    IconButton(
-                      onPressed: _loadDashboardData,
-                      icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-                      tooltip: 'Refresh Dashboard',
-                    ),
+                          const PopupMenuItem(
+                            value: 'etims',
+                            child: Row(
+                              children: [
+                                Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('KRA eTIMS e-Invoicing', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'leave',
+                            child: Row(
+                              children: [
+                                Icon(Icons.beach_access, color: Colors.amberAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Request Leave', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'refresh',
+                            child: Row(
+                              children: [
+                                Icon(Icons.refresh_rounded, color: Colors.white70, size: 18),
+                                SizedBox(width: 8),
+                                Text('Refresh Dashboard', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ],
+                        onSelected: (val) {
+                          if (val == 'procurement') {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcurementLpoScreen()));
+                          } else if (val == 'etims') {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
+                          } else if (val == 'leave') {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => Padding(
+                                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                                child: const LeaveApplicationForm(),
+                              ),
+                            );
+                          } else if (val == 'refresh') {
+                            _loadDashboardData();
+                          }
+                        },
+                      )
+                    else
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.beach_access, color: Colors.blueAccent),
+                            tooltip: 'Request Leave',
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (context) => Padding(
+                                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+                                  child: const LeaveApplicationForm(),
+                                ),
+                              );
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'Procurement & LPO Hub',
+                            icon: const Icon(Icons.local_shipping_rounded, color: Colors.blueAccent),
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcurementLpoScreen()));
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'KRA eTIMS e-Invoicing',
+                            icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const ETIMSWorkspaceScreen()));
+                            },
+                          ),
+                          IconButton(
+                            onPressed: _loadDashboardData,
+                            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+                            tooltip: 'Refresh Dashboard',
+                          ),
+                        ],
+                      ),
                   ],
-                )
-              ],
+                );
+              },
             ),
             const SizedBox(height: 18),
 

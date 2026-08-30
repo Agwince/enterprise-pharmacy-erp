@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../models/purchase_order.dart';
 import '../models/drug.dart';
+import '../models/etims_invoice.dart';
 import 'accounting_service.dart';
 import 'supabase_service.dart';
 
@@ -299,27 +300,74 @@ class ProcurementService extends ChangeNotifier {
   Future<Map<String, dynamic>> receiveGRN({
     required String poId,
     required String receivedBy,
-    required List<Map<String, dynamic>> receivedItems, // id, drug_id, quantity_received, real_grn_cost, batch_no, expiry_date
+    required List<Map<String, dynamic>> receivedItems, // id, drug_id, quantity_received, real_grn_cost, tax_code, batch_no, expiry_date
+    double freightAmount = 0.0,
   }) async {
     final now = DateTime.now();
     final grnNumber = 'GRN-${DateFormat("yyyyMMdd").format(now)}-${DateFormat("HHmmss").format(now)}';
     final po = _purchaseOrders.firstWhere((p) => p.id == poId);
 
-    double totalGrnValue = 0.0;
+    double totalNetInventory = 0.0;
+    double totalInputVat = 0.0;
+
     for (final item in receivedItems) {
       final qty = (item['quantity_received'] as num?)?.toInt() ?? 0;
-      final cost = (item['real_grn_cost'] as num?)?.toDouble() ?? 0.0;
-      totalGrnValue += (qty * cost);
+      final netCost = (item['real_grn_cost'] as num?)?.toDouble() ?? 0.0;
+      final lineNet = qty * netCost;
+      totalNetInventory += lineNet;
+
+      final taxCode = TIMSTaxCode.fromCode(item['tax_code']?.toString());
+      if (taxCode.allowsInputCredit && taxCode.rate > 0.0) {
+        totalInputVat += (lineNet * taxCode.rate);
+      }
     }
+
+    final totalGrossPayable = totalNetInventory + totalInputVat + freightAmount;
 
     String? postedJournalId;
     String? glStatusMessage;
 
     // GL POSTING ON GRN:
-    // Dr Inventory (1300) [Asset Value based on real cost price]
-    // Cr Accounts Payable / Trade Creditors (2000)
+    // Dr Inventory (1300) [Net Asset Value excluding claimable VAT]
+    // Dr VAT Recoverable - KRA Input Tax (2110) [Claimable Input VAT based on eTIMS tax code]
+    // Dr Freight & Inward Logistics (5010) [Optional inbound landed charges]
+    // Cr Accounts Payable / Trade Creditors (2000) [Gross payable invoice liability]
     try {
-      if (totalGrnValue > 0.0) {
+      if (totalGrossPayable > 0.0) {
+        final List<JournalLineDraft> lines = [
+          JournalLineDraft(
+            accountCode: AccountingService.accInventory,
+            debit: totalNetInventory,
+            credit: 0.0,
+            lineMemo: 'Inventory receipt at net cost for $grnNumber',
+          ),
+        ];
+
+        if (totalInputVat > 0.0) {
+          lines.add(JournalLineDraft(
+            accountCode: AccountingService.accVatInput,
+            debit: totalInputVat,
+            credit: 0.0,
+            lineMemo: 'KRA Input VAT claimable for $grnNumber',
+          ));
+        }
+
+        if (freightAmount > 0.0) {
+          lines.add(JournalLineDraft(
+            accountCode: AccountingService.accFreightInward,
+            debit: freightAmount,
+            credit: 0.0,
+            lineMemo: 'Inbound freight & carriage for $grnNumber',
+          ));
+        }
+
+        lines.add(JournalLineDraft(
+          accountCode: AccountingService.accPayables,
+          debit: 0.0,
+          credit: totalGrossPayable,
+          lineMemo: 'Gross supplier payable for $grnNumber',
+        ));
+
         postedJournalId = await _accountingService.postJournal(
           date: now,
           memo: 'GRN $grnNumber receipt from ${po.supplierName ?? "Supplier"} for PO ${po.poNumber}',
@@ -327,22 +375,9 @@ class ProcurementService extends ChangeNotifier {
           sourceModule: 'procurement',
           sourceId: poId,
           createdBy: receivedBy,
-          lines: [
-            JournalLineDraft(
-              accountCode: AccountingService.accInventory,
-              debit: totalGrnValue,
-              credit: 0.0,
-              lineMemo: 'Inventory receipt at real cost price for $grnNumber',
-            ),
-            JournalLineDraft(
-              accountCode: AccountingService.accPayables,
-              debit: 0.0,
-              credit: totalGrnValue,
-              lineMemo: 'Trade creditors liability for $grnNumber',
-            ),
-          ],
+          lines: lines,
         );
-        glStatusMessage = 'GL Posted: Dr Inventory (1300) / Cr Payables (2000) for KES ${NumberFormat("#,##0.00").format(totalGrnValue)}';
+        glStatusMessage = 'GL Posted: Dr 1300 (Net KES ${NumberFormat("#,##0.00").format(totalNetInventory)}) + Dr 2110 (VAT KES ${NumberFormat("#,##0.00").format(totalInputVat)}) / Cr 2000 (Gross KES ${NumberFormat("#,##0.00").format(totalGrossPayable)})';
       }
     } catch (e) {
       // GL failure must NEVER block physical goods receipt
@@ -363,26 +398,59 @@ class ProcurementService extends ChangeNotifier {
 
         await _client.from('purchase_orders').update(poUpdate).eq('id', poId);
 
-        // 2. Update line items with real cost and physical counts
+        // 2. Update line items, increment real on-hand stock and insert inventory batches
         for (final item in receivedItems) {
           final itemId = item['id']?.toString();
-          if (itemId != null && itemId.isNotEmpty) {
-            await _client.from('purchase_order_items').update({
-              'quantity_received': (item['quantity_received'] as num?)?.toInt() ?? 0,
-              'unit_cost': (item['real_grn_cost'] as num?)?.toDouble() ?? 0.0,
-            }).eq('id', itemId);
-          }
-
-          // 3. Insert real inventory batches
           final drugId = item['drug_id']?.toString();
           final batchNo = item['batch_no']?.toString() ?? 'BATCH-${DateFormat("yyyyMM").format(now)}';
           final expiryStr = item['expiry_date']?.toString();
           final qtyRec = (item['quantity_received'] as num?)?.toInt() ?? 0;
           final realCost = (item['real_grn_cost'] as num?)?.toDouble() ?? 0.0;
+          final taxCodeStr = item['tax_code']?.toString() ?? 'B';
+
+          if (itemId != null && itemId.isNotEmpty) {
+            await _client.from('purchase_order_items').update({
+              'quantity_received': qtyRec,
+              'unit_cost': realCost,
+              'tax_code': taxCodeStr,
+            }).eq('id', itemId);
+          }
 
           if (drugId != null && qtyRec > 0) {
+            // A. Increment on-hand stock in drugs catalog & update real cost price
+            try {
+              final drugRow = await _client.from('drugs').select('quantity_in_stock, warehouse_quantity').eq('id', drugId).maybeSingle();
+              if (drugRow != null) {
+                final currentStock = (drugRow['quantity_in_stock'] as num?)?.toInt() ?? 0;
+                final currentWhStock = (drugRow['warehouse_quantity'] as num?)?.toInt() ?? 0;
+                await _client.from('drugs').update({
+                  'quantity_in_stock': currentStock + qtyRec,
+                  'warehouse_quantity': currentWhStock + qtyRec,
+                  'cost_price': realCost,
+                }).eq('id', drugId);
+              }
+            } catch (e) {
+              debugPrint('Stock increment on drugs table note: $e');
+            }
+
+            // B. Upsert into public.inventory table (branch level stock)
+            try {
+              await _client.from('inventory').upsert({
+                'branch_id': po.branchId,
+                'drug_id': drugId,
+                'batch_number': batchNo,
+                'quantity': qtyRec,
+                'expiry_date': expiryStr ?? DateTime.now().add(const Duration(days: 540)).toIso8601String().substring(0, 10),
+                'last_updated': now.toIso8601String(),
+              }, onConflict: 'branch_id,drug_id,batch_number');
+            } catch (e) {
+              debugPrint('Inventory upsert note: $e');
+            }
+
+            // C. Insert into public.inventory_batches table (FEFO batch ledger)
             final Map<String, dynamic> batchPayload = {
               'drug_id': drugId,
+              'branch_id': po.branchId,
               'batch_no': batchNo,
               'quantity': qtyRec,
               'cost_price': realCost,
@@ -391,7 +459,6 @@ class ProcurementService extends ChangeNotifier {
               'status': 'RELEASED',
             };
             if (expiryStr != null && expiryStr.isNotEmpty) batchPayload['expiry_date'] = expiryStr;
-
             await _client.from('inventory_batches').insert(batchPayload);
           }
         }
@@ -403,7 +470,9 @@ class ProcurementService extends ChangeNotifier {
     await loadAll();
     return {
       'grn_number': grnNumber,
-      'total_value': totalGrnValue,
+      'total_net': totalNetInventory,
+      'total_vat': totalInputVat,
+      'total_gross': totalGrossPayable,
       'journal_id': postedJournalId,
       'message': glStatusMessage,
     };

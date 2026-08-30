@@ -532,7 +532,8 @@ declare
     'chart_of_accounts','journal_entries','journal_lines','suppliers',
     'insurance_claims','inventory_batches','staff','attendance_shifts',
     'payroll_runs','payslips','etims_tax_codes','branch_kra_config',
-    'etims_invoices','etims_z_reports','branch_till_sessions'
+    'etims_invoices','etims_z_reports','branch_till_sessions',
+    'purchase_orders','purchase_order_items','inventory'
   ];
 begin
   foreach t in array tables loop

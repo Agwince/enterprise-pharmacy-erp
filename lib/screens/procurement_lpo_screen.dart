@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/purchase_order.dart';
+import '../models/etims_invoice.dart';
 import '../services/procurement_service.dart';
 
 class ProcurementLpoScreen extends StatefulWidget {
@@ -915,6 +916,7 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
 
   void _showReceiveGrnModal(PurchaseOrder po, ProcurementService proc) {
     final receiverCtrl = TextEditingController(text: 'Storekeeper John');
+    final freightCtrl = TextEditingController(text: '0.00');
     final List<Map<String, dynamic>> receivingItems = po.items.map((i) {
       return {
         'id': i.id,
@@ -922,7 +924,8 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
         'drug_name': i.drugName,
         'quantity_requested': i.quantityRequested,
         'quantity_received': i.quantityRequested,
-        'real_grn_cost': i.unitCost, // Genuine cost price entered at receipt
+        'real_grn_cost': i.unitCost, // Genuine VAT-EXCLUSIVE cost price
+        'tax_code': i.taxCode.code,
         'batch_no': 'LOT-${DateFormat("yyyyMM").format(DateTime.now())}',
         'expiry_date': DateTime.now().add(const Duration(days: 540)).toIso8601String().substring(0, 10),
       };
@@ -932,6 +935,24 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
+          double totalNet = 0.0;
+          double totalVat = 0.0;
+
+          for (final item in receivingItems) {
+            final q = (item['quantity_received'] as num?)?.toInt() ?? 0;
+            final c = (item['real_grn_cost'] as num?)?.toDouble() ?? 0.0;
+            final net = q * c;
+            totalNet += net;
+
+            final tc = TIMSTaxCode.fromCode(item['tax_code']?.toString());
+            if (tc.allowsInputCredit && tc.rate > 0.0) {
+              totalVat += (net * tc.rate);
+            }
+          }
+
+          final freight = double.tryParse(freightCtrl.text) ?? 0.0;
+          final totalGross = totalNet + totalVat + freight;
+
           return AlertDialog(
             backgroundColor: const Color(0xFF1E293B),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -939,7 +960,7 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                 style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
             content: SingleChildScrollView(
               child: SizedBox(
-                width: 580,
+                width: 600,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -949,11 +970,35 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: const InputDecoration(labelText: 'Receiving Pharmacist / Storekeeper', labelStyle: TextStyle(color: Colors.white54)),
                     ),
-                    const SizedBox(height: 12),
-                    const Text('Capture Real Received Physical Quantities & Verified Cost Prices:',
-                        style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 12)),
                     const SizedBox(height: 8),
+                    TextField(
+                      controller: freightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: const InputDecoration(
+                        labelText: 'Inbound Freight / Carriage Charges (KES) ➔ Dr 5010',
+                        labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                        hintText: '0.00',
+                      ),
+                      onChanged: (_) => setModalState(() {}),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.tealAccent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: const Text(
+                        '💡 Captured Cost Price is VAT-EXCLUSIVE. Claimable Input VAT (16% for Code B) will automatically post to Dr 2110 (VAT Recoverable).',
+                        style: TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     ...receivingItems.map((item) {
+                      final tc = TIMSTaxCode.fromCode(item['tax_code']?.toString());
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(10),
@@ -961,7 +1006,29 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item['drug_name']?.toString() ?? 'Drug', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(item['drug_name']?.toString() ?? 'Drug', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: tc.allowsInputCredit ? Colors.tealAccent.withValues(alpha: 0.15) : Colors.purpleAccent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Code ${tc.code} (${tc.allowsInputCredit ? "${(tc.rate * 100).toInt()}% Input VAT" : "No Input Tax"})',
+                                    style: TextStyle(
+                                      color: tc.allowsInputCredit ? Colors.tealAccent : Colors.purpleAccent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 6),
                             Row(
                               children: [
@@ -971,7 +1038,10 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                                     keyboardType: TextInputType.number,
                                     style: const TextStyle(color: Colors.white, fontSize: 12),
                                     decoration: const InputDecoration(labelText: 'Received Qty', labelStyle: TextStyle(color: Colors.white54, fontSize: 10)),
-                                    onChanged: (v) => item['quantity_received'] = int.tryParse(v) ?? 0,
+                                    onChanged: (v) {
+                                      item['quantity_received'] = int.tryParse(v) ?? 0;
+                                      setModalState(() {});
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -980,8 +1050,11 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                                     initialValue: item['real_grn_cost']?.toString(),
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                     style: const TextStyle(color: Colors.tealAccent, fontSize: 12, fontWeight: FontWeight.bold),
-                                    decoration: const InputDecoration(labelText: 'Real Cost Price (KES) *', labelStyle: TextStyle(color: Colors.tealAccent, fontSize: 10)),
-                                    onChanged: (v) => item['real_grn_cost'] = double.tryParse(v) ?? 0.0,
+                                    decoration: const InputDecoration(labelText: 'Net Cost (Ex-VAT) *', labelStyle: TextStyle(color: Colors.tealAccent, fontSize: 10)),
+                                    onChanged: (v) {
+                                      item['real_grn_cost'] = double.tryParse(v) ?? 0.0;
+                                      setModalState(() {});
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -999,6 +1072,51 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                         ),
                       );
                     }),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF132043),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Dr 1300 Net Inventory Value:', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                              Text('KES ${NumberFormat("#,##0.00").format(totalNet)}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Dr 2110 VAT Recoverable (Input Tax):', style: TextStyle(color: Colors.tealAccent, fontSize: 11)),
+                              Text('KES ${NumberFormat("#,##0.00").format(totalVat)}', style: const TextStyle(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          if (freight > 0.0) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Dr 5010 Inbound Freight Charges:', style: TextStyle(color: Colors.amberAccent, fontSize: 11)),
+                                Text('KES ${NumberFormat("#,##0.00").format(freight)}', style: const TextStyle(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                          const Divider(color: Colors.white24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Cr 2000 Gross Accounts Payable Liability:', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                              Text('KES ${NumberFormat("#,##0.00").format(totalGross)}', style: const TextStyle(color: Colors.tealAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1011,6 +1129,7 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
                     poId: po.id,
                     receivedBy: receiverCtrl.text.trim().isEmpty ? 'Storekeeper' : receiverCtrl.text.trim(),
                     receivedItems: receivingItems,
+                    freightAmount: freight,
                   );
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (!mounted) return;

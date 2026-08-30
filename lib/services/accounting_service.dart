@@ -47,10 +47,12 @@ class AccountingService {
   static const String accInventory = '1300';
   static const String accPayables = '2000';
   static const String accVatOutput = '2100';
+  static const String accVatInput = '2110';
   static const String accSalesRetail = '4000';
   static const String accSalesWholesale = '4010';
   static const String accSalesInsurance = '4020';
   static const String accCogs = '5000';
+  static const String accFreightInward = '5010';
 
   bool _schemaMissing = false;
   bool get schemaMissing => _schemaMissing;

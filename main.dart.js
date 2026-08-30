@@ -139105,7 +139105,7 @@ break
 case 8:e=m.b.z
 l=e==null?a:e
 s=10
-return A.j(g.b.ad("roles").cc(0,"role, full_name, name").b7("email",l).m0(),$async$Ai)
+return A.j(g.b.ad("roles").cc(0,"*").b7("email",l).m0(),$async$Ai)
 case 10:k=a1
 if(k!=null){j=J.F(J.y(k,"role")).toUpperCase()
 g=J.y(k,"full_name")

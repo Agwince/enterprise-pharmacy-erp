@@ -75,9 +75,13 @@ class ProcurementService extends ChangeNotifier {
           _schemaMissing = true;
         }
 
-        // 2. Fetch Drugs
+        // 2. Fetch Drugs (Lightweight columns, no full images in list)
         try {
-          final drugRes = await _client.from('drugs').select().order('name').limit(500);
+          final drugRes = await _client
+              .from('drugs')
+              .select('id, name, barcode, sku, category, package_unit, unit, target_shelf, bin_location, price, unit_price, cost, cost_price, reorder_level, min_threshold, max_level, max_threshold, quantity_in_stock, thumb_url')
+              .order('name')
+              .limit(200);
           _drugs = (drugRes as List).map((r) => Drug.fromJson(Map<String, dynamic>.from(r as Map))).toList();
         } catch (_) {
           _drugs = [];

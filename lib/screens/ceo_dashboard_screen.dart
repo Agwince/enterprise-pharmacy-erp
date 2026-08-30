@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import 'ceo_fleet_map_screen.dart';
 import '../widgets/ai_copilot_sheet.dart';
 import 'etims_workspace_screen.dart';
+import '../services/supabase_service.dart';
 
 class CeoDashboardScreen extends StatefulWidget {
   const CeoDashboardScreen({super.key});
@@ -37,102 +38,59 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
     setState(() => _isLoading = true);
 
     try {
+      final supabaseService = SupabaseService();
       final db = Supabase.instance.client;
 
-      // 1. Fetch branches
-      final branchRes = await db.from('branches').select();
-      final branches = branchRes as List<dynamic>;
+      // CALL 1: Single Round-Trip KPI Aggregation RPC
+      final kpis = await supabaseService.fetchDashboardKpis();
+      final double total = (kpis['total_revenue'] as num?)?.toDouble() ?? 0.0;
+      final int totalTx = (kpis['total_transactions'] as num?)?.toInt() ?? 0;
 
-      // 2. Fetch transactions
-      final txRes = await db
-          .from('transactions')
-          .select('*, drugs!inner(category, name, barcode, target_shelf)')
-          .eq('transaction_type', 'sale');
-      final transactions = txRes as List<dynamic>;
-
-      // If database is empty or has no transactions, seamlessly fallback to rich demo data
-      if (transactions.isEmpty) {
-        _populateDemoMetrics();
-        return;
-      }
-
-      double total = 0.0;
-      Map<String, double> categorySales = {};
-      Map<String, double> branchSales = {};
-      Map<String, Map<String, dynamic>> drugSalesMap = {};
-
-      for (var tx in transactions) {
-        final amount = (tx['total_amount'] as num).toDouble();
-        final qty = (tx['quantity'] as num).toInt();
-        final branchId = tx['branch_id']?.toString() ?? 'Unknown';
-        final drug = tx['drugs'] as Map<String, dynamic>;
-
-        final category = drug['category'] as String? ?? 'General Medicines';
-        final sku = drug['barcode'] as String? ?? 'N/A';
-        final name = drug['name'] as String? ?? 'Unknown Medicine';
-        final bin = drug['target_shelf'] as String? ?? 'AISLE 1 - SHELF A1';
-        final price = (tx['unit_price'] as num).toDouble();
-
-        total += amount;
-        categorySales[category] = (categorySales[category] ?? 0.0) + amount;
-        branchSales[branchId] = (branchSales[branchId] ?? 0.0) + amount;
-
-        if (!drugSalesMap.containsKey(sku)) {
-          drugSalesMap[sku] = {
-            'sku': sku,
-            'name': name,
-            'category': category,
-            'bin': bin,
-            'price': price,
-            'total_amount': 0.0,
-            'qty': 0,
-          };
-        }
-        drugSalesMap[sku]!['total_amount'] += amount;
-        drugSalesMap[sku]!['qty'] += qty;
-      }
-
-      final List<Map<String, dynamic>> branchRevenues = [];
+      // CALL 2: Single Round-Trip Branch Revenue RPC
+      final branchData = await supabaseService.fetchBranchRevenue();
       double maxRev = 50000.0;
-      for (var b in branches) {
-        final id = b['id']?.toString() ?? 'Unknown';
-        final rev = branchSales[id] ?? 0.0;
+      final List<Map<String, dynamic>> branchRevenues = [];
+      for (var b in branchData) {
+        final rev = (b['revenue'] as num?)?.toDouble() ?? 0.0;
         if (rev > maxRev) maxRev = rev;
         branchRevenues.add({
-          'id': id,
-          'code': b['code'] as String? ?? 'BR',
-          'name': b['name'] as String? ?? 'Branch',
+          'id': b['branch_id']?.toString() ?? '',
+          'code': b['code']?.toString() ?? 'BR',
+          'name': b['branch_name']?.toString() ?? 'Branch',
           'revenue': rev,
         });
       }
 
-      final topDrugsList = drugSalesMap.values.toList();
-      topDrugsList.sort((a, b) => (b['total_amount'] as double).compareTo(a['total_amount'] as double));
+      // CALL 3: Bounded Recent Activities
+      final recentRes = await db
+          .from('transactions')
+          .select('id, total_amount, transaction_date')
+          .eq('transaction_type', 'sale')
+          .order('transaction_date', ascending: false)
+          .limit(10);
 
-      List<dynamic> sortedTx = List.from(transactions);
-      sortedTx.sort((a, b) {
-        final dateA = DateTime.tryParse(a['transaction_date'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final dateB = DateTime.tryParse(b['transaction_date'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return dateB.compareTo(dateA);
-      });
-
-      final recentActivities = sortedTx.take(10).map((tx) {
-        final amount = (tx['total_amount'] as num).toDouble();
-        final id = tx['id']?.toString().substring(0, 8) ?? 'TX';
+      final List<dynamic> txList = recentRes as List<dynamic>;
+      final recentActivities = txList.map((tx) {
+        final amount = (tx['total_amount'] as num?)?.toDouble() ?? 0.0;
+        final rawId = tx['id']?.toString() ?? 'TX';
+        final shortId = rawId.length >= 8 ? rawId.substring(0, 8) : rawId;
         return {
-          'id': id,
+          'id': shortId,
           'amount': amount,
           'date': tx['transaction_date'],
         };
       }).toList();
 
+      if (totalTx == 0 && branchRevenues.every((b) => (b['revenue'] as double) == 0.0)) {
+        _populateDemoMetrics();
+        return;
+      }
+
       if (mounted) {
         setState(() {
           _branchRevenues = branchRevenues;
           _totalRevenue = total;
-          _totalTransactions = transactions.length;
-          _categorySales = categorySales;
-          _topDrugs = topDrugsList.take(5).toList();
+          _totalTransactions = totalTx;
           _liveActivities = recentActivities;
           _maxBranchRev = maxRev;
           _isLoading = false;

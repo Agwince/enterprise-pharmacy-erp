@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'services/offline_sync_service.dart';
+import 'services/cache_service.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/super_admin_workspace.dart';
@@ -34,11 +35,12 @@ void main() async {
       debugPrint('Supabase initialization note: $e');
     }
 
-    // Initialize Offline Caching Queue (Hive)
+    // Initialize Offline Caching Queue & Catalog Cache (Hive)
     try {
       await OfflineSyncService().initialize();
+      await CacheService().initialize();
     } catch (e) {
-      debugPrint('Offline sync initialization note: $e');
+      debugPrint('Offline sync & cache initialization note: $e');
     }
 
     runApp(const PharmacyErpApp());

@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/accounting_service.dart';
+import '../services/cache_service.dart';
+import '../services/offline_sync_service.dart';
+import '../models/transaction.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/leave_application_form.dart';
 import 'etims_workspace_screen.dart';
@@ -19,9 +23,19 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   List<Map<String, dynamic>> _filteredCatalog = [];
   final List<Map<String, dynamic>> _cart = [];
   bool _isLoading = true;
+  Timer? _searchDebounce;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _clientController = TextEditingController();
   final TextEditingController _mpesaVerificationController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    _clientController.dispose();
+    _mpesaVerificationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _verifyMpesaPayment() async {
     final code = _mpesaVerificationController.text.trim();
@@ -49,7 +63,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.redAccent,
-              content: Text('Invalid or Unmatched M-Pesa Code', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white)),
+              content: Text('Verification failed: Code not found.', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
             ),
           );
         }
@@ -74,30 +88,63 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   }
 
   Future<void> _fetchCatalog() async {
+    // 1. Instant paint from Hive offline cache without waiting for network
+    final cached = CacheService().getCachedDrugs(ignoreTtl: true);
+    if (cached != null && cached.isNotEmpty) {
+      _catalog = cached.map((d) => {
+        'id': d.id,
+        'name': d.name,
+        'price': d.unitPrice,
+        'barcode': d.sku,
+        'category': d.category,
+        'thumb_url': d.thumbUrl,
+      }).toList();
+      _filteredCatalog = List.from(_catalog);
+      _isLoading = false;
+      if (mounted) setState(() {});
+    }
+
+    // 2. Refresh lightweight fields in background (Never select heavy image_url in list)
     try {
-      final res = await Supabase.instance.client.from('drugs').select('id, name, price, image_url').order('name');
-      setState(() {
-        _catalog = List<Map<String, dynamic>>.from(res as List);
-        _filteredCatalog = List.from(_catalog);
-        _isLoading = false;
-      });
-    } catch (e) {
+      final res = await Supabase.instance.client
+          .from('drugs')
+          .select('id, name, price, barcode, category, thumb_url')
+          .order('name')
+          .limit(100);
+
+      final freshList = List<Map<String, dynamic>>.from(res as List);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error loading catalog: $e')));
-        setState(() => _isLoading = false);
+        setState(() {
+          _catalog = freshList;
+          if (_searchController.text.trim().isEmpty) {
+            _filteredCatalog = List.from(_catalog);
+          }
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      debugPrint('POS catalog network note: $e');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _filterCatalog(String query) {
-    if (query.isEmpty) {
-      setState(() => _filteredCatalog = List.from(_catalog));
-      return;
-    }
-    setState(() {
-      _filteredCatalog = _catalog.where((d) => 
-        (d['name'] as String).toLowerCase().contains(query.toLowerCase())
-      ).toList();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      final q = query.toLowerCase().trim();
+      if (q.isEmpty) {
+        setState(() => _filteredCatalog = List.from(_catalog));
+        return;
+      }
+      setState(() {
+        _filteredCatalog = _catalog.where((d) {
+          final name = (d['name'] ?? '').toString().toLowerCase();
+          final barcode = (d['barcode'] ?? '').toString().toLowerCase();
+          final cat = (d['category'] ?? '').toString().toLowerCase();
+          return name.contains(q) || barcode.contains(q) || cat.contains(q);
+        }).toList();
+      });
     });
   }
 
@@ -175,54 +222,89 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
         };
       }).toList();
 
-      final inserted = await db.from('transactions').insert(payloads).select();
-      final rows = (inserted as List)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      try {
+        final inserted = await db.from('transactions').insert(payloads).select();
+        final rows = (inserted as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
 
-      // Persist a real insurance / SHA claim record (insurer receivable).
-      if (isInsurance && rows.isNotEmpty) {
-        try {
-          await db.from('insurance_claims').insert({
-            'transaction_id': rows.first['id'],
-            'branch_id': branchId,
-            'client_name': _clientController.text.trim(),
-            'insurer': insurance['insurer'],
-            'member_number': insurance['member_number'],
-            'pre_auth_code': insurance['pre_auth_code'],
-            'gross_amount': _cartTotal,
-            'covered_amount': insurance['covered_amount'],
-            'copay_amount': insurance['copay_amount'],
-            if (insurance['copay_percent'] != null)
-              'copay_percent': (insurance['copay_percent'] as num).toDouble() * 100,
-            'claim_status': 'SUBMITTED',
-          });
-        } catch (e) {
-          debugPrint('Insurance claim record skipped: $e');
+        // Persist insurance claim
+        if (isInsurance && rows.isNotEmpty) {
+          try {
+            await db.from('insurance_claims').insert({
+              'transaction_id': rows.first['id'],
+              'branch_id': branchId,
+              'client_name': _clientController.text.trim(),
+              'insurer': insurance['insurer'],
+              'member_number': insurance['member_number'],
+              'pre_auth_code': insurance['pre_auth_code'],
+              'gross_amount': _cartTotal,
+              'covered_amount': insurance['covered_amount'],
+              'copay_amount': insurance['copay_amount'],
+              if (insurance['copay_percent'] != null)
+                'copay_percent': (insurance['copay_percent'] as num).toDouble() * 100,
+              'claim_status': 'SUBMITTED',
+            });
+          } catch (e) {
+            debugPrint('Insurance claim record skipped: $e');
+          }
         }
-      }
 
-      // Post the real sale into the general ledger (never blocks dispensing).
-      for (final row in rows) {
-        try {
-          await _accounting.postSaleToGl(row);
-        } catch (e) {
-          debugPrint('GL posting skipped: $e');
+        // Post to GL
+        for (final row in rows) {
+          try {
+            await _accounting.postSaleToGl(row);
+          } catch (e) {
+            debugPrint('GL posting skipped: $e');
+          }
         }
-      }
-      
-      setState(() {
-        _cart.clear();
-        _clientController.clear();
-        _isLoading = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+
+        setState(() {
+          _cart.clear();
+          _clientController.clear();
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ Order placed & synced online!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+          );
+        }
+      } catch (networkError) {
+        debugPrint('Online checkout failed, queuing to offline box: $networkError');
+        // OFFLINE QUEUE FALLBACK
+        for (final payload in payloads) {
+          final txRecord = TransactionRecord(
+            id: 'TX-OFFLINE-${DateTime.now().millisecondsSinceEpoch}-${payload['drug_id'].toString().substring(0, 4)}',
+            branchId: branchId,
+            drugId: payload['drug_id'].toString(),
+            transactionType: 'sale',
+            quantity: payload['quantity'] as int,
+            unitPrice: payload['unit_price'] as double,
+            totalAmount: payload['total_amount'] as double,
+            transactionDate: DateTime.now(),
+            isSynced: false,
+          );
+          await OfflineSyncService().queueTransaction(txRecord);
+        }
+
+        setState(() {
+          _cart.clear();
+          _clientController.clear();
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('💾 Sale recorded locally in Offline Queue! Will auto-sync when online.', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.amberAccent,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout failed: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout error: $e'), backgroundColor: Colors.red));
       }
     }
   }
@@ -727,30 +809,47 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
                     itemCount: _filteredCatalog.length,
                     itemBuilder: (context, index) {
                       final drug = _filteredCatalog[index];
+                      final name = (drug['name'] ?? 'Medicine').toString();
+                      final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'Rx';
+                      final thumb = drug['thumb_url']?.toString();
+
                       return GlassContainer(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         padding: const EdgeInsets.all(8),
                         child: ListTile(
                           leading: Container(
-                            width: 50,
-                            height: 50,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F172A),
+                              gradient: LinearGradient(
+                                colors: [Colors.teal.withValues(alpha: 0.3), Colors.cyan.withValues(alpha: 0.15)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
                               borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: drug['image_url'] != null && drug['image_url'].toString().isNotEmpty
+                              child: thumb != null && thumb.isNotEmpty
                                   ? Image.network(
-                                      drug['image_url'].toString(),
+                                      thumb,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                                      cacheWidth: 100,
+                                      errorBuilder: (context, error, stackTrace) => Center(
+                                        child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                      ),
                                     )
-                                  : const Icon(Icons.medication, color: Colors.tealAccent, size: 30),
+                                  : Center(
+                                      child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
                             ),
                           ),
-                          title: Text(drug['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                          subtitle: Text('Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}', style: const TextStyle(color: Colors.white54)),
+                          title: Text(drug['name']?.toString() ?? 'Medicine', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          subtitle: Text(
+                            'Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}',
+                            style: const TextStyle(color: Colors.white54),
+                          ),
                           trailing: IconButton(
                             icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
                             onPressed: () => _addToCart(drug),

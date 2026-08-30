@@ -23,7 +23,11 @@ class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
   Future<void> _loadLiveCatalog() async {
     try {
       final client = Supabase.instance.client;
-      final response = await client.from('drugs').select();
+      final response = await client
+          .from('drugs')
+          .select('id, name, sku, barcode, category, image_url, box_image_url, thumb_url')
+          .order('name')
+          .limit(100);
       final list = response as List<dynamic>;
 
       List<Map<String, dynamic>> items = [];
@@ -32,11 +36,12 @@ class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
           return {
             'id': json['id'] as String,
             'name': json['name'] as String,
-            'sku': json['sku'] as String,
+            'sku': (json['barcode'] ?? json['sku'] ?? '') as String,
             'category': json['category'] as String? ?? 'General',
-            'box_image_url': json['image_url'] as String?,
-            'barcode_string': json['sku'] as String?,
-            'loose_unit_image_url': null,
+            'box_image_url': json['box_image_url'] as String?,
+            'barcode_string': (json['barcode'] ?? json['sku']) as String?,
+            'thumb_url': json['thumb_url'] as String?,
+            'loose_unit_image_url': json['image_url'] as String?,
           };
         }).toList();
       }
@@ -56,22 +61,36 @@ class _CatalogPhotoStudioScreenState extends State<CatalogPhotoStudioScreen> {
   }
 
   void _openGuidedPhotoStudio(Map<String, dynamic> drug) {
+    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return _GuidedStudioDialog(
           drug: drug,
-          onComplete: (boxUrl, barcode, looseUrl) {
+          onComplete: (boxUrl, barcode, looseUrl) async {
             setState(() {
               drug['box_image_url'] = boxUrl;
               drug['barcode_string'] = barcode;
               drug['loose_unit_image_url'] = looseUrl;
+              drug['thumb_url'] = boxUrl;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
+
+            try {
+              await Supabase.instance.client.from('drugs').update({
+                'box_image_url': boxUrl,
+                'barcode': barcode,
+                'image_url': looseUrl,
+                'thumb_url': boxUrl,
+              }).eq('id', drug['id']);
+            } catch (e) {
+              debugPrint('Photo studio save note: $e');
+            }
+
+            messenger.showSnackBar(
               SnackBar(
                 content: Text(
-                  '3-Step Capture Complete for "${drug['name']}"! Box, Barcode & 0.10 Loose Unit saved.',
+                  '3-Step Capture Complete for "${drug['name']}"! Box, Barcode & Thumbnail saved to cloud.',
                   style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 backgroundColor: const Color(0xFF10B981),

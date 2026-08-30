@@ -211,11 +211,20 @@ class AccountingService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchJournals({int limit = 200}) async {
+  Future<List<Map<String, dynamic>>> fetchJournals({
+    DateTime? startDate,
+    DateTime? endDate,
+    int limit = 200,
+  }) async {
     try {
-      final res = await _db
-          .from('journal_entries')
-          .select()
+      var query = _db.from('journal_entries').select('id, entry_number, journal_date, memo, reference, source_module, source_id, created_by, created_at');
+      if (startDate != null) {
+        query = query.gte('journal_date', startDate.toIso8601String().substring(0, 10));
+      }
+      if (endDate != null) {
+        query = query.lte('journal_date', endDate.toIso8601String().substring(0, 10));
+      }
+      final res = await query
           .order('journal_date', ascending: false)
           .order('created_at', ascending: false)
           .limit(limit);
@@ -415,19 +424,30 @@ class AccountingService {
   // --------------------------------------------------------------------------
   // Reporting: trial balance, P&L, balance sheet
   // --------------------------------------------------------------------------
-  Future<List<Map<String, dynamic>>> _allLines() async {
-    final res = await _db
+  Future<List<Map<String, dynamic>>> _allLines({List<String>? journalIds}) async {
+    var query = _db
         .from('journal_lines')
         .select('journal_id, account_code, debit, credit, branch_id');
+    if (journalIds != null && journalIds.isNotEmpty) {
+      query = query.filter('journal_id', 'in', journalIds);
+    }
+    final res = await query;
     return (res as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
-  Future<Map<String, dynamic>> buildLedger() async {
+  /// Builds the General Ledger summary.
+  /// Bounded to an optional date range to prevent unbounded full-table scans.
+  Future<Map<String, dynamic>> buildLedger({DateTime? startDate, DateTime? endDate}) async {
     final accounts = await fetchChartOfAccounts();
-    final journals = await fetchJournals(limit: 1000);
+    final journals = await fetchJournals(
+      startDate: startDate,
+      endDate: endDate,
+      limit: 1000,
+    );
     final List<Map<String, dynamic>> lines = [];
     try {
-      lines.addAll(await _allLines());
+      final jIds = journals.map((j) => j['id']?.toString() ?? '').where((id) => id.isNotEmpty).toList();
+      lines.addAll(await _allLines(journalIds: jIds.isEmpty ? null : jIds));
     } catch (e) {
       _capture(e);
     }

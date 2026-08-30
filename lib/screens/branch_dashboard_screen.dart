@@ -99,7 +99,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
 
       // Fetch low stock items from drugs directly since there is no inventory table and min_threshold
       final invRes = await db.from('drugs')
-          .select('id, name, quantity_in_stock, warehouse_quantity, shelf_quantity, image_url');
+          .select('id, name, quantity_in_stock, warehouse_quantity, shelf_quantity');
           
       int lowStockCount = 0;
       for (var inv in (invRes as List<dynamic>)) {

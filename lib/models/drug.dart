@@ -12,6 +12,7 @@ class Drug {
   final int maxThreshold;
   final int quantityInStock;
   final String? imageUrl;
+  final String? thumbUrl;
   final String? innerUnitImageUrl;
   final String innerUnitType;
   final DateTime createdAt;
@@ -30,17 +31,26 @@ class Drug {
     required this.maxThreshold,
     this.quantityInStock = 50,
     this.imageUrl,
+    this.thumbUrl,
     this.innerUnitImageUrl,
     this.innerUnitType = 'Strip/Blister',
     required this.createdAt,
   });
 
-  /// Returns the real image URL if one exists, otherwise null (no fake images).
+  /// Returns the real image URL if one exists, otherwise null.
   String? get displayImageUrl {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return imageUrl!;
     }
     return null;
+  }
+
+  /// Returns the lightweight thumbnail URL if available, falling back to full image.
+  String? get displayThumbUrl {
+    if (thumbUrl != null && thumbUrl!.isNotEmpty) {
+      return thumbUrl!;
+    }
+    return displayImageUrl;
   }
 
   factory Drug.fromJson(Map<String, dynamic> json) {
@@ -58,6 +68,7 @@ class Drug {
       maxThreshold: json['max_level'] != null ? int.tryParse(json['max_level'].toString()) ?? 150 : ((json['max_threshold'] as num?)?.toInt() ?? 150),
       quantityInStock: json['quantity_in_stock'] != null ? int.tryParse(json['quantity_in_stock'].toString()) ?? 50 : 50,
       imageUrl: (json['box_image_url'] ?? json['image_url']) as String?,
+      thumbUrl: json['thumb_url'] as String?,
       innerUnitImageUrl: (json['image_url'] ?? json['inner_unit_image_url']) as String?,
       innerUnitType: json['inner_unit_type'] as String? ?? 'Strip/Blister',
       createdAt: json['created_at'] != null 
@@ -81,6 +92,7 @@ class Drug {
       'max_level': maxThreshold,
       'quantity_in_stock': quantityInStock,
       'box_image_url': imageUrl,
+      if (thumbUrl != null) 'thumb_url': thumbUrl,
       'image_url': innerUnitImageUrl,
       'inner_unit_type': innerUnitType,
       'created_at': createdAt.toIso8601String(),

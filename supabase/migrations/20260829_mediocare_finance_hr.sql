@@ -547,3 +547,102 @@ end $$;
 grant usage on schema public to anon, authenticated;
 grant execute on function public.mc_seed_coa() to anon, authenticated;
 grant execute on function public.mc_post_journal(date,text,text,text,text,uuid,text,jsonb) to anon, authenticated;
+
+-- =============================================================================
+-- 15. PERFORMANCE INDEXES & EGRESS OPTIMIZATION (SUPABASE FREE TIER)
+-- =============================================================================
+alter table public.drugs add column if not exists thumb_url text;
+
+create index if not exists idx_transactions_branch_date on public.transactions(branch_id, transaction_date desc);
+create index if not exists idx_transactions_type_date on public.transactions(transaction_type, transaction_date desc);
+create index if not exists idx_transactions_drug_id on public.transactions(drug_id);
+create index if not exists idx_drugs_name on public.drugs(name);
+create index if not exists idx_drugs_category on public.drugs(category);
+create index if not exists idx_inventory_batches_expiry on public.inventory_batches(expiry_date);
+create index if not exists idx_journal_lines_account on public.journal_lines(account_code);
+create index if not exists idx_journal_entries_date on public.journal_entries(journal_date desc);
+create index if not exists idx_transactions_unposted_gl on public.transactions(gl_posted) where gl_posted = false;
+
+-- =============================================================================
+-- 16. HIGH SPEED RPC: mc_branch_revenue (Single round trip aggregated revenue)
+-- =============================================================================
+create or replace function public.mc_branch_revenue()
+returns table(branch_id uuid, branch_name text, code text, revenue numeric)
+language plpgsql security definer as $$
+begin
+  return query
+  select 
+    b.id as branch_id,
+    b.name::text as branch_name,
+    b.code::text as code,
+    coalesce(sum(t.total_amount), 0.00)::numeric(16,2) as revenue
+  from public.branches b
+  left join public.transactions t 
+    on t.branch_id = b.id and t.transaction_type = 'sale'
+  group by b.id, b.name, b.code
+  order by b.name;
+end;
+$$;
+
+-- =============================================================================
+-- 17. HIGH SPEED RPC: mc_dashboard_kpis (CEO / Branch Header KPIs in 1 call)
+-- =============================================================================
+create or replace function public.mc_dashboard_kpis(p_branch_id uuid default null)
+returns json language plpgsql security definer as $$
+declare
+  v_rev numeric;
+  v_today_rev numeric;
+  v_tx_count int;
+  v_low_stock int;
+  v_pending_pos int;
+  v_unposted_gl int;
+begin
+  -- Total Sales Revenue
+  select coalesce(sum(total_amount), 0.00), count(*)
+  into v_rev, v_tx_count
+  from public.transactions
+  where transaction_type = 'sale'
+    and (p_branch_id is null or branch_id = p_branch_id);
+
+  -- Today's Sales Revenue
+  select coalesce(sum(total_amount), 0.00)
+  into v_today_rev
+  from public.transactions
+  where transaction_type = 'sale'
+    and transaction_date >= current_date
+    and (p_branch_id is null or branch_id = p_branch_id);
+
+  -- Low Stock Items Count
+  select count(*)
+  into v_low_stock
+  from public.drugs
+  where quantity_in_stock <= coalesce(reorder_level, min_threshold, 15);
+
+  -- Pending Purchase Orders
+  select count(*)
+  into v_pending_pos
+  from public.purchase_orders
+  where status in ('draft', 'submitted', 'approved')
+    and (p_branch_id is null or branch_id = p_branch_id);
+
+  -- Unposted GL Transactions
+  select count(*)
+  into v_unposted_gl
+  from public.transactions
+  where gl_posted = false
+    and (p_branch_id is null or branch_id = p_branch_id);
+
+  return json_build_object(
+    'total_revenue', v_rev,
+    'today_revenue', v_today_rev,
+    'total_transactions', v_tx_count,
+    'low_stock_count', v_low_stock,
+    'pending_pos', v_pending_pos,
+    'unposted_gl_count', v_unposted_gl
+  );
+end;
+$$;
+
+grant execute on function public.mc_branch_revenue() to anon, authenticated;
+grant execute on function public.mc_dashboard_kpis(uuid) to anon, authenticated;
+

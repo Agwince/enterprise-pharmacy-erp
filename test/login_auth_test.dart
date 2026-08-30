@@ -20,7 +20,7 @@ void main() {
     );
     expect(authRes.user, isNotNull);
     expect(authRes.user?.email, equals('catalog@pharmacy.com'));
-    print('1. AUTH SIGN-IN PASSED: ' + authRes.user!.email!);
+    print('1. AUTH SIGN-IN PASSED: ');
 
     // 2. Fetch role from public.roles
     final roleRes = await client
@@ -31,7 +31,7 @@ void main() {
 
     expect(roleRes, isNotNull);
     expect(roleRes!['role'], equals('CATALOG_ADMIN'));
-    print('2. ROLE LOOKUP PASSED: role=' + roleRes['role'].toString());
+    print('2. ROLE LOOKUP PASSED: role=');
 
     client.dispose();
   });
@@ -52,7 +52,7 @@ void main() {
     );
     expect(authRes.user, isNotNull);
     expect(authRes.user?.email, equals('admin@pharmacy.com'));
-    print('1. AUTH SIGN-IN PASSED: ' + authRes.user!.email!);
+    print('1. AUTH SIGN-IN PASSED: ');
 
     final roleRes = await client
         .from('roles')
@@ -62,7 +62,7 @@ void main() {
 
     expect(roleRes, isNotNull);
     expect(roleRes!['role'], equals('SUPER_ADMIN'));
-    print('2. ROLE LOOKUP PASSED: role=' + roleRes['role'].toString());
+    print('2. ROLE LOOKUP PASSED: role=');
 
     client.dispose();
   });

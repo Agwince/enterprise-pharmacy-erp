@@ -19,7 +19,6 @@ import 'screens/telesales_pos_screen.dart';
 import 'screens/secretary_finance_screen.dart';
 import 'screens/rider_dispatch_screen.dart';
 import 'screens/marketer_dashboard_screen.dart';
-import 'widgets/executive_presentation_shell.dart';
 
 void main() async {
   try {
@@ -178,8 +177,8 @@ class StrictAuthRoleRouter extends StatelessWidget {
             return const LoginScreen();
         }
 
-        // Present all authenticated views within the Executive Presentation Shell
-        return ExecutivePresentationShell(child: workspaceWidget);
+        // Render dedicated workspace directly
+        return workspaceWidget;
       },
     );
   }

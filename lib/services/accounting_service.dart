@@ -45,6 +45,7 @@ class AccountingService {
   static const String accDebtors = '1200';
   static const String accInsuranceDebtors = '1210';
   static const String accInventory = '1300';
+  static const String accInventoryInTransit = '1350';
   static const String accPayables = '2000';
   static const String accVatOutput = '2100';
   static const String accVatInput = '2110';

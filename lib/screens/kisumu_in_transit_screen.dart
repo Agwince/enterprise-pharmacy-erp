@@ -484,7 +484,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('🚀 ${req.requisitionNo} dispatched! In-transit tracking active.'), backgroundColor: Colors.green),
+                      SnackBar(content: Text('🚀 ${req.requisitionNo} dispatched! Journal Dr 1350 / Cr 1300 posted & live GPS active.'), backgroundColor: Colors.blueAccent),
                     );
                   }
                   _loadData();
@@ -528,7 +528,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
           SnackBar(
             backgroundColor: const Color(0xFF10B981),
             content: Text(
-              '📦 ${req.requisitionNo} Received! Stock updated & Balanced GL Journal posted.',
+              '📦 ${req.requisitionNo} Received! Shelf stock incremented, warehouse stock decremented (total stock intact) & Dr 1300 / Cr 1350 posted.',
               style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),

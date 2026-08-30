@@ -25,32 +25,29 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   bool _isLoadingStaff = true;
   bool _isSubmitting = false;
   LeaveBalanceData? _currentBalance;
-
-  final List<String> _leaveTypes = [
-    'Annual',
-    'Sick',
-    'Maternity',
-    'Paternity',
-    'Compassionate',
-    'Unpaid',
-  ];
+  List<LeaveTypeConfig> _leaveTypes = [];
 
   @override
   void initState() {
     super.initState();
-    _loadStaff();
+    _loadData();
   }
 
-  Future<void> _loadStaff() async {
+  Future<void> _loadData() async {
     try {
       final res = await Supabase.instance.client.from('staff').select().order('first_name');
       final list = List<Map<String, dynamic>>.from(res as List);
+      final types = await _leaveService.fetchLeaveTypes();
       if (mounted) {
         setState(() {
           _staffList = list;
+          _leaveTypes = types;
           if (_staffList.isNotEmpty) {
             _selectedStaffId = _staffList.first['id'].toString();
             _loadBalance(_selectedStaffId!);
+          }
+          if (_leaveTypes.isNotEmpty) {
+            _selectedLeaveType = _leaveTypes.first.name;
           }
           _isLoadingStaff = false;
         });
@@ -237,16 +234,17 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
                     initialValue: _selectedLeaveType,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: InputDecoration(
-                      labelText: 'Leave Type',
+                      labelText: 'Leave Type & Policy',
                       labelStyle: const TextStyle(color: Colors.white54),
                       filled: true,
                       fillColor: const Color(0xFF0F172A),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                     ),
                     items: _leaveTypes.map((t) {
+                      final suffix = t.isStatutory ? ' (Statutory: ${t.defaultDays}d)' : ' (Policy: ${t.defaultDays}d)';
                       return DropdownMenuItem<String>(
-                        value: t,
-                        child: Text(t == 'Unpaid' ? 'Unpaid Leave (Feeds Payroll Deduction)' : '$t Leave'),
+                        value: t.name,
+                        child: Text('${t.name}$suffix', overflow: TextOverflow.ellipsis),
                       );
                     }).toList(),
                     onChanged: (v) => setState(() => _selectedLeaveType = v ?? _selectedLeaveType),

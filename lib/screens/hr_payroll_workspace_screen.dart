@@ -36,6 +36,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
   List<Map<String, dynamic>> _payslips = [];
   List<Map<String, dynamic>> _shifts = [];
   List<Map<String, dynamic>> _leaveRequests = [];
+  List<LeaveTypeConfig> _leaveTypeConfigs = [];
 
   DateTime _attendanceDay = DateTime.now();
   Map<String, dynamic>? _preview;
@@ -66,6 +67,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
     final runs = await _pay.fetchPayrollRuns();
     final shifts = await _pay.fetchShifts(_attendanceDay);
     final leaves = await _leaveService.fetchLeaveRequests();
+    final leaveTypes = await _leaveService.fetchLeaveTypes();
     if (!mounted) return;
     setState(() {
       _staff = staff;
@@ -73,6 +75,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
       _runs = runs;
       _shifts = shifts;
       _leaveRequests = leaves;
+      _leaveTypeConfigs = leaveTypes;
       _loading = false;
     });
   }
@@ -1104,7 +1107,182 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
                   },
                 ),
         ),
+        const SizedBox(height: 16),
+
+        // Leave Entitlements & Policy Schedule Panel
+        _panel(
+          title: 'Statutory Entitlements & Company Leave Policies (${_leaveTypeConfigs.length})',
+          icon: Icons.rule_folder_outlined,
+          accent: Colors.tealAccent,
+          child: ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _leaveTypeConfigs.length,
+            separatorBuilder: (ctx, i) => const Divider(color: Colors.white10, height: 16),
+            itemBuilder: (context, index) {
+              final type = _leaveTypeConfigs[index];
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              type.name,
+                              style: GoogleFonts.inter(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: type.isStatutory
+                                    ? Colors.blue.withValues(alpha: 0.2)
+                                    : Colors.purple.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                type.isStatutory ? 'STATUTORY (KENYA LAW)' : 'COMPANY POLICY',
+                                style: TextStyle(
+                                  color: type.isStatutory ? Colors.lightBlueAccent : Colors.purpleAccent,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (type.description != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            type.description!,
+                            style: const TextStyle(color: Colors.white54, fontSize: 11),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Text(
+                          '${type.defaultDays} days',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.edit_note_rounded, color: Colors.tealAccent, size: 20),
+                        tooltip: 'Edit Entitlement Days',
+                        onPressed: () => _showEditLeaveTypeModal(type),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ],
+    );
+  }
+
+  void _showEditLeaveTypeModal(LeaveTypeConfig type) {
+    final daysCtrl = TextEditingController(text: '${type.defaultDays}');
+    final descCtrl = TextEditingController(text: type.description ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text(
+          'Edit Entitlement: ${type.name}',
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                type.isStatutory
+                    ? 'Kenya Statutory Standard: ${type.code == "SICK_FULL" || type.code == "SICK_HALF" ? "7 days full pay + 7 days half pay (Sec 30)" : "${type.defaultDays} days"}'
+                    : 'Configurable Group Policy Benefit',
+                style: TextStyle(
+                  color: type.isStatutory ? Colors.lightBlueAccent : Colors.purpleAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: daysCtrl,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Default Annual Days',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descCtrl,
+                maxLines: 2,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Policy Description / Statutory Citation',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.tealAccent,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              final newDays = int.tryParse(daysCtrl.text.trim()) ?? type.defaultDays;
+              final newDesc = descCtrl.text.trim();
+              Navigator.pop(ctx);
+              await _leaveService.updateLeaveType(type.id, defaultDays: newDays, description: newDesc);
+              _load();
+            },
+            child: const Text('Save Entitlement'),
+          ),
+        ],
+      ),
     );
   }
 

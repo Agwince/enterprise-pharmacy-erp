@@ -285,6 +285,7 @@ insert into public.chart_of_accounts (code, name, type, category, is_control) va
  ('1210','Accounts Receivable - Insurance & SHA','asset','Current Assets',false),
  ('1220','Accounts Receivable - Corporate Credit','asset','Current Assets',false),
  ('1300','Inventory - Pharmaceutical Stock','asset','Current Assets',true),
+ ('1350','Inventory in Transit','asset','Current Assets',true),
  ('1400','Prepayments, Deposits & Rent Deposits','asset','Current Assets',false),
  ('1500','Property, Plant & Equipment','asset','Non-Current Assets',false),
  ('1510','Accumulated Depreciation - PPE','asset','Non-Current Assets',false),
@@ -576,13 +577,36 @@ create table if not exists public.requisition_audit_logs (
   created_at     timestamptz default now()
 );
 
+create table if not exists public.leave_types (
+  id             uuid primary key default gen_random_uuid(),
+  code           text not null unique,
+  name           text not null,
+  default_days   int not null default 0,
+  is_statutory   boolean not null default true,
+  pay_percentage numeric(5,2) not null default 100.00,
+  description    text,
+  created_at     timestamptz default now(),
+  updated_at     timestamptz default now()
+);
+
+insert into public.leave_types (code, name, default_days, is_statutory, pay_percentage, description) values
+  ('ANNUAL', 'Annual Leave', 21, true, 100.00, 'Statutory minimum under Employment Act 2007 (21 working days with full pay)'),
+  ('SICK_FULL', 'Sick Leave (Full Pay)', 7, true, 100.00, 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on full pay)'),
+  ('SICK_HALF', 'Sick Leave (Half Pay)', 7, true, 50.00, 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on half pay)'),
+  ('SICK_POLICY', 'Extended Sick Leave (Company Policy)', 16, false, 100.00, 'Configurable Mediocare group benefit policy extending paid sick days beyond statutory minimum'),
+  ('MATERNITY', 'Maternity Leave', 90, true, 100.00, 'Statutory maternity entitlement under Employment Act 2007 (3 calendar months fully paid)'),
+  ('PATERNITY', 'Paternity Leave', 14, true, 100.00, 'Statutory paternity entitlement under Employment Act 2007 (2 weeks fully paid)'),
+  ('COMPASSIONATE', 'Compassionate Leave', 5, false, 100.00, 'Configurable company policy for bereavement and immediate family emergencies'),
+  ('UNPAID', 'Unpaid Leave', 0, false, 0.00, 'Authorized unpaid leave that automatically feeds daily rate payroll deductions')
+on conflict (code) do nothing;
+
 create table if not exists public.leave_requests (
   id             uuid primary key default gen_random_uuid(),
   staff_id       uuid references public.staff(id) on delete set null,
   staff_name     text not null,
   staff_no       text,
   department     text,
-  leave_type     text not null check (leave_type in ('Annual','Sick','Maternity','Paternity','Compassionate','Unpaid')),
+  leave_type     text not null,
   start_date     date not null,
   end_date       date not null,
   total_days     int not null default 1,
@@ -635,7 +659,7 @@ declare
     'etims_invoices','etims_z_reports','branch_till_sessions',
     'purchase_orders','purchase_order_items','inventory',
     'internal_requisitions','requisition_items','requisition_audit_logs',
-    'leave_requests','leave_balances','fleet_vehicles'
+    'leave_types','leave_requests','leave_balances','fleet_vehicles'
   ];
 begin
   foreach t in array tables loop

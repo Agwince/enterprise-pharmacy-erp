@@ -191,7 +191,7 @@ class RequisitionService {
     );
   }
 
-  /// Step 6: Dispatch with Rider & Vehicle
+  /// Step 6: Dispatch with Rider & Vehicle + Post In-Transit GL Journal (Dr 1350 / Cr 1300)
   Future<void> dispatchRequisition({
     required String reqId,
     required String riderName,
@@ -200,6 +200,50 @@ class RequisitionService {
     String? vehicleId,
     required String actor,
   }) async {
+    final req = await fetchRequisitionById(reqId);
+    if (req == null) throw Exception('Requisition $reqId not found');
+
+    // Calculate total dispatch value of picked items
+    double dispatchCost = 0.0;
+    for (final it in req.items) {
+      final qty = it.quantityPicked > 0 ? it.quantityPicked : it.quantityRequested;
+      dispatchCost += qty * it.unitCost;
+    }
+
+    // Post In-Transit GL Journal: Dr 1350 Inventory in Transit / Cr 1300 Warehouse Inventory
+    String? dispatchJournalId;
+    if (dispatchCost > 0.0) {
+      try {
+        dispatchJournalId = await _accounting.postJournal(
+          date: DateTime.now(),
+          memo: 'Inter-Branch Stock Dispatch: ${req.requisitionNo}',
+          reference: req.requisitionNo,
+          sourceModule: 'transfer_dispatch',
+          sourceId: req.id,
+          branchId: req.sourceBranchId,
+          createdBy: actor,
+          lines: [
+            JournalLineDraft(
+              accountCode: AccountingService.accInventoryInTransit, // Dr 1350 Inventory in Transit
+              debit: dispatchCost,
+              credit: 0.0,
+              branchId: req.sourceBranchId,
+              lineMemo: 'In-Transit Stock to ${req.destinationBranchName ?? "Branch"}',
+            ),
+            JournalLineDraft(
+              accountCode: AccountingService.accInventory, // Cr 1300 Warehouse Inventory
+              debit: 0.0,
+              credit: dispatchCost,
+              branchId: req.sourceBranchId,
+              lineMemo: 'Dispatched from ${req.sourceBranchName ?? "Kisumu Bulk Hub"}',
+            ),
+          ],
+        );
+      } catch (e) {
+        debugPrint('Dispatch GL Journal posting note: $e');
+      }
+    }
+
     await _db.from('internal_requisitions').update({
       'status': 'IN_TRANSIT',
       'rider_id': riderId,
@@ -208,6 +252,7 @@ class RequisitionService {
       'vehicle_plate': vehiclePlate,
       'dispatched_by': actor,
       'dispatched_at': DateTime.now().toIso8601String(),
+      'gl_journal_id': dispatchJournalId,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', reqId);
 
@@ -215,9 +260,9 @@ class RequisitionService {
       requisitionId: reqId,
       fromStatus: 'PICKED',
       toStatus: 'IN_TRANSIT',
-      action: 'Dispatched with Courier',
+      action: 'Dispatched with Courier & In-Transit Journal Posted',
       actor: actor,
-      notes: 'Vehicle: $vehiclePlate, Rider: $riderName',
+      notes: 'Vehicle: $vehiclePlate, Rider: $riderName • Dr 1350/Cr 1300 KES ${dispatchCost.toStringAsFixed(2)}',
     );
   }
 
@@ -240,8 +285,8 @@ class RequisitionService {
   }
 
   /// Step 8: Receive & Close Requisition
-  /// Increments destination branch stock, decrements source warehouse stock,
-  /// posts balanced GL Transfer Journal Dr 1300 / Cr 1300 at real cost, and closes requisition.
+  /// Decrements source warehouse_quantity, increments destination shelf_quantity,
+  /// leaves quantity_in_stock UNCHANGED, and posts receipt GL Journal Dr 1300 / Cr 1350.
   Future<void> receiveAndCloseRequisition({
     required String reqId,
     required List<Map<String, dynamic>> receivedItems, // {id, drug_id, quantity_received, unit_cost, batch_no, expiry_date}
@@ -266,29 +311,31 @@ class RequisitionService {
         'quantity_received': qtyRec,
       }).eq('id', it['id']);
 
-      // A. Decrement Source Hub stock (warehouse_quantity)
-      // B. Increment Destination Branch stock (quantity_in_stock)
+      // RULE: Inter-branch requisition is an internal stock movement, not a net gain.
+      // drugs.quantity_in_stock is the TOTAL across locations (warehouse_quantity + shelf_quantity).
+      // On branch receipt: warehouse_quantity -= transferred, shelf_quantity += transferred, quantity_in_stock remains UNCHANGED.
       try {
         final drugRes = await _db
             .from('drugs')
-            .select('id, quantity_in_stock, warehouse_quantity')
+            .select('id, quantity_in_stock, warehouse_quantity, shelf_quantity')
             .eq('id', drugId)
             .maybeSingle();
 
         if (drugRes != null) {
-          final currentStock = (drugRes['quantity_in_stock'] as num?)?.toInt() ?? 0;
           final currentWarehouse = (drugRes['warehouse_quantity'] as num?)?.toInt() ?? 0;
+          final currentShelf = (drugRes['shelf_quantity'] as num?)?.toInt() ?? 0;
 
-          final newStock = currentStock + qtyRec;
           final newWarehouse = (currentWarehouse - qtyRec).clamp(0, 999999);
+          final newShelf = currentShelf + qtyRec;
 
           await _db.from('drugs').update({
-            'quantity_in_stock': newStock,
             'warehouse_quantity': newWarehouse,
+            'shelf_quantity': newShelf,
+            // Note: quantity_in_stock remains unchanged as it equals warehouse_quantity + shelf_quantity
           }).eq('id', drugId);
         }
 
-        // C. Record batch receipt in inventory_batches
+        // Record batch receipt in inventory_batches
         if (batchNo != null && batchNo.isNotEmpty) {
           await _db.from('inventory_batches').insert({
             'drug_id': drugId,
@@ -306,32 +353,32 @@ class RequisitionService {
       }
     }
 
-    // 2. Post Real GL Transfer Journal: Dr 1300 Branch Stock / Cr 1300 Warehouse Stock
-    String? journalId;
+    // 2. Post Real GL Receipt Journal: Dr 1300 Branch Inventory / Cr 1350 Inventory in Transit
+    String? receiptJournalId;
     if (totalTransferCost > 0.0) {
       try {
-        journalId = await _accounting.postJournal(
+        receiptJournalId = await _accounting.postJournal(
           date: DateTime.now(),
-          memo: 'Inter-Branch Stock Transfer: ${req.requisitionNo}',
+          memo: 'Inter-Branch Stock Receipt: ${req.requisitionNo}',
           reference: req.requisitionNo,
-          sourceModule: 'transfer',
+          sourceModule: 'transfer_receipt',
           sourceId: req.id,
           branchId: req.destinationBranchId,
           createdBy: actor,
           lines: [
             JournalLineDraft(
-              accountCode: '1300', // Dr Destination Inventory
+              accountCode: AccountingService.accInventory, // Dr 1300 Destination Branch Inventory
               debit: totalTransferCost,
               credit: 0.0,
               branchId: req.destinationBranchId,
               lineMemo: 'Received Stock (${req.destinationBranchName ?? "Destination"})',
             ),
             JournalLineDraft(
-              accountCode: '1300', // Cr Source Warehouse Inventory
+              accountCode: AccountingService.accInventoryInTransit, // Cr 1350 Inventory in Transit
               debit: 0.0,
               credit: totalTransferCost,
               branchId: req.sourceBranchId,
-              lineMemo: 'Dispatched Stock (${req.sourceBranchName ?? "Kisumu Bulk Hub"})',
+              lineMemo: 'Cleared Transit Stock (${req.sourceBranchName ?? "Kisumu Bulk Hub"})',
             ),
           ],
         );
@@ -345,7 +392,7 @@ class RequisitionService {
       'status': 'CLOSED',
       'received_by': actor,
       'received_at': DateTime.now().toIso8601String(),
-      'gl_journal_id': journalId,
+      'gl_journal_id': receiptJournalId,
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', reqId);
 
@@ -354,9 +401,9 @@ class RequisitionService {
       requisitionId: reqId,
       fromStatus: 'DELIVERED',
       toStatus: 'CLOSED',
-      action: 'Verified, Received into Stock & GL Transfer Posted',
+      action: 'Received to Shelf, Inventory Reconciled & Transit Cleared',
       actor: actor,
-      notes: 'Transfer Value: KES ${totalTransferCost.toStringAsFixed(2)}, Journal: ${journalId ?? "Auto"}',
+      notes: 'Transfer Value: KES ${totalTransferCost.toStringAsFixed(2)}, Receipt Journal: ${receiptJournalId ?? "Auto"}',
     );
   }
 

@@ -1,6 +1,38 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class LeaveTypeConfig {
+  final String id;
+  final String code;
+  final String name;
+  final int defaultDays;
+  final bool isStatutory;
+  final double payPercentage;
+  final String? description;
+
+  const LeaveTypeConfig({
+    required this.id,
+    required this.code,
+    required this.name,
+    required this.defaultDays,
+    this.isStatutory = true,
+    this.payPercentage = 100.0,
+    this.description,
+  });
+
+  factory LeaveTypeConfig.fromJson(Map<String, dynamic> json) {
+    return LeaveTypeConfig(
+      id: json['id']?.toString() ?? '',
+      code: json['code']?.toString() ?? 'OTHER',
+      name: json['name']?.toString() ?? 'Leave',
+      defaultDays: (json['default_days'] as num?)?.toInt() ?? 0,
+      isStatutory: json['is_statutory'] == true,
+      payPercentage: (json['pay_percentage'] as num?)?.toDouble() ?? 100.0,
+      description: json['description']?.toString(),
+    );
+  }
+}
+
 class LeaveBalanceData {
   final String staffId;
   final int year;
@@ -18,7 +50,7 @@ class LeaveBalanceData {
     required this.year,
     this.annualEntitlement = 21,
     this.annualUsed = 0,
-    this.sickEntitlement = 30,
+    this.sickEntitlement = 30, // 14 days statutory (7 full + 7 half) + 16 days company policy
     this.sickUsed = 0,
     this.unpaidUsed = 0,
   });
@@ -38,6 +70,97 @@ class LeaveBalanceData {
 
 class HrLeaveService {
   final SupabaseClient _db = Supabase.instance.client;
+
+  /// Fetch all leave types and entitlements
+  Future<List<LeaveTypeConfig>> fetchLeaveTypes() async {
+    try {
+      final res = await _db.from('leave_types').select().order('is_statutory', ascending: false);
+      return (res as List).map((r) => LeaveTypeConfig.fromJson(Map<String, dynamic>.from(r as Map))).toList();
+    } catch (e) {
+      debugPrint('HrLeaveService.fetchLeaveTypes note: $e');
+      return const [
+        LeaveTypeConfig(
+          id: '1',
+          code: 'ANNUAL',
+          name: 'Annual Leave',
+          defaultDays: 21,
+          isStatutory: true,
+          description: 'Statutory minimum under Employment Act 2007 (21 working days with full pay)',
+        ),
+        LeaveTypeConfig(
+          id: '2',
+          code: 'SICK_FULL',
+          name: 'Sick Leave (Full Pay)',
+          defaultDays: 7,
+          isStatutory: true,
+          description: 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on full pay)',
+        ),
+        LeaveTypeConfig(
+          id: '3',
+          code: 'SICK_HALF',
+          name: 'Sick Leave (Half Pay)',
+          defaultDays: 7,
+          isStatutory: true,
+          payPercentage: 50.0,
+          description: 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on half pay)',
+        ),
+        LeaveTypeConfig(
+          id: '4',
+          code: 'SICK_POLICY',
+          name: 'Extended Sick Leave (Company Policy)',
+          defaultDays: 16,
+          isStatutory: false,
+          description: 'Configurable company policy extending paid sick days beyond statutory minimum',
+        ),
+        LeaveTypeConfig(
+          id: '5',
+          code: 'MATERNITY',
+          name: 'Maternity Leave',
+          defaultDays: 90,
+          isStatutory: true,
+          description: 'Statutory maternity entitlement under Employment Act 2007 (3 calendar months fully paid)',
+        ),
+        LeaveTypeConfig(
+          id: '6',
+          code: 'PATERNITY',
+          name: 'Paternity Leave',
+          defaultDays: 14,
+          isStatutory: true,
+          description: 'Statutory paternity entitlement under Employment Act 2007 (2 weeks fully paid)',
+        ),
+        LeaveTypeConfig(
+          id: '7',
+          code: 'COMPASSIONATE',
+          name: 'Compassionate Leave',
+          defaultDays: 5,
+          isStatutory: false,
+          description: 'Configurable company policy for bereavement and immediate family emergencies',
+        ),
+        LeaveTypeConfig(
+          id: '8',
+          code: 'UNPAID',
+          name: 'Unpaid Leave',
+          defaultDays: 0,
+          isStatutory: false,
+          payPercentage: 0.0,
+          description: 'Authorized unpaid leave that automatically feeds daily rate payroll deductions',
+        ),
+      ];
+    }
+  }
+
+  /// Update leave type days / policy (Editable by HR)
+  Future<void> updateLeaveType(String id, {required int defaultDays, String? description}) async {
+    try {
+      await _db.from('leave_types').update({
+        'default_days': defaultDays,
+        'description': ?description,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', id);
+    } catch (e) {
+      debugPrint('HrLeaveService.updateLeaveType note: $e');
+    }
+  }
 
   /// Fetch leave requests
   Future<List<Map<String, dynamic>>> fetchLeaveRequests({
@@ -92,9 +215,9 @@ class HrLeaveService {
         final days = (l['total_days'] as num?)?.toInt() ?? 0;
         final start = l['start_date'] != null ? DateTime.tryParse(l['start_date'].toString()) : null;
         if (start != null && start.year == currentYear) {
-          if (type == 'Annual') annualDays += days;
-          if (type == 'Sick') sickDays += days;
-          if (type == 'Unpaid') unpaidDays += days;
+          if (type != null && type.contains('Annual')) annualDays += days;
+          if (type != null && type.contains('Sick')) sickDays += days;
+          if (type != null && type.contains('Unpaid')) unpaidDays += days;
         }
       }
 
@@ -103,7 +226,7 @@ class HrLeaveService {
         'year': currentYear,
         'annual_entitlement': 21,
         'annual_used': annualDays,
-        'sick_entitlement': 30,
+        'sick_entitlement': 30, // 14 statutory + 16 company policy
         'sick_used': sickDays,
         'unpaid_used': unpaidDays,
       };
@@ -179,9 +302,9 @@ class HrLeaveService {
         int newSickUsed = bal.sickUsed;
         int newUnpaidUsed = bal.unpaidUsed;
 
-        if (leaveType == 'Annual') newAnnualUsed += days;
-        if (leaveType == 'Sick') newSickUsed += days;
-        if (leaveType == 'Unpaid') newUnpaidUsed += days;
+        if (leaveType != null && leaveType.contains('Annual')) newAnnualUsed += days;
+        if (leaveType != null && leaveType.contains('Sick')) newSickUsed += days;
+        if (leaveType != null && leaveType.contains('Unpaid')) newUnpaidUsed += days;
 
         await _db.from('leave_balances').upsert({
           'staff_id': staffId,
@@ -207,7 +330,7 @@ class HrLeaveService {
           .from('leave_requests')
           .select('total_days, start_date, end_date')
           .eq('staff_id', staffId)
-          .eq('leave_type', 'Unpaid')
+          .ilike('leave_type', '%Unpaid%')
           .eq('status', 'Approved')
           .gte('start_date', periodStart.toIso8601String().substring(0, 10))
           .lte('start_date', periodEnd.toIso8601String().substring(0, 10));

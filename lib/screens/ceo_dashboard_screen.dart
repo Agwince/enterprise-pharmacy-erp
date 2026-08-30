@@ -24,6 +24,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   List<Map<String, dynamic>> _liveActivities = [];
   double _totalRevenue = 0.0;
   int _totalTransactions = 0;
+  int _lowStockCount = 0;
   double _maxBranchRev = 100000.0;
 
   final NumberFormat _currencyFormat = NumberFormat("#,##0", "en_US");
@@ -45,6 +46,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       final kpis = await supabaseService.fetchDashboardKpis();
       final double total = (kpis['total_revenue'] as num?)?.toDouble() ?? 0.0;
       final int totalTx = (kpis['total_transactions'] as num?)?.toInt() ?? 0;
+      final int lowStock = (kpis['low_stock_count'] as num?)?.toInt() ?? 0;
 
       // CALL 2: Single Round-Trip Branch Revenue RPC
       final branchData = await supabaseService.fetchBranchRevenue();
@@ -91,6 +93,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           _branchRevenues = branchRevenues;
           _totalRevenue = total;
           _totalTransactions = totalTx;
+          _lowStockCount = lowStock;
           _liveActivities = recentActivities;
           _maxBranchRev = maxRev;
           _isLoading = false;
@@ -315,10 +318,10 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                           ),
                           _buildKpiCard(
                             'Inventory Health',
-                            '96.8% Stocked',
-                            'ABC Velocity Optimized',
+                            _lowStockCount > 0 ? '$_lowStockCount Items Low' : 'Optimal Inventory',
+                            'ABC Velocity Tracked',
                             Icons.verified_user_rounded,
-                            Colors.purpleAccent,
+                            _lowStockCount > 0 ? Colors.amberAccent : Colors.purpleAccent,
                           ),
                         ],
                       );

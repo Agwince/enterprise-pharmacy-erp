@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
+import 'register_product_screen.dart';
+import 'catalog_list_screen.dart';
 
 class SuperAdminWorkspaceScreen extends StatefulWidget {
   const SuperAdminWorkspaceScreen({super.key});
@@ -665,6 +667,135 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
             ),
             const SizedBox(height: 24),
 
+            // ==========================================
+            // CATALOGUE & MEDICINES GOVERNANCE SECTION
+            // ==========================================
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.tealAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.medication_rounded, color: Colors.tealAccent, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Catalogue / Medicines',
+                              style: GoogleFonts.inter(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Global Central Formulary, Drug Registration & Photo Inventory Management',
+                              style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 600;
+                      return isWide
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: _buildCatalogueActionCard(
+                                    title: 'Register Medicine',
+                                    subtitle: 'Register new drug formulations, barcode, pricing & bin locations.',
+                                    icon: Icons.add_circle_outline_rounded,
+                                    color: Colors.tealAccent,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const RegisterProductScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildCatalogueActionCard(
+                                    title: 'Medicine List',
+                                    subtitle: 'View all 782 live medicines, search inventory & attach photos.',
+                                    icon: Icons.format_list_bulleted_rounded,
+                                    color: Colors.cyanAccent,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const CatalogListScreen(mode: IntakeMode.both),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                _buildCatalogueActionCard(
+                                  title: 'Register Medicine',
+                                  subtitle: 'Register new drug formulations, barcode, pricing & bin locations.',
+                                  icon: Icons.add_circle_outline_rounded,
+                                  color: Colors.tealAccent,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const RegisterProductScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                _buildCatalogueActionCard(
+                                  title: 'Medicine List',
+                                  subtitle: 'View all 782 live medicines, search inventory & attach photos.',
+                                  icon: Icons.format_list_bulleted_rounded,
+                                  color: Colors.cyanAccent,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const CatalogListScreen(mode: IntakeMode.both),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Enterprise Tenants Table
             Container(
               width: double.infinity,
@@ -686,7 +817,7 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                     scrollDirection: Axis.horizontal,
                     child: DataTable(
                       columns: [
-                        DataColumn(label: Text('Tenant ID', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                        DataColumn(label: Text('Tenant ID', style: GoogleFonts.inter(color: Colors.amberAccent, fontWeight: FontWeight.bold))),
                         DataColumn(label: Text('Enterprise Company', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                         DataColumn(label: Text('Subscription Tier', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
                         DataColumn(label: Text('Active Branches', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
@@ -753,6 +884,64 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCatalogueActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.white60,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 16),
           ],
         ),
       ),

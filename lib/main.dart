@@ -25,17 +25,18 @@ void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // Initialize Supabase Client
-    try {
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        publishableKey: SupabaseConfig.anonKey,
-      );
-      // Force clear any stale session tokens from localStorage
-      await Supabase.instance.client.auth.signOut();
-    } catch (e) {
-      debugPrint('Supabase initialization note: $e');
+    // Startup assertion: prevent empty anon key trap
+    if (SupabaseConfig.anonKey.isEmpty) {
+      throw Exception('Supabase anon key is empty — check your --dart-define');
     }
+
+    // Initialize Supabase Client
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      publishableKey: SupabaseConfig.anonKey,
+    );
+    // Force clear any stale session tokens from localStorage
+    await Supabase.instance.client.auth.signOut();
 
     // Initialize Offline Caching Queue & Catalog Cache (Hive)
     try {
@@ -61,23 +62,32 @@ void main() async {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Colors.amberAccent, size: 48),
+                  const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 56),
                   const SizedBox(height: 16),
                   const Text(
-                    'Initialization Warning',
-                    style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    'Initialization Error',
+                    style: TextStyle(color: Colors.redAccent, fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'The application encountered an initialization error:\n$e',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: Text(
+                      '$e',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'monospace'),
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => runApp(const PharmacyErpApp()),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
-                    child: const Text('Proceed to App'),
+                  ElevatedButton.icon(
+                    onPressed: () => main(),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Retry Startup'),
                   ),
                 ],
               ),

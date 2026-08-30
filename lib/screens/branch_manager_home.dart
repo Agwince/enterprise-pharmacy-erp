@@ -4,7 +4,6 @@ import '../services/auth_service.dart';
 import 'branch_dashboard_screen.dart';
 import 'kisumu_in_transit_screen.dart';
 import 'location_manager_screen.dart';
-import 'catalog_photo_studio.dart';
 import 'store_mapping_screen.dart';
 import 'wholesale_catalog_screen.dart';
 import 'ppb_compliance_screen.dart';
@@ -32,8 +31,6 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
       case 4:
         return const LocationManagerScreen();
       case 5:
-        return const CatalogPhotoStudioScreen();
-      case 6:
         return const StoreMappingScreen();
       default:
         return const BranchDashboardScreen();
@@ -134,11 +131,6 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
               icon: Icon(Icons.location_city_rounded),
               activeIcon: Icon(Icons.location_city_rounded, color: Colors.tealAccent),
               label: 'Locations',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.camera_enhance_rounded),
-              activeIcon: Icon(Icons.camera_enhance_rounded, color: Colors.tealAccent),
-              label: 'Photo Studio',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.qr_code_scanner_rounded),

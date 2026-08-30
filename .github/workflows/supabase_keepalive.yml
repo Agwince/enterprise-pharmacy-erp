@@ -1,0 +1,23 @@
+name: Supabase Free Project Keep-Alive
+
+on:
+  schedule:
+    # Runs at minute 17 past every 12th hour (twice daily) to prevent 7-day auto-pause on Supabase Free tier
+    - cron: '17 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://sodxtvyusndehtycgino.supabase.co/rest/v1/branches?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvZHh0dnl1c25kZWh0eWNnaW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTQ0MDAsImV4cCI6MjEwMDIzMDQwMH0.URYtK86DQOW2-q_qHPFpEnDqF-onYzj8J69n74tyUQM' }}")
+          echo "Supabase Keep-Alive Response HTTP: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            echo "✅ Supabase project active and responsive."
+          else
+            echo "⚠️ Ping received status $STATUS (project may be waking up)."
+          fi

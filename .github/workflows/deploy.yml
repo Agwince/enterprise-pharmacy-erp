@@ -1,9 +1,10 @@
-name: Deploy Flutter Web to GitHub Pages
+name: Build & Deploy (Netlify + GitHub Pages)
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -31,8 +32,27 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Flutter Web
-        run: flutter build web --release --base-href /enterprise-pharmacy-erp/
+      # ------------------------------------------------------------------------
+      # Build & Deploy #1: Netlify (Root base-href "/")
+      # ------------------------------------------------------------------------
+      - name: Build Web for Netlify
+        run: flutter build web --release --base-href "/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Netlify
+        run: npx netlify-cli deploy --prod --dir=build/web
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        continue-on-error: true # If Netlify secrets not yet set in repo, do not block GitHub Pages
+
+      # ------------------------------------------------------------------------
+      # Build & Deploy #2: GitHub Pages (Sub-path base-href "/enterprise-pharmacy-erp/")
+      # ------------------------------------------------------------------------
+      - name: Build Web for GitHub Pages
+        run: flutter build web --release --base-href "/enterprise-pharmacy-erp/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Create 404 SPA fallback
+        run: cp build/web/index.html build/web/404.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

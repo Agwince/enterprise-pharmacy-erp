@@ -21,7 +21,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
   Drug? _selectedDrug;
   String? _capturedImageLocalPath;
   bool _isUploading = false;
-  final _quantityController = TextEditingController(text: '50');
+  final _quantityController = TextEditingController();
 
   // Task 1: Seeded Official Nairobi PDF Catalog Items
   final List<Drug> _seededNairobiPdfCatalog = [];

@@ -353,7 +353,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   void _showInsuranceCheckoutDialog() {
     String selectedInsurer = 'Social Health Authority (SHA)';
     final memberNoCtrl = TextEditingController();
-    final preAuthCtrl = TextEditingController(text: 'AUTH-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}');
+    final preAuthCtrl = TextEditingController();
     double copayPct = 0.10;
 
     showDialog(

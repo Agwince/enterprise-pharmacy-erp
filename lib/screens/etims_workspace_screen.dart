@@ -18,27 +18,23 @@ class _ETIMSWorkspaceScreenState extends State<ETIMSWorkspaceScreen> with Single
   late ETIMSService _etimsService;
 
   // New Invoice State
-  final _customerNameCtrl = TextEditingController(text: 'Walk-in Customer');
+  final _customerNameCtrl = TextEditingController();
   final _customerPinCtrl = TextEditingController();
-  final _paymentRefCtrl = TextEditingController(text: 'MPESA-${DateFormat("HHmmss").format(DateTime.now())}');
-  final _cashierCtrl = TextEditingController(text: 'Jane Wambui');
+  final _paymentRefCtrl = TextEditingController();
+  final _cashierCtrl = TextEditingController();
   String _selectedPaymentMode = 'M-Pesa';
 
-  // Active Draft Items in Terminal (Default tax code: Code B - 16% Standard VAT)
-  final List<ETIMSLineItem> _draftItems = [
-    ETIMSLineItem(drugId: '1', itemName: 'Amoxicillin 500mg (100s)', sku: 'AMX-500', quantity: 2, unitPrice: 850.0, taxCode: TIMSTaxCode.B),
-    ETIMSLineItem(drugId: '2', itemName: 'Digital Clinical Thermometer', sku: 'MED-THM-01', quantity: 1, unitPrice: 1200.0, taxCode: TIMSTaxCode.B),
-    ETIMSLineItem(drugId: '3', itemName: 'Surgical Face Masks 3-Ply (50s)', sku: 'MSK-50', quantity: 2, unitPrice: 400.0, taxCode: TIMSTaxCode.A),
-  ];
+  // Active Draft Items in Terminal (Populated when drugs are selected or scanned)
+  final List<ETIMSLineItem> _draftItems = [];
 
   // Till Reconciliation Form State
-  final _floatCtrl = TextEditingController(text: '10000.00');
-  final _cashSalesCtrl = TextEditingController(text: '34500.00');
-  final _mpesaSalesCtrl = TextEditingController(text: '112000.00');
-  final _cardSalesCtrl = TextEditingController(text: '28000.00');
-  final _insuranceSalesCtrl = TextEditingController(text: '45000.00');
-  final _pettyCashCtrl = TextEditingController(text: '1500.00');
-  final _actualCashCtrl = TextEditingController(text: '43000.00');
+  final _floatCtrl = TextEditingController();
+  final _cashSalesCtrl = TextEditingController();
+  final _mpesaSalesCtrl = TextEditingController();
+  final _cardSalesCtrl = TextEditingController();
+  final _insuranceSalesCtrl = TextEditingController();
+  final _pettyCashCtrl = TextEditingController();
+  final _actualCashCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
   ETIMSInvoice? _lastGeneratedInvoice;
@@ -689,10 +685,10 @@ class _ETIMSWorkspaceScreenState extends State<ETIMSWorkspaceScreen> with Single
   }
 
   void _showAddItemModal() {
-    final nameCtrl = TextEditingController(text: 'Paracetamol Syrup 100ml');
-    final skuCtrl = TextEditingController(text: 'PCM-SYR-100');
-    final qtyCtrl = TextEditingController(text: '1');
-    final priceCtrl = TextEditingController(text: '250.00');
+    final nameCtrl = TextEditingController();
+    final skuCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
     TIMSTaxCode selectedCode = TIMSTaxCode.B; // Strict default: Code B (16% Standard VAT)
 
     showDialog(

@@ -410,19 +410,18 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
       'phone': TextEditingController(text: e?['phone']?.toString() ?? ''),
       'email': TextEditingController(text: e?['email']?.toString() ?? ''),
       'job_title': TextEditingController(text: e?['job_title']?.toString() ?? ''),
-      'department':
-          TextEditingController(text: e?['department']?.toString() ?? 'Pharmacy Operations'),
-      'basic_salary': TextEditingController(text: d('basic_salary').toStringAsFixed(0)),
+      'department': TextEditingController(text: e?['department']?.toString() ?? ''),
+      'basic_salary': TextEditingController(text: e != null ? d('basic_salary').toStringAsFixed(0) : ''),
       'house_allowance':
-          TextEditingController(text: d('house_allowance').toStringAsFixed(0)),
+          TextEditingController(text: e != null ? d('house_allowance').toStringAsFixed(0) : ''),
       'transport_allowance':
-          TextEditingController(text: d('transport_allowance').toStringAsFixed(0)),
+          TextEditingController(text: e != null ? d('transport_allowance').toStringAsFixed(0) : ''),
       'medical_allowance':
-          TextEditingController(text: d('medical_allowance').toStringAsFixed(0)),
+          TextEditingController(text: e != null ? d('medical_allowance').toStringAsFixed(0) : ''),
       'other_allowance':
-          TextEditingController(text: d('other_allowance').toStringAsFixed(0)),
+          TextEditingController(text: e != null ? d('other_allowance').toStringAsFixed(0) : ''),
       'pension_contribution':
-          TextEditingController(text: d('pension_contribution').toStringAsFixed(0)),
+          TextEditingController(text: e != null ? d('pension_contribution').toStringAsFixed(0) : ''),
       'bank_name': TextEditingController(text: e?['bank_name']?.toString() ?? ''),
       'bank_branch': TextEditingController(text: e?['bank_branch']?.toString() ?? ''),
       'bank_account': TextEditingController(text: e?['bank_account']?.toString() ?? ''),

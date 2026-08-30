@@ -10,8 +10,8 @@ class LocationManagerScreen extends StatefulWidget {
 }
 
 class _LocationManagerScreenState extends State<LocationManagerScreen> {
-  final _aisleNameController = TextEditingController(text: 'Aisle 4');
-  final _shelfCountController = TextEditingController(text: '5');
+  final _aisleNameController = TextEditingController();
+  final _shelfCountController = TextEditingController();
   String _selectedAisleType = 'General Medicines';
 
   final List<Map<String, dynamic>> _aisles = [];
@@ -343,6 +343,8 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
       style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
       decoration: InputDecoration(
         labelText: 'Aisle Name / Number',
+        hintText: 'e.g. Aisle 4',
+        hintStyle: GoogleFonts.inter(color: Colors.white24, fontSize: 12),
         labelStyle: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
         filled: true,
         fillColor: const Color(0xFF0F172A),
@@ -386,6 +388,8 @@ class _LocationManagerScreenState extends State<LocationManagerScreen> {
       style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
       decoration: InputDecoration(
         labelText: 'No. of Shelves',
+        hintText: 'e.g. 5',
+        hintStyle: GoogleFonts.inter(color: Colors.white24, fontSize: 12),
         labelStyle: GoogleFonts.inter(color: Colors.white70, fontSize: 12),
         filled: true,
         fillColor: const Color(0xFF0F172A),

@@ -65,10 +65,10 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   final _nameController = TextEditingController();
   final _genericController = TextEditingController();
   final _dosageFormController = TextEditingController();
-  final _categoryController = TextEditingController(text: 'General Medicines');
-  final _binController = TextEditingController(text: 'AISLE 1 - SHELF A1');
-  final _unitController = TextEditingController(text: 'Box of 100');
-  final _priceController = TextEditingController(text: '1200');
+  final _categoryController = TextEditingController();
+  final _binController = TextEditingController();
+  final _unitController = TextEditingController();
+  final _priceController = TextEditingController();
 
   // Task 1: Nairobi Autocomplete Catalog Sample Data
   static const List<Map<String, dynamic>> _nairobiCatalog = [];

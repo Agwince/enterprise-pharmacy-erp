@@ -66,7 +66,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
     final List<Map<String, dynamic>> selectedItems = [];
     final notesCtrl = TextEditingController();
     String? selectedDrugId;
-    final qtyCtrl = TextEditingController(text: '50');
+    final qtyCtrl = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -137,6 +137,8 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                           style: const TextStyle(color: Colors.white, fontSize: 13),
                           decoration: InputDecoration(
                             labelText: 'Qty',
+                            hintText: 'e.g. 50',
+                            hintStyle: const TextStyle(color: Colors.white24),
                             labelStyle: const TextStyle(color: Colors.white54),
                             filled: true,
                             fillColor: const Color(0xFF0F172A),
@@ -163,7 +165,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                                     'bin_location': drug['target_shelf'] ?? 'AISLE 1 - SHELF A1',
                                   });
                                   selectedDrugId = null;
-                                  qtyCtrl.text = '50';
+                                  qtyCtrl.clear();
                                 });
                               },
                         icon: const Icon(Icons.add, size: 16),
@@ -285,9 +287,9 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
         'id': it.id,
         'drug_name': it.drugName,
         'quantity_requested': it.quantityRequested,
-        'qty_ctrl': TextEditingController(text: it.quantityRequested.toString()),
-        'batch_ctrl': TextEditingController(text: 'BATCH-2026-KSM-${it.id.substring(0, 4).toUpperCase()}'),
-        'expiry_ctrl': TextEditingController(text: '2027-12-31'),
+        'qty_ctrl': TextEditingController(text: it.quantityPicked > 0 ? it.quantityPicked.toString() : it.quantityRequested.toString()),
+        'batch_ctrl': TextEditingController(text: it.batchNo ?? ''),
+        'expiry_ctrl': TextEditingController(text: it.expiryDate != null ? it.expiryDate!.toIso8601String().substring(0, 10) : ''),
         'bin_location': it.binLocation ?? 'AISLE 1 - SHELF A1',
       };
     }).toList();

@@ -915,8 +915,8 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
   }
 
   void _showReceiveGrnModal(PurchaseOrder po, ProcurementService proc) {
-    final receiverCtrl = TextEditingController(text: 'Storekeeper John');
-    final freightCtrl = TextEditingController(text: '0.00');
+    final receiverCtrl = TextEditingController();
+    final freightCtrl = TextEditingController();
     final List<Map<String, dynamic>> receivingItems = po.items.map((i) {
       return {
         'id': i.id,
@@ -926,8 +926,8 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
         'quantity_received': i.quantityRequested,
         'real_grn_cost': i.unitCost, // Genuine VAT-EXCLUSIVE cost price
         'tax_code': i.taxCode.code,
-        'batch_no': 'LOT-${DateFormat("yyyyMM").format(DateTime.now())}',
-        'expiry_date': DateTime.now().add(const Duration(days: 540)).toIso8601String().substring(0, 10),
+        'batch_no': '',
+        'expiry_date': '',
       };
     }).toList();
 
@@ -1284,9 +1284,9 @@ class _ProcurementLpoScreenState extends State<ProcurementLpoScreen> with Single
   }
 
   void _showMatchInvoiceDialog(PurchaseOrder po, ProcurementService proc) {
-    final invNumCtrl = TextEditingController(text: po.invoiceNumber ?? 'INV-${DateFormat("yyyyMMdd").format(DateTime.now())}');
-    final invAmtCtrl = TextEditingController(text: (po.invoiceAmount ?? (po.grnTotalCost > 0 ? po.grnTotalCost : po.totalAmount)).toStringAsFixed(2));
-    final tolCtrl = TextEditingController(text: po.matchTolerance.toStringAsFixed(0));
+    final invNumCtrl = TextEditingController(text: po.invoiceNumber ?? '');
+    final invAmtCtrl = TextEditingController(text: po.invoiceAmount != null ? po.invoiceAmount!.toStringAsFixed(2) : '');
+    final tolCtrl = TextEditingController(text: po.matchTolerance > 0 ? po.matchTolerance.toStringAsFixed(0) : '0');
 
     showDialog(
       context: context,

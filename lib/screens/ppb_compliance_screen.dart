@@ -195,9 +195,9 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
     final patientNameCtrl = TextEditingController();
     final patientIdCtrl = TextEditingController();
     final doctorNameCtrl = TextEditingController();
-    final doctorLicenseCtrl = TextEditingController(text: 'KMPDC-');
-    final hospitalCtrl = TextEditingController(text: 'Nairobi Hospital');
-    final qtyCtrl = TextEditingController(text: '10');
+    final doctorLicenseCtrl = TextEditingController();
+    final hospitalCtrl = TextEditingController();
+    final qtyCtrl = TextEditingController();
     String selectedDrug = 'Morphine Sulphate Inj 10mg/mL';
 
     showDialog(

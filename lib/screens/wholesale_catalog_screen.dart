@@ -59,21 +59,21 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
           .range(offset, offset + _pageSize - 1);
 
       final list = (res as List).map((d) {
-        final name = (d['name'] ?? 'Pharmaceutical Drug') as String;
-        final whQty = (d['warehouse_quantity'] as num?)?.toInt() ?? 50;
-        final pallets = (whQty / 10).ceil().clamp(2, 45);
-        final boxes = pallets * 120;
-        final category = (d['category'] ?? 'General Medicines').toString();
+        final name = (d['name'] ?? '') as String;
+        final whQty = (d['warehouse_quantity'] as num?)?.toInt() ?? 0;
+        final pallets = (whQty / 10).ceil();
+        final boxes = whQty;
+        final category = (d['category'] ?? '').toString();
 
         return {
           'id': d['id'],
           'name': name,
-          'genericName': d['generic_name'] ?? 'Bio-equivalent Formulation',
-          'sku': d['barcode'] ?? 'SKU-${d['id'].toString().substring(0, 6)}',
+          'genericName': d['generic_name'] ?? '',
+          'sku': d['barcode'] ?? '',
           'category': category,
-          'binLocation': d['target_shelf'] ?? 'AISLE 1 - SHELF A1',
+          'binLocation': d['target_shelf'] ?? '',
           'pallets': pallets,
-          'boxesAvailable': '$boxes Boxes',
+          'boxesAvailable': '$boxes Units',
           'warehouseQty': whQty,
           'price': (d['price'] as num?)?.toDouble() ?? 0.0,
         };

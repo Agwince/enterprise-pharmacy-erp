@@ -30,80 +30,91 @@ class AuthService extends ChangeNotifier {
   String get userName => _userName;
   bool get isAuthenticated => _role != UserRole.none;
 
-  void loginAsSuperAdmin() {
+  void setUserSession({
+    required UserRole role,
+    required String email,
+    required String name,
+  }) {
+    _role = role;
+    _userEmail = email;
+    _userName = name;
+    notifyListeners();
+  }
+
+  void loginAsSuperAdmin({String email = '', String name = ''}) {
     _role = UserRole.superAdmin;
-    _userEmail = 'superadmin@pharmasaas.com';
-    _userName = 'Super Admin (Platform Owner)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Platform Super Admin';
     notifyListeners();
   }
 
-  void loginAsCeo() {
+  void loginAsCeo({String email = '', String name = ''}) {
     _role = UserRole.ceo;
-    _userEmail = 'ceo@nairobibulk.com';
-    _userName = 'Eleanor Vance (Client CEO)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'CEO';
     notifyListeners();
   }
 
-  void loginAsHr() {
+  void loginAsHr({String email = '', String name = ''}) {
     _role = UserRole.hr;
-    _userEmail = 'hr@nairobibulk.com';
-    _userName = 'Jessica Taylor (Client HR)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'HR Manager';
     notifyListeners();
   }
 
-  void loginAsWarehousePicker() {
+  void loginAsWarehousePicker({String email = '', String name = ''}) {
     _role = UserRole.warehousePicker;
-    _userEmail = 'picker@nairobibulk.com';
-    _userName = 'Dave Bowman (Warehouse Picker)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Warehouse Picker';
     notifyListeners();
   }
 
-  void loginAsStorekeeper() {
+  void loginAsStorekeeper({String email = '', String name = ''}) {
     _role = UserRole.storekeeper;
-    _userEmail = 'storekeeper@nairobibulk.com';
-    _userName = 'Sam Wilson (Storekeeper)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Storekeeper';
     notifyListeners();
   }
 
-  void loginAsCatalogAdmin() {
+  void loginAsCatalogAdmin({String email = '', String name = ''}) {
     _role = UserRole.catalogAdmin;
-    _userEmail = 'catalog@nairobibulk.com';
-    _userName = 'Jane Doe (Catalog Admin)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Catalog Admin';
     notifyListeners();
   }
 
-  void loginAsBranchManager() {
+  void loginAsBranchManager({String email = '', String name = ''}) {
     _role = UserRole.branchManager;
-    _userEmail = 'manager@nairobibulk.com';
-    _userName = 'Sarah Jenkins (Branch Manager)';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Branch Manager';
     notifyListeners();
   }
 
-  void loginAsTelesales() {
+  void loginAsTelesales({String email = '', String name = ''}) {
     _role = UserRole.telesales;
-    _userEmail = 'telesales@pharmacy.com';
-    _userName = 'Telesales Agent';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Telesales Agent';
     notifyListeners();
   }
 
-  void loginAsSecretary() {
+  void loginAsSecretary({String email = '', String name = ''}) {
     _role = UserRole.secretary;
-    _userEmail = 'secretary@pharmacy.com';
-    _userName = 'Finance Secretary';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Finance Secretary';
     notifyListeners();
   }
 
-  void loginAsRider() {
+  void loginAsRider({String email = '', String name = ''}) {
     _role = UserRole.rider;
-    _userEmail = 'rider@pharmacy.com';
-    _userName = 'Motorbike Rider';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Motorbike Rider';
     notifyListeners();
   }
 
-  void loginAsMarketer() {
+  void loginAsMarketer({String email = '', String name = ''}) {
     _role = UserRole.marketer;
-    _userEmail = 'marketer@pharmacy.com';
-    _userName = 'Field Marketer';
+    _userEmail = email;
+    _userName = name.isNotEmpty ? name : 'Field Marketer';
     notifyListeners();
   }
 
@@ -114,55 +125,66 @@ class AuthService extends ChangeNotifier {
         password: password,
       );
       if (response.user != null) {
-        try {
-          final res = await Supabase.instance.client.from('roles').select('role').eq('email', email).maybeSingle();
-          if (res != null) {
-            String dbRole = res['role'].toString().toUpperCase();
-            if (dbRole == 'TELESALES') {
-               loginAsTelesales();
-               return true;
-            } else if (dbRole == 'SECRETARY') {
-               loginAsSecretary();
-               return true;
-            } else if (dbRole == 'MARKETER') {
-               loginAsMarketer();
-               return true;
-            }
-          }
-        } catch (e) {
-          debugPrint('Could not fetch custom role: $e');
-        }
+        final realEmail = response.user!.email ?? email;
+        final res = await Supabase.instance.client
+            .from('roles')
+            .select('role, full_name, name')
+            .eq('email', realEmail)
+            .maybeSingle();
 
-        if (email.contains('super') || email.contains('admin')) {
-          loginAsSuperAdmin();
-        } else if (email.contains('hr')) {
-          loginAsHr();
-        } else if (email.contains('picker') || email.contains('store')) {
-          loginAsWarehousePicker();
-        } else if (email.contains('manager')) {
-          loginAsBranchManager();
-        } else {
-          loginAsCeo();
+        if (res != null) {
+          final String dbRole = res['role'].toString().toUpperCase();
+          final String realName = (res['full_name'] ?? res['name'] ?? realEmail).toString();
+          switch (dbRole) {
+            case 'SUPER_ADMIN':
+            case 'SUPERADMIN':
+              loginAsSuperAdmin(email: realEmail, name: realName);
+              return true;
+            case 'CEO':
+              loginAsCeo(email: realEmail, name: realName);
+              return true;
+            case 'HR':
+              loginAsHr(email: realEmail, name: realName);
+              return true;
+            case 'WAREHOUSE_PICKER':
+            case 'PICKER':
+              loginAsWarehousePicker(email: realEmail, name: realName);
+              return true;
+            case 'STOREKEEPER':
+              loginAsStorekeeper(email: realEmail, name: realName);
+              return true;
+            case 'CATALOG_ADMIN':
+            case 'CATALOG':
+              loginAsCatalogAdmin(email: realEmail, name: realName);
+              return true;
+            case 'BRANCH_MANAGER':
+            case 'MANAGER':
+              loginAsBranchManager(email: realEmail, name: realName);
+              return true;
+            case 'TELESALES':
+              loginAsTelesales(email: realEmail, name: realName);
+              return true;
+            case 'SECRETARY':
+              loginAsSecretary(email: realEmail, name: realName);
+              return true;
+            case 'RIDER':
+              loginAsRider(email: realEmail, name: realName);
+              return true;
+            case 'MARKETER':
+              loginAsMarketer(email: realEmail, name: realName);
+              return true;
+            default:
+              debugPrint('Unknown role: $dbRole');
+              return false;
+          }
         }
-        return true;
+        return false;
       }
     } catch (e) {
-      debugPrint('Supabase Auth note: $e');
+      debugPrint('Supabase Auth error: $e');
+      rethrow;
     }
-
-    // Demo fallback role parsing
-    if (email.contains('super')) {
-      loginAsSuperAdmin();
-    } else if (email.contains('hr')) {
-      loginAsHr();
-    } else if (email.contains('picker')) {
-      loginAsWarehousePicker();
-    } else if (email.contains('manager')) {
-      loginAsBranchManager();
-    } else {
-      loginAsCeo();
-    }
-    return true;
+    return false;
   }
 
   Future<void> logout() async {

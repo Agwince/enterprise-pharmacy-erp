@@ -70,9 +70,6 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
   final _unitController = TextEditingController();
   final _priceController = TextEditingController();
 
-  // Task 1: Nairobi Autocomplete Catalog Sample Data
-  static const List<Map<String, dynamic>> _nairobiCatalog = [];
-
   String _selectedInnerUnitType = 'Strip/Blister';
   final List<String> _innerUnitOptions = [
     'Strip/Blister',
@@ -102,20 +99,6 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
       default:
         return 'Snap Photo of single Strip';
     }
-  }
-
-  void _generateInternalSku() {
-    final randomNum = 1000 + Random().nextInt(8999);
-    setState(() {
-      _barcode = 'NRB-MED-$randomNum';
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Generated Internal SKU: $_barcode', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.tealAccent.withValues(alpha: 0.8),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   Future<void> _scanBarcode() async {
@@ -257,12 +240,12 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
         final updateData = <String, dynamic>{
           'name': name,
           'brand_name': name,
-          'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
-          'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
-          'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
-          'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
-          'generic_name': _genericController.text.trim(),
-          'dosage_form': _dosageFormController.text.trim(),
+          'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+          'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : null,
+          'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : null,
+          'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : null,
+          'generic_name': _genericController.text.trim().isNotEmpty ? _genericController.text.trim() : null,
+          'dosage_form': _dosageFormController.text.trim().isNotEmpty ? _dosageFormController.text.trim() : null,
         };
         if (imageUrl != null) {
           updateData['box_image_url'] = imageUrl;
@@ -293,6 +276,9 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
           if (_selectedInnerUnitType.isNotEmpty) {
             updateData['inner_unit_type'] = _selectedInnerUnitType;
           }
+          if (_barcode.isNotEmpty) {
+            updateData['barcode'] = _barcode;
+          }
           if (updateData.isNotEmpty) {
             await supabase.from('drugs').update(updateData).eq('id', existing['id']);
           }
@@ -301,16 +287,16 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
           final drugData = {
             'name': name,
             'brand_name': name,
-            'price': double.tryParse(_priceController.text.trim()) ?? 1200.0,
+            'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
             'inner_unit_type': _selectedInnerUnitType,
             'box_image_url': imageUrl,
-            'barcode': _barcode.isNotEmpty ? _barcode : 'NRB-MED-${1000 + Random().nextInt(8999)}',
+            'barcode': _barcode.isNotEmpty ? _barcode : null,
             'image_url': imageUrl, 
-            'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : 'General Medicines',
-            'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : 'AISLE 1 - SHELF A1',
-            'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : 'Box of 100',
-            'generic_name': _genericController.text.trim(),
-            'dosage_form': _dosageFormController.text.trim(),
+            'category': _categoryController.text.trim().isNotEmpty ? _categoryController.text.trim() : null,
+            'target_shelf': _binController.text.trim().isNotEmpty ? _binController.text.trim() : null,
+            'package_unit': _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : null,
+            'generic_name': _genericController.text.trim().isNotEmpty ? _genericController.text.trim() : null,
+            'dosage_form': _dosageFormController.text.trim().isNotEmpty ? _dosageFormController.text.trim() : null,
           };
           await supabase.from('drugs').insert(drugData).select();
         }
@@ -430,13 +416,24 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     )
                   else
                     Autocomplete<Map<String, dynamic>>(
-                    optionsBuilder: (TextEditingValue textEditingValue) {
+                    optionsBuilder: (TextEditingValue textEditingValue) async {
                       if (textEditingValue.text.isEmpty) {
                         return const Iterable<Map<String, dynamic>>.empty();
                       }
-                      return _nairobiCatalog.where((option) {
-                        return option['name'].toString().toLowerCase().contains(textEditingValue.text.toLowerCase());
-                      });
+                      try {
+                        final res = await Supabase.instance.client
+                            .from('drugs')
+                            .select('name, price, inner_unit_type')
+                            .ilike('name', '%${textEditingValue.text}%')
+                            .limit(10);
+                        return (res as List<dynamic>).map((e) => {
+                          'name': e['name'] ?? '',
+                          'price': e['price'] ?? 0.0,
+                          'type': e['inner_unit_type'] ?? 'Strip/Blister',
+                        });
+                      } catch (_) {
+                        return const Iterable<Map<String, dynamic>>.empty();
+                      }
                     },
                     displayStringForOption: (option) => option['name'] as String,
                     onSelected: (option) {
@@ -506,7 +503,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                     children: [
                       Expanded(child: _buildTextField(_categoryController, 'Category', 'e.g. Antibiotics', Icons.category_rounded)),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildTextField(_binController, 'Target Shelf / Bin', 'e.g. AISLE 1 - SHELF A1', Icons.shelves)),
+                      Expanded(child: _buildTextField(_binController, 'Target Shelf / Bin', 'e.g. Shelf B2', Icons.shelves)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -514,13 +511,13 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   // Unit & Price Row
                   Row(
                     children: [
-                      Expanded(child: _buildTextField(_unitController, 'Package Unit', 'e.g. Box of 100', Icons.inventory_2_rounded)),
+                      Expanded(child: _buildTextField(_unitController, 'Package Unit', 'e.g. Pack of 20', Icons.inventory_2_rounded)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildTextField(
                           _priceController,
                           'Price (KES)',
-                          '1200',
+                          '0.0',
                           Icons.payments_rounded,
                           isNum: true,
                           enabled: widget.prefilledName == null && widget.initialName == null,
@@ -530,7 +527,7 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // BARCODE & AUTO SKU GENERATOR
+                  // BARCODE SCANNER
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -554,29 +551,14 @@ class _RegisterProductScreenState extends State<RegisterProductScreen> {
                           style: GoogleFonts.inter(color: _barcode.isNotEmpty ? Colors.tealAccent : Colors.white54, fontSize: 12),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _scanBarcode,
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
-                                icon: const Icon(Icons.camera_alt_rounded, size: 16),
-                                label: const Text('Scan Code', style: TextStyle(fontSize: 12)),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _generateInternalSku,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.tealAccent,
-                                  side: const BorderSide(color: Colors.tealAccent),
-                                ),
-                                icon: const Icon(Icons.refresh_rounded, size: 16),
-                                label: const Text('Generate SKU', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              ),
-                            ),
-                          ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _scanBarcode,
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
+                            icon: const Icon(Icons.camera_alt_rounded, size: 16),
+                            label: const Text('Scan Code', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
                         ),
                       ],
                     ),

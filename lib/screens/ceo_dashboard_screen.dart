@@ -18,6 +18,7 @@ class CeoDashboardScreen extends StatefulWidget {
 
 class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   bool _isLoading = true;
+  String _errorMessage = '';
   List<Map<String, dynamic>> _branchRevenues = [];
   Map<String, double> _categorySales = {};
   List<Map<String, dynamic>> _topDrugs = [];
@@ -25,7 +26,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   double _totalRevenue = 0.0;
   int _totalTransactions = 0;
   int _lowStockCount = 0;
-  double _maxBranchRev = 100000.0;
+  double _maxBranchRev = 0.0;
 
   final NumberFormat _currencyFormat = NumberFormat("#,##0", "en_US");
 
@@ -36,7 +37,10 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
     try {
       final supabaseService = SupabaseService();
@@ -50,7 +54,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
 
       // CALL 2: Single Round-Trip Branch Revenue RPC
       final branchData = await supabaseService.fetchBranchRevenue();
-      double maxRev = 50000.0;
+      double maxRev = 0.0;
       final List<Map<String, dynamic>> branchRevenues = [];
       for (var b in branchData) {
         final rev = (b['revenue'] as num?)?.toDouble() ?? 0.0;
@@ -83,11 +87,6 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
         };
       }).toList();
 
-      if (totalTx == 0 && branchRevenues.every((b) => (b['revenue'] as double) == 0.0)) {
-        _populateDemoMetrics();
-        return;
-      }
-
       if (mounted) {
         setState(() {
           _branchRevenues = branchRevenues;
@@ -96,87 +95,21 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           _lowStockCount = lowStock;
           _liveActivities = recentActivities;
           _maxBranchRev = maxRev;
+          _topDrugs = [];
+          _categorySales = {};
           _isLoading = false;
+          _errorMessage = '';
         });
       }
     } catch (e) {
-      debugPrint('Live Data load fallback: $e');
+      debugPrint('CEO Dashboard load error: $e');
       if (mounted) {
-        _populateDemoMetrics();
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load executive analytics: $e';
+        });
       }
     }
-  }
-
-  void _populateDemoMetrics() {
-    if (!mounted) return;
-    setState(() {
-      _branchRevenues = [
-        {'id': 'nbo-01', 'code': 'NBO-01', 'name': 'Nairobi Central HQ', 'revenue': 1485000.0},
-        {'id': 'ksm-02', 'code': 'KSM-02', 'name': 'Kisumu Bulk Hub', 'revenue': 1120000.0},
-        {'id': 'msa-03', 'code': 'MSA-03', 'name': 'Mombasa Coastal Depot', 'revenue': 845000.0},
-        {'id': 'eld-04', 'code': 'ELD-04', 'name': 'Eldoret Transit Hub', 'revenue': 392500.0},
-      ];
-      _totalRevenue = 3842500.0;
-      _totalTransactions = 1284;
-      _maxBranchRev = 1485000.0;
-      _categorySales = {
-        'Antibiotics': 1420000.0,
-        'Gastrointestinal': 890000.0,
-        'Pain & Anti-inflammatory': 710000.0,
-        'Cardiovascular & Diabetes': 520000.0,
-        'Topicals & Disinfectants': 302500.0,
-      };
-      _topDrugs = [
-        {
-          'sku': 'SKU_v3_773',
-          'name': 'CEFTRIAXONE INJ 1G',
-          'category': 'General Medicines',
-          'bin': 'AISLE 1 - SHELF A1',
-          'price': 32.0,
-          'total_amount': 624000.0,
-        },
-        {
-          'sku': 'SKU_v3_727',
-          'name': 'AMOXICLAV 1G 10\'S',
-          'category': 'Antibiotics',
-          'bin': 'AISLE 2 - SHELF B3',
-          'price': 200.0,
-          'total_amount': 480000.0,
-        },
-        {
-          'sku': 'SKU_v3_123',
-          'name': 'BUSCOPAN PLUS 40\'S',
-          'category': 'Gastrointestinal',
-          'bin': 'AISLE 1 - SHELF C2',
-          'price': 2600.0,
-          'total_amount': 416000.0,
-        },
-        {
-          'sku': 'SKU_v3_11',
-          'name': 'ACTRAPID INJ (INSULIN SOLUBLE)',
-          'category': 'Diabetes Care',
-          'bin': 'COLD STORAGE - C1',
-          'price': 660.0,
-          'total_amount': 330000.0,
-        },
-        {
-          'sku': 'SKU_v3_183',
-          'name': 'CIPROFLOXACIN EYE/EAR 5ML',
-          'category': 'Eye & Ear Care',
-          'bin': 'AISLE 3 - SHELF A2',
-          'price': 90.0,
-          'total_amount': 270000.0,
-        },
-      ];
-      _liveActivities = [
-        {'id': 'TX-9842', 'amount': 48500.0, 'date': DateTime.now().subtract(const Duration(minutes: 12)).toIso8601String()},
-        {'id': 'TX-9841', 'amount': 112000.0, 'date': DateTime.now().subtract(const Duration(minutes: 28)).toIso8601String()},
-        {'id': 'TX-9840', 'amount': 29800.0, 'date': DateTime.now().subtract(const Duration(minutes: 55)).toIso8601String()},
-        {'id': 'TX-9839', 'amount': 85200.0, 'date': DateTime.now().subtract(const Duration(hours: 1, minutes: 20)).toIso8601String()},
-        {'id': 'TX-9838', 'amount': 64500.0, 'date': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String()},
-      ];
-      _isLoading = false;
-    });
   }
 
   @override
@@ -275,204 +208,255 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Summary KPI Cards (Bulletproof Sizing - No Overflows)
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.maxWidth;
-                      final int crossAxisCount = width > 950 ? 4 : 2;
-                      final double childAspectRatio = width > 950 ? 2.5 : 1.75;
-
-                      return GridView.count(
-                        crossAxisCount: crossAxisCount,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: childAspectRatio,
-                        children: [
-                          _buildKpiCard(
-                            'Total ERP Sales',
-                            'KES ${_currencyFormat.format(_totalRevenue)}',
-                            '+18.4% vs last month',
-                            Icons.attach_money_rounded,
-                            const Color(0xFF10B981),
-                          ),
-                          _buildKpiCard(
-                            'Active Branches',
-                            '${_branchRevenues.length} Regional Hubs',
-                            'NBO, KSM, MSA, ELD',
-                            Icons.storefront_rounded,
-                            Colors.blueAccent,
-                          ),
-                          _buildKpiCard(
-                            'Total Orders',
-                            '$_totalTransactions Fulfilled',
-                            'Past 30 Days Synced',
-                            Icons.receipt_long_rounded,
-                            Colors.amberAccent,
-                          ),
-                          _buildKpiCard(
-                            'Inventory Health',
-                            _lowStockCount > 0 ? '$_lowStockCount Items Low' : 'Optimal Inventory',
-                            'ABC Velocity Tracked',
-                            Icons.verified_user_rounded,
-                            _lowStockCount > 0 ? Colors.amberAccent : Colors.purpleAccent,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Charts Section (Responsive Row on Desktop, Clean Column on Mobile)
-                  if (isDesktop)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 6,
-                          child: _buildBranchRevenueChart(),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          flex: 4,
-                          child: _buildCategorySalesChart(),
-                        ),
-                      ],
-                    )
-                  else
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildBranchRevenueChart(),
-                        const SizedBox(height: 20),
-                        _buildCategorySalesChart(),
-                      ],
-                    ),
-
-                  const SizedBox(height: 24),
-
-                  // Top Selling Drugs Table
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                    ),
+          : _errorMessage.isNotEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Top Selling Pharmaceuticals', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                        const SizedBox(height: 14),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            headingRowColor: WidgetStateProperty.all(Colors.black26),
-                            columns: [
-                              DataColumn(label: Text('SKU', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Drug Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Category', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Warehouse Bin', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
-                              DataColumn(label: Text('Total Revenue', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                        const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 48),
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage,
+                          style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 14, fontWeight: FontWeight.w600),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _loadDashboardData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            foregroundColor: Colors.white,
+                          ),
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text('Retry Analytics Sync', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Summary KPI Cards (Bulletproof Sizing - No Overflows)
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final width = constraints.maxWidth;
+                          final int crossAxisCount = width > 950 ? 4 : 2;
+                          final double childAspectRatio = width > 950 ? 2.5 : 1.75;
+
+                          return GridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: childAspectRatio,
+                            children: [
+                              _buildKpiCard(
+                                'Total ERP Sales',
+                                'KES ${_currencyFormat.format(_totalRevenue)}',
+                                'Real-time Synced',
+                                Icons.attach_money_rounded,
+                                const Color(0xFF10B981),
+                              ),
+                              _buildKpiCard(
+                                'Active Branches',
+                                '${_branchRevenues.length} Regional Hubs',
+                                'All Registered Branches',
+                                Icons.storefront_rounded,
+                                Colors.blueAccent,
+                              ),
+                              _buildKpiCard(
+                                'Total Orders',
+                                '$_totalTransactions Fulfilled',
+                                'Total Sales Recorded',
+                                Icons.receipt_long_rounded,
+                                Colors.amberAccent,
+                              ),
+                              _buildKpiCard(
+                                'Inventory Health',
+                                _lowStockCount > 0 ? '$_lowStockCount Items Low' : 'Optimal Inventory',
+                                'Live Real-time Stock',
+                                Icons.verified_user_rounded,
+                                _lowStockCount > 0 ? Colors.amberAccent : Colors.purpleAccent,
+                              ),
                             ],
-                            rows: _topDrugs.map((d) {
-                              return _buildDataRow(
-                                d['sku'] ?? 'SKU',
-                                d['name'] ?? 'Drug',
-                                d['category'] ?? 'Category',
-                                d['bin'] ?? 'Aisle 1',
-                                'KES ${_currencyFormat.format(d['total_amount'] ?? 0)}',
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
 
-                  const SizedBox(height: 24),
-
-                  // Live Recent Activities Feed
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      // Charts Section (Responsive Row on Desktop, Clean Column on Mobile)
+                      if (isDesktop)
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Live Activity Feed', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
-                                  const SizedBox(width: 6),
-                                  Text('Real-time Stream', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                                ],
-                              ),
+                            Expanded(
+                              flex: 6,
+                              child: _buildBranchRevenueChart(),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              flex: 4,
+                              child: _buildCategorySalesChart(),
                             ),
                           ],
+                        )
+                      else
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildBranchRevenueChart(),
+                            const SizedBox(height: 20),
+                            _buildCategorySalesChart(),
+                          ],
                         ),
-                        const SizedBox(height: 14),
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _liveActivities.length,
-                          separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
-                          itemBuilder: (context, index) {
-                            final act = _liveActivities[index];
-                            final timeStr = act['date'] != null
-                                ? act['date'].toString().substring(11, 16)
-                                : 'Just now';
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const CircleAvatar(
-                                backgroundColor: Color(0xFF0F766E),
-                                child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
-                              ),
-                              title: Text(
-                                'Wholesale Invoice #${act['id']}',
-                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                              subtitle: Text(
-                                'Dispatched from Nairobi Hub • $timeStr',
-                                style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
-                              ),
-                              trailing: Text(
-                                'KES ${_currencyFormat.format(act['amount'])}',
-                                style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
-                            );
-                          },
+
+                      const SizedBox(height: 24),
+
+                      // Top Selling Drugs Table
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                         ),
-                      ],
-                    ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Top Selling Pharmaceuticals', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                            const SizedBox(height: 14),
+                            if (_topDrugs.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    'No pharmaceutical sales recorded yet.',
+                                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                                  ),
+                                ),
+                              )
+                            else
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  headingRowColor: WidgetStateProperty.all(Colors.black26),
+                                  columns: [
+                                    DataColumn(label: Text('SKU', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Drug Name', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Category', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Warehouse Bin', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                                    DataColumn(label: Text('Total Revenue', style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold))),
+                                  ],
+                                  rows: _topDrugs.map((d) {
+                                    return _buildDataRow(
+                                      d['sku'] ?? 'SKU',
+                                      d['name'] ?? 'Drug',
+                                      d['category'] ?? 'Category',
+                                      d['bin'] ?? '-',
+                                      'KES ${_currencyFormat.format(d['total_amount'] ?? 0)}',
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Live Recent Activities Feed
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Live Activity Feed', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
+                                      const SizedBox(width: 6),
+                                      Text('Real-time Stream', style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            if (_liveActivities.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                child: Center(
+                                  child: Text(
+                                    'No sales recorded yet.',
+                                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
+                                  ),
+                                ),
+                              )
+                            else
+                              ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _liveActivities.length,
+                                separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
+                                itemBuilder: (context, index) {
+                                  final act = _liveActivities[index];
+                                  final timeStr = act['date'] != null
+                                      ? act['date'].toString().substring(11, 16)
+                                      : 'Just now';
+                                  return ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    leading: const CircleAvatar(
+                                      backgroundColor: Color(0xFF0F766E),
+                                      child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
+                                    ),
+                                    title: Text(
+                                      'Wholesale Invoice #${act['id']}',
+                                      style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    subtitle: Text(
+                                      'Sale Transaction • $timeStr',
+                                      style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                                    ),
+                                    trailing: Text(
+                                      'KES ${_currencyFormat.format(act['amount'])}',
+                                      style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 
   Widget _buildBranchRevenueChart() {
+    final hasData = _branchRevenues.isNotEmpty && _branchRevenues.any((b) => (b['revenue'] as num) > 0);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -495,72 +479,79 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           const SizedBox(height: 20),
           SizedBox(
             height: 250,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: (_maxBranchRev * 1.25),
-                barTouchData: BarTouchData(enabled: true),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (double value, TitleMeta meta) {
-                        int idx = value.toInt();
-                        if (idx >= 0 && idx < _branchRevenues.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              _branchRevenues[idx]['code'] ?? 'BR',
-                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
-                            ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
+            child: !hasData
+                ? Center(
+                    child: Text(
+                      'No branch sales recorded yet.',
+                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
                     ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 52,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(0)}k',
-                          style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => const FlLine(color: Colors.white10, strokeWidth: 1),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(_branchRevenues.length, (index) {
-                  final rev = (_branchRevenues[index]['revenue'] as num).toDouble();
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: rev,
-                        gradient: const LinearGradient(
-                          colors: [Colors.blueAccent, Colors.tealAccent],
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
+                  )
+                : BarChart(
+                    BarChartData(
+                      alignment: BarChartAlignment.spaceAround,
+                      maxY: _maxBranchRev > 0 ? (_maxBranchRev * 1.25) : 100.0,
+                      barTouchData: BarTouchData(enabled: true),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (double value, TitleMeta meta) {
+                              int idx = value.toInt();
+                              if (idx >= 0 && idx < _branchRevenues.length) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    _branchRevenues[idx]['code'] ?? 'BR',
+                                    style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                );
+                              }
+                              return const SizedBox();
+                            },
+                          ),
                         ),
-                        width: 22,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 52,
+                            getTitlesWidget: (value, meta) {
+                              return Text(
+                                '${(value / 1000).toStringAsFixed(0)}k',
+                                style: GoogleFonts.inter(color: Colors.white38, fontSize: 10),
+                              );
+                            },
+                          ),
+                        ),
+                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       ),
-                    ],
-                  );
-                }),
-              ),
-            ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) => const FlLine(color: Colors.white10, strokeWidth: 1),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barGroups: List.generate(_branchRevenues.length, (index) {
+                        final rev = (_branchRevenues[index]['revenue'] as num).toDouble();
+                        return BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: rev,
+                              gradient: const LinearGradient(
+                                colors: [Colors.blueAccent, Colors.tealAccent],
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                              ),
+                              width: 22,
+                              borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -590,42 +581,49 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           const SizedBox(height: 16),
           SizedBox(
             height: 250,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 3,
-                centerSpaceRadius: 40,
-                sections: _categorySales.entries.toList().asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final cat = entry.value;
-                  final List<Color> colors = [
-                    Colors.blueAccent,
-                    Colors.tealAccent,
-                    Colors.amberAccent,
-                    Colors.purpleAccent,
-                    Colors.pinkAccent,
-                  ];
-                  final color = colors[idx % colors.length];
-                  final pct = _totalRevenue > 0 ? (cat.value / _totalRevenue * 100) : 20.0;
-                  return PieChartSectionData(
-                    value: cat.value,
-                    title: '${pct.toStringAsFixed(0)}%',
-                    color: color,
-                    radius: 48,
-                    titleStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                    badgeWidget: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.white24, width: 0.5),
-                      ),
-                      child: Text(cat.key, style: GoogleFonts.inter(fontSize: 9, color: Colors.white)),
+            child: _categorySales.isEmpty
+                ? Center(
+                    child: Text(
+                      'No category sales recorded yet.',
+                      style: GoogleFonts.inter(color: Colors.white38, fontSize: 13),
                     ),
-                    badgePositionPercentageOffset: 1.25,
-                  );
-                }).toList(),
-              ),
-            ),
+                  )
+                : PieChart(
+                    PieChartData(
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 40,
+                      sections: _categorySales.entries.toList().asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final cat = entry.value;
+                        final List<Color> colors = [
+                          Colors.blueAccent,
+                          Colors.tealAccent,
+                          Colors.amberAccent,
+                          Colors.purpleAccent,
+                          Colors.pinkAccent,
+                        ];
+                        final color = colors[idx % colors.length];
+                        final pct = _totalRevenue > 0 ? (cat.value / _totalRevenue * 100) : 0.0;
+                        return PieChartSectionData(
+                          value: cat.value,
+                          title: '${pct.toStringAsFixed(0)}%',
+                          color: color,
+                          radius: 48,
+                          titleStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          badgeWidget: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.white24, width: 0.5),
+                            ),
+                            child: Text(cat.key, style: GoogleFonts.inter(fontSize: 9, color: Colors.white)),
+                          ),
+                          badgePositionPercentageOffset: 1.25,
+                        );
+                      }).toList(),
+                    ),
+                  ),
           ),
         ],
       ),

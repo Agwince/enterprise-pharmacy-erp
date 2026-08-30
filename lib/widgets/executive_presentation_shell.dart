@@ -307,57 +307,59 @@ class _ExecutivePresentationShellState extends State<ExecutivePresentationShell>
 
   void _handleRoleSwitch(String choice, BuildContext context) {
     final auth = AuthService();
+    final email = auth.userEmail;
+    final name = auth.userName;
     switch (choice) {
       case 'ceo':
-        auth.loginAsCeo();
+        auth.loginAsCeo(email: email, name: name);
         break;
       case 'fleet':
-        auth.loginAsCeo();
+        auth.loginAsCeo(email: email, name: name);
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const CeoFleetMapScreen()),
         );
         break;
       case 'kisumu':
-        auth.loginAsBranchManager();
+        auth.loginAsBranchManager(email: email, name: name);
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const KisumuInTransitScreen()),
         );
         break;
       case 'ppb':
-        auth.loginAsBranchManager();
+        auth.loginAsBranchManager(email: email, name: name);
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const PpbComplianceScreen()),
         );
         break;
       case 'finance':
-        auth.loginAsCeo();
+        auth.loginAsCeo(email: email, name: name);
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const FinanceGlScreen()),
         );
         break;
       case 'payroll':
-        auth.loginAsHr();
+        auth.loginAsHr(email: email, name: name);
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const HrPayrollWorkspaceScreen()),
         );
         break;
       case 'manager':
-        auth.loginAsBranchManager();
+        auth.loginAsBranchManager(email: email, name: name);
         break;
       case 'telesales':
-        auth.loginAsTelesales();
+        auth.loginAsTelesales(email: email, name: name);
         break;
       case 'picker':
-        auth.loginAsWarehousePicker();
+        auth.loginAsWarehousePicker(email: email, name: name);
         break;
       case 'storekeeper':
-        auth.loginAsStorekeeper();
+        auth.loginAsStorekeeper(email: email, name: name);
         break;
       case 'rider':
-        auth.loginAsRider();
+        auth.loginAsRider(email: email, name: name);
         break;
       case 'hr':
-        auth.loginAsHr();
+        auth.loginAsHr(email: email, name: name);
         break;
     }
   }

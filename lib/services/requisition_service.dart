@@ -90,7 +90,7 @@ class RequisitionService {
             'quantity_picked': 0,
             'quantity_received': 0,
             'unit_cost': (it['unit_cost'] as num?)?.toDouble() ?? 0.0,
-            'bin_location': it['bin_location'] ?? 'AISLE 1 - SHELF A1',
+            'bin_location': it['bin_location'] ?? 'Unassigned',
           }).toList();
 
       await _db.from('requisition_items').insert(itemPayloads);

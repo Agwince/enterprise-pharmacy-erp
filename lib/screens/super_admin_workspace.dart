@@ -83,7 +83,7 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                         controller: adminEmailController,
                         style: GoogleFonts.inter(color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: 'ceo@mountkenyapharma.com',
+                          hintText: 'ceo@clientcompany.com',
                           hintStyle: GoogleFonts.inter(color: Colors.white38),
                           filled: true,
                           fillColor: const Color(0xFF0F172A),

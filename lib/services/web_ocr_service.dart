@@ -6,7 +6,8 @@ class WebOcrService {
   static Future<String> extractText(Uint8List imageBytes) async {
     try {
       var request = http.MultipartRequest('POST', Uri.parse('https://api.ocr.space/parse/image'));
-      request.fields['apikey'] = 'helloworld';
+      const ocrKey = String.fromEnvironment('OCR_SPACE_API_KEY', defaultValue: '');
+      request.fields['apikey'] = ocrKey;
       request.fields['language'] = 'eng';
       
       request.files.add(http.MultipartFile.fromBytes(

@@ -162,7 +162,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                                     'drug_name': drug['name'],
                                     'quantity_requested': qty,
                                     'unit_cost': cost,
-                                    'bin_location': drug['target_shelf'] ?? 'AISLE 1 - SHELF A1',
+                                    'bin_location': drug['target_shelf'] ?? 'Unassigned',
                                   });
                                   selectedDrugId = null;
                                   qtyCtrl.clear();
@@ -290,7 +290,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
         'qty_ctrl': TextEditingController(text: it.quantityPicked > 0 ? it.quantityPicked.toString() : it.quantityRequested.toString()),
         'batch_ctrl': TextEditingController(text: it.batchNo ?? ''),
         'expiry_ctrl': TextEditingController(text: it.expiryDate != null ? it.expiryDate!.toIso8601String().substring(0, 10) : ''),
-        'bin_location': it.binLocation ?? 'AISLE 1 - SHELF A1',
+        'bin_location': it.binLocation ?? 'Unassigned',
       };
     }).toList();
 

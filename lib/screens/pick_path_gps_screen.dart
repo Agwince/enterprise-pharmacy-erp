@@ -22,13 +22,6 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
   bool _isLoading = true;
   int _currentIndex = 0;
 
-  final List<String?> _mockImagePlaceholders = [
-    null,
-    null,
-    null,
-    null,
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -202,7 +195,7 @@ class _PickPathGpsScreenState extends State<PickPathGpsScreen> {
                     itemCount: _pickingList.length,
                     itemBuilder: (context, index) {
                       final drug = _pickingList[index];
-                      final imageUrl = _mockImagePlaceholders[index % _mockImagePlaceholders.length];
+                      final imageUrl = drug.displayImageUrl;
 
                       return SingleChildScrollView(
                         padding: const EdgeInsets.all(20.0),

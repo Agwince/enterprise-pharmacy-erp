@@ -104,7 +104,7 @@ class AiService {
               final shelf = (d['shelf_quantity'] as num?)?.toInt() ?? 0;
               final unit = d['unit'] ?? 'units';
               final price = d['price'] != null ? (double.tryParse(d['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00';
-              return "💊 **${d['name']}**:\n  - Total Available: **$total $unit**\n  - Shelf Stock: $shelf | Warehouse Hub: $wh\n  - Bin Location: ${d['target_shelf'] ?? 'AISLE 1 - SHELF A1'}\n  - Selling Price: KES $price";
+              return "💊 **${d['name']}**:\n  - Total Available: **$total $unit**\n  - Shelf Stock: $shelf | Warehouse Hub: $wh\n  - Bin Location: ${d['target_shelf'] ?? 'Unassigned'}\n  - Selling Price: KES $price";
             }).join("\n\n");
 
             return "📦 **Stock Inventory Lookup** (Live Database):\n\n$lines\n\n_Queried in 8ms directly from central inventory._";

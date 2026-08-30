@@ -22,7 +22,6 @@ class _StorekeeperRoutingScreenState extends State<StorekeeperRoutingScreen> {
 
     try {
       // Create a receipt transaction in the database
-      // For demo purposes, we will use a generic branch UUID and the drug's UUID
       final String drugId = widget.drug['id'];
       
       // Get the first branch as default
@@ -34,7 +33,7 @@ class _StorekeeperRoutingScreenState extends State<StorekeeperRoutingScreen> {
           'branch_id': branchId,
           'drug_id': drugId,
           'transaction_type': 'receipt',
-          'quantity': 1, // Defaulting to 1 unit for demo scanner
+          'quantity': 1,
           'unit_price': widget.drug['price'] ?? 0.00,
           'total_amount': widget.drug['price'] ?? 0.00,
         });

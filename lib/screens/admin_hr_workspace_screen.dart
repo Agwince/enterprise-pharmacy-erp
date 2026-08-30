@@ -22,7 +22,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
   List<Map<String, dynamic>> _ledgerEntries = [];
   
   String _selectedFinanceBranch = 'All Branches';
-  final List<String> _financeBranches = const ['All Branches', 'Nairobi', 'Kisumu'];
+  List<String> _financeBranches = ['All Branches'];
 
   @override
   void initState() {
@@ -36,6 +36,14 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
       final db = Supabase.instance.client;
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day).toIso8601String();
+
+      try {
+        final branchesRes = await db.from('branches').select('name');
+        final fetchedBranches = (branchesRes as List).map((b) => b['name'].toString()).toList();
+        if (fetchedBranches.isNotEmpty) {
+          _financeBranches = ['All Branches', ...fetchedBranches];
+        }
+      } catch (_) {}
 
       var txQuery = db.from('transactions')
           .select('total_amount')
@@ -184,7 +192,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                         controller: emailController,
                         style: GoogleFonts.inter(color: Colors.white),
                         decoration: InputDecoration(
-                          hintText: 'alex.mercer@pharmacy.com',
+                          hintText: 'user@company.com',
                           hintStyle: GoogleFonts.inter(color: Colors.white38),
                           filled: true,
                           fillColor: const Color(0xFF0F172A),
@@ -405,7 +413,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   controller: tenantNameController,
                   style: GoogleFonts.inter(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'e.g. Apex Health Pharmacy Group',
+                    hintText: 'e.g. HealthCare Pharmacy Group',
                     hintStyle: GoogleFonts.inter(color: Colors.white38),
                     filled: true,
                     fillColor: const Color(0xFF0F172A),
@@ -448,7 +456,7 @@ class _AdminHrWorkspaceScreenState extends State<AdminHrWorkspaceScreen> {
                   SnackBar(
                     backgroundColor: Colors.cyanAccent,
                     content: Text(
-                      'B2B SaaS Module: Provisioning new enterprise tenant workspace for "${tenantNameController.text.isNotEmpty ? tenantNameController.text : 'Apex Health'}"...',
+                      'B2B SaaS Module: Provisioning new enterprise tenant workspace for "${tenantNameController.text.isNotEmpty ? tenantNameController.text : 'New Tenant'}"...',
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),

@@ -522,6 +522,106 @@ create table if not exists public.branch_till_sessions (
   created_at            timestamptz default now()
 );
 
+create table if not exists public.internal_requisitions (
+  id                    uuid primary key default gen_random_uuid(),
+  requisition_no        text not null unique,
+  source_branch_id      uuid references public.branches(id) on delete set null,
+  destination_branch_id uuid references public.branches(id) on delete set null,
+  requested_by          text default 'Branch Manager',
+  status                text default 'DRAFT' check (status in ('DRAFT','SUBMITTED','APPROVED','PICKING','PICKED','DISPATCHED','IN_TRANSIT','DELIVERED','RECEIVED','CLOSED','REJECTED')),
+  notes                 text,
+  total_items_count     int default 0,
+  rider_id              text,
+  rider_name            text,
+  vehicle_id            text,
+  vehicle_plate         text,
+  approved_by           text,
+  approved_at           timestamptz,
+  picked_by             text,
+  picked_at             timestamptz,
+  dispatched_by         text,
+  dispatched_at         timestamptz,
+  delivered_by          text,
+  delivered_at          timestamptz,
+  received_by           text,
+  received_at           timestamptz,
+  gl_journal_id         uuid references public.journal_entries(id) on delete set null,
+  created_at            timestamptz default now(),
+  updated_at            timestamptz default now()
+);
+
+create table if not exists public.requisition_items (
+  id                   uuid primary key default gen_random_uuid(),
+  requisition_id       uuid not null references public.internal_requisitions(id) on delete cascade,
+  drug_id              uuid references public.drugs(id) on delete cascade,
+  drug_name            text not null,
+  quantity_requested   int not null default 1,
+  quantity_picked      int default 0,
+  quantity_received    int default 0,
+  unit_cost            numeric(14,2) default 0.0,
+  batch_no             text,
+  expiry_date          date,
+  bin_location         text,
+  created_at           timestamptz default now()
+);
+
+create table if not exists public.requisition_audit_logs (
+  id             uuid primary key default gen_random_uuid(),
+  requisition_id uuid not null references public.internal_requisitions(id) on delete cascade,
+  from_status    text,
+  to_status      text not null,
+  action         text not null,
+  actor          text not null,
+  notes          text,
+  created_at     timestamptz default now()
+);
+
+create table if not exists public.leave_requests (
+  id             uuid primary key default gen_random_uuid(),
+  staff_id       uuid references public.staff(id) on delete set null,
+  staff_name     text not null,
+  staff_no       text,
+  department     text,
+  leave_type     text not null check (leave_type in ('Annual','Sick','Maternity','Paternity','Compassionate','Unpaid')),
+  start_date     date not null,
+  end_date       date not null,
+  total_days     int not null default 1,
+  reason         text,
+  status         text default 'Pending' check (status in ('Pending','Approved','Rejected')),
+  manager_comment text,
+  reviewed_by    text,
+  reviewed_at    timestamptz,
+  created_at     timestamptz default now()
+);
+
+create table if not exists public.leave_balances (
+  id             uuid primary key default gen_random_uuid(),
+  staff_id       uuid not null references public.staff(id) on delete cascade,
+  year           int not null default extract(year from current_date),
+  annual_entitlement int default 21,
+  annual_used    int default 0,
+  sick_entitlement   int default 30,
+  sick_used      int default 0,
+  unpaid_used    int default 0,
+  created_at     timestamptz default now(),
+  unique(staff_id, year)
+);
+
+create table if not exists public.fleet_vehicles (
+  id                uuid primary key default gen_random_uuid(),
+  plate_number      text not null unique,
+  vehicle_model     text not null,
+  driver_name       text,
+  driver_phone      text,
+  current_lat       numeric(10,6),
+  current_lng       numeric(10,6),
+  speed_kmh         numeric(6,2),
+  temp_celsius      numeric(5,2),
+  last_telemetry_at timestamptz,
+  status            text default 'Active',
+  created_at        timestamptz default now()
+);
+
 -- =============================================================================
 -- 14. ROW LEVEL SECURITY + GRANTS (so the anon client key can read/write)
 -- =============================================================================
@@ -533,7 +633,9 @@ declare
     'insurance_claims','inventory_batches','staff','attendance_shifts',
     'payroll_runs','payslips','etims_tax_codes','branch_kra_config',
     'etims_invoices','etims_z_reports','branch_till_sessions',
-    'purchase_orders','purchase_order_items','inventory'
+    'purchase_orders','purchase_order_items','inventory',
+    'internal_requisitions','requisition_items','requisition_audit_logs',
+    'leave_requests','leave_balances','fleet_vehicles'
   ];
 begin
   foreach t in array tables loop

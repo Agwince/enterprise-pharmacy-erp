@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../services/accounting_service.dart';
 import '../services/payroll_service.dart';
+import '../services/hr_leave_service.dart';
+import '../widgets/leave_application_form.dart';
 
 /// HR & Payroll Workspace — Sage People-class people management with full
 /// Kenyan statutory payroll (KRA PAYE, NSSF Tier I/II, SHIF/SHA, Housing Levy).
@@ -20,6 +22,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
     with SingleTickerProviderStateMixin {
   final PayrollService _pay = PayrollService();
   final AccountingService _acct = AccountingService();
+  final HrLeaveService _leaveService = HrLeaveService();
   final NumberFormat _money = NumberFormat('#,##0.00', 'en_US');
   final NumberFormat _compact = NumberFormat('#,##0', 'en_US');
 
@@ -32,6 +35,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
   List<Map<String, dynamic>> _runs = [];
   List<Map<String, dynamic>> _payslips = [];
   List<Map<String, dynamic>> _shifts = [];
+  List<Map<String, dynamic>> _leaveRequests = [];
 
   DateTime _attendanceDay = DateTime.now();
   Map<String, dynamic>? _preview;
@@ -44,7 +48,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 6, vsync: this);
+    _tabs = TabController(length: 7, vsync: this);
     _load();
   }
 
@@ -61,12 +65,14 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
     final branches = await _pay.fetchBranches();
     final runs = await _pay.fetchPayrollRuns();
     final shifts = await _pay.fetchShifts(_attendanceDay);
+    final leaves = await _leaveService.fetchLeaveRequests();
     if (!mounted) return;
     setState(() {
       _staff = staff;
       _branches = branches;
       _runs = runs;
       _shifts = shifts;
+      _leaveRequests = leaves;
       _loading = false;
     });
   }
@@ -148,6 +154,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
             Tab(text: 'Employees'),
             Tab(text: 'Structure'),
             Tab(text: 'Attendance'),
+            Tab(text: 'Leave Management'),
             Tab(text: 'Payroll Run'),
             Tab(text: 'Payslips'),
             Tab(text: 'Statutory & KRA'),
@@ -165,6 +172,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
                     _buildEmployees(isDesktop),
                     _buildStructure(isDesktop),
                     _buildAttendance(isDesktop),
+                    _buildLeaveManagement(isDesktop),
                     _buildPayrollRun(isDesktop),
                     _buildPayslips(isDesktop),
                     _buildStatutory(isDesktop),
@@ -898,6 +906,280 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
   }
 
   // ==========================================================================
+  // LEAVE MANAGEMENT & BALANCES
+  // ==========================================================================
+  Widget _buildLeaveManagement(bool isDesktop) {
+    final pending = _leaveRequests.where((r) => r['status'] == 'Pending').length;
+    final approved = _leaveRequests.where((r) => r['status'] == 'Approved').length;
+    final unpaid = _leaveRequests.where((r) => r['leave_type'] == 'Unpaid' && r['status'] == 'Approved').length;
+
+    return ListView(
+      padding: EdgeInsets.all(isDesktop ? 24 : 14),
+      children: [
+        // Summary KPIs
+        Row(
+          children: [
+            Expanded(
+              child: _kpi(
+                'Pending Review',
+                '$pending',
+                Icons.pending_actions_rounded,
+                Colors.amberAccent,
+                subtitle: 'Awaiting manager sign-off',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _kpi(
+                'Approved Leaves',
+                '$approved',
+                Icons.verified_rounded,
+                Colors.tealAccent,
+                subtitle: 'Active & scheduled leaves',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _kpi(
+                'Unpaid Leaves',
+                '$unpaid',
+                Icons.money_off_rounded,
+                Colors.orangeAccent,
+                subtitle: 'Feeds payroll deductions',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Action Toolbar
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Leave Applications & Balances',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purpleAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => SingleChildScrollView(
+                    child: Container(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
+                      child: LeaveApplicationForm(
+                        onSubmitted: _load,
+                      ),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add_task_rounded, size: 16),
+              label: const Text('Apply for Leave'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Leave Requests Panel
+        _panel(
+          title: 'Leave Requests Queue (${_leaveRequests.length})',
+          icon: Icons.assignment_outlined,
+          accent: Colors.purpleAccent,
+          child: _leaveRequests.isEmpty
+              ? _empty('No leave requests submitted yet.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _leaveRequests.length,
+                  separatorBuilder: (ctx, i) => const Divider(color: Colors.white10, height: 16),
+                  itemBuilder: (context, index) {
+                    final req = _leaveRequests[index];
+                    final isPending = req['status'] == 'Pending';
+                    final isApproved = req['status'] == 'Approved';
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    req['staff_name'] ?? 'Staff',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _chip(
+                                    req['leave_type'] ?? 'Annual',
+                                    req['leave_type'] == 'Unpaid'
+                                        ? Colors.orangeAccent
+                                        : Colors.tealAccent,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${req['start_date']} ➔ ${req['end_date']} (${req['total_days']} days)',
+                                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                              ),
+                              if (req['reason'] != null && req['reason'].toString().isNotEmpty)
+                                Text(
+                                  'Reason: ${req['reason']}',
+                                  style: const TextStyle(color: Colors.white38, fontSize: 10),
+                                ),
+                              if (req['manager_comment'] != null && req['manager_comment'].toString().isNotEmpty)
+                                Text(
+                                  'Manager: ${req['manager_comment']}',
+                                  style: TextStyle(
+                                    color: isApproved ? Colors.greenAccent : Colors.redAccent,
+                                    fontSize: 10,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: isPending
+                                ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 22),
+                                        tooltip: 'Approve Leave',
+                                        onPressed: () => _showReviewModal(req, true),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.cancel_rounded, color: Colors.redAccent, size: 22),
+                                        tooltip: 'Reject Leave',
+                                        onPressed: () => _showReviewModal(req, false),
+                                      ),
+                                    ],
+                                  )
+                                : Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isApproved
+                                          ? Colors.green.withValues(alpha: 0.15)
+                                          : Colors.red.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      req['status'] ?? 'Pending',
+                                      style: TextStyle(
+                                        color: isApproved ? Colors.greenAccent : Colors.redAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _showReviewModal(Map<String, dynamic> req, bool approve) {
+    final commentCtrl = TextEditingController(text: approve ? 'Approved per leave policy' : 'Operational requirements');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text(
+          approve ? 'Approve Leave Request' : 'Reject Leave Request',
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${req['staff_name']} • ${req['leave_type']} Leave (${req['total_days']} days)',
+                style: const TextStyle(color: Colors.tealAccent, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: commentCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  labelText: 'Manager Comment / Approval Notes',
+                  labelStyle: const TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: approve ? Colors.greenAccent : Colors.redAccent,
+              foregroundColor: Colors.black,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _loading = true);
+              try {
+                await _leaveService.reviewLeaveRequest(
+                  requestId: req['id'].toString(),
+                  status: approve ? 'Approved' : 'Rejected',
+                  managerComment: commentCtrl.text.trim(),
+                  reviewer: 'HR Director',
+                );
+                _snack(approve ? 'Leave request approved & balance updated.' : 'Leave request rejected.');
+                _load();
+              } catch (e) {
+                _snack('Error updating leave: $e', error: true);
+                setState(() => _loading = false);
+              }
+            },
+            child: Text(approve ? 'Confirm Approval' : 'Confirm Rejection'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================================================
   // PAYROLL RUN
   // ==========================================================================
   Widget _buildPayrollRun(bool isDesktop) {
@@ -1585,6 +1867,27 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
                   style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.orangeAccent,
                       side: const BorderSide(color: Colors.orangeAccent)),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _staff.isEmpty
+                      ? null
+                      : () {
+                          final activeStaff = _staff.firstWhere(
+                            (s) => (s['status'] ?? 'Active') == 'Active',
+                            orElse: () => _staff.first,
+                          );
+                          final p9Csv = _pay.exportP9Card(
+                            staff: activeStaff,
+                            payslipsForYear: _payslips,
+                            year: _year,
+                          );
+                          _showCsv('KRA P9A Tax Deduction Card (${activeStaff['first_name']} ${activeStaff['last_name']})', p9Csv);
+                        },
+                  icon: const Icon(Icons.credit_card_rounded, size: 16),
+                  label: const Text('KRA P9 Tax Card (CSV)'),
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.purpleAccent,
+                      side: const BorderSide(color: Colors.purpleAccent)),
                 ),
               ],
             ),

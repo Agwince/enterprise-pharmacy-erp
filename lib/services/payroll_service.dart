@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'hr_leave_service.dart';
 
 /// Kenya statutory parameters (2026). All editable from the payroll UI so the
 /// numbers are never silently wrong — they are statutory constants, not data.
@@ -71,6 +72,8 @@ class PayslipResult {
   final double grossPay;
   final double allowances;
   final double overtimePay;
+  final int unpaidLeaveDays;
+  final double unpaidLeaveDeduction;
   final double nssfEmployee;
   final double nssfEmployer;
   final double shif;
@@ -90,6 +93,8 @@ class PayslipResult {
     required this.grossPay,
     required this.allowances,
     required this.overtimePay,
+    this.unpaidLeaveDays = 0,
+    this.unpaidLeaveDeduction = 0.0,
     required this.nssfEmployee,
     required this.nssfEmployer,
     required this.shif,
@@ -110,6 +115,8 @@ class PayslipResult {
         'gross_pay': grossPay,
         'allowances': allowances,
         'overtime_pay': overtimePay,
+        'unpaid_leave_days': unpaidLeaveDays,
+        'unpaid_leave_deduction': unpaidLeaveDeduction,
         'nssf_employee': nssfEmployee,
         'nssf_employer': nssfEmployer,
         'shif': shif,
@@ -201,6 +208,7 @@ class PayrollService {
     required Map<String, dynamic> staff,
     required KenyaStatutoryParams params,
     double overtimeHours = 0,
+    int unpaidLeaveDays = 0,
     double otherDeductions = 0,
   }) {
     double n(String k) => (staff[k] as num?)?.toDouble() ?? 0.0;
@@ -215,34 +223,41 @@ class PayrollService {
     final hourlyRate = params.monthlyHours > 0 ? basic / params.monthlyHours : 0.0;
     final overtimePay = overtimeHours * hourlyRate * params.overtimeMultiplier;
 
-    final gross = basic + allowances + overtimePay;
+    // Unpaid leave deduction (daily rate = basic / 30)
+    final unpaidLeaveDeduction = unpaidLeaveDays > 0 ? (basic / 30.0) * unpaidLeaveDays : 0.0;
 
-    final nssfEmp = nssfContribution(gross, params);
-    final nssfEr = nssfContribution(gross, params);
-    final shif = shifContribution(gross, params);
-    final ahlEmp = gross * params.ahlRate;
-    final ahlEr = gross * params.ahlRate;
+    // Earned gross before deduction
+    final earnedGross = basic + allowances + overtimePay;
+    final adjustedGross = (earnedGross - unpaidLeaveDeduction).clamp(0.0, 99999999.0);
+
+    final nssfEmp = nssfContribution(adjustedGross, params);
+    final nssfEr = nssfContribution(adjustedGross, params);
+    final shif = shifContribution(adjustedGross, params);
+    final ahlEmp = adjustedGross * params.ahlRate;
+    final ahlEr = adjustedGross * params.ahlRate;
 
     final declaredPension = n('pension_contribution');
     final allowablePension = [
       declaredPension,
-      gross * params.pensionPercentCap,
+      adjustedGross * params.pensionPercentCap,
       params.pensionMonthlyCap,
     ].reduce((a, b) => a < b ? a : b);
 
-    final taxable = gross - nssfEmp - allowablePension;
+    final taxable = adjustedGross - nssfEmp - allowablePension;
     final payeBeforeRelief = payeOnTaxable(taxable > 0 ? taxable : 0.0);
     final relief = (staff['is_paye_applicable'] == false) ? 0.0 : params.personalReliefMonthly;
     final paye = (payeBeforeRelief - relief) > 0 ? (payeBeforeRelief - relief) : 0.0;
 
-    final totalDeductions = nssfEmp + shif + ahlEmp + declaredPension + paye + otherDeductions;
-    final net = gross - totalDeductions;
-    final employerCost = gross + nssfEr + ahlEr + params.employerNita + (gross * params.employerWibaRate);
+    final totalDeductions = nssfEmp + shif + ahlEmp + declaredPension + paye + unpaidLeaveDeduction + otherDeductions;
+    final net = (earnedGross - totalDeductions).clamp(0.0, 99999999.0);
+    final employerCost = adjustedGross + nssfEr + ahlEr + params.employerNita + (adjustedGross * params.employerWibaRate);
 
     return PayslipResult(
-      grossPay: gross,
+      grossPay: earnedGross,
       allowances: allowances,
       overtimePay: overtimePay,
+      unpaidLeaveDays: unpaidLeaveDays,
+      unpaidLeaveDeduction: unpaidLeaveDeduction,
       nssfEmployee: nssfEmp,
       nssfEmployer: nssfEr,
       shif: shif,
@@ -412,6 +427,10 @@ class PayrollService {
     required KenyaStatutoryParams params,
   }) async {
     final overtime = await overtimeForMonth(year, month);
+    final periodStart = DateTime(year, month, 1);
+    final periodEnd = DateTime(year, month + 1, 0);
+    final hrLeave = HrLeaveService();
+
     final List<Map<String, dynamic>> slips = [];
     final branchNames = {for (final b in await fetchBranches()) b['id'].toString(): b['name'].toString()};
 
@@ -420,14 +439,22 @@ class PayrollService {
 
     for (final s in staffList) {
       if ((s['status'] ?? 'Active').toString() != 'Active') continue;
+      final staffId = s['id'].toString();
+      final unpaidDays = await hrLeave.fetchUnpaidLeaveDaysForPeriod(
+        staffId: staffId,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+      );
+
       final res = computePayslip(
         staff: s,
         params: params,
-        overtimeHours: overtime[s['id'].toString()] ?? 0.0,
+        overtimeHours: overtime[staffId] ?? 0.0,
+        unpaidLeaveDays: unpaidDays,
       );
       final branchId = s['branch_id']?.toString();
       slips.add({
-        'staff_id': s['id'].toString(),
+        'staff_id': staffId,
         'staff_no': s['staff_no'] ?? '',
         'staff_name': '${s['first_name']} ${s['last_name']}',
         'job_title': s['job_title'] ?? '',
@@ -471,8 +498,7 @@ class PayrollService {
     try {
       final start = DateTime(year, month, 1).toIso8601String().substring(0, 10);
       final end = DateTime(year, month + 1, 0).toIso8601String().substring(0, 10);
-      final label =
-          '$year-${month.toString().padLeft(2, '0')}';
+      final label = '$year-${month.toString().padLeft(2, '0')}';
 
       // Re-running a period replaces the draft rather than duplicating it.
       await _db
@@ -485,7 +511,7 @@ class PayrollService {
         'period_start': start,
         'period_end': end,
         'period_label': label,
-        'branch_id': ?branchId,
+        'branch_id': branchId,
         'status': 'Draft',
         'headcount': preview['headcount'],
         'gross_total': preview['gross_total'],
@@ -497,6 +523,7 @@ class PayrollService {
         'ahl_employer_total': preview['ahl_employer_total'],
         'net_total': preview['net_total'],
         'employer_cost_total': preview['employer_cost_total'],
+        'approved_by': approvedBy,
       }).select();
 
       final runId = (runInsert as List).first['id'].toString();
@@ -544,7 +571,7 @@ class PayrollService {
   }
 
   // --------------------------------------------------------------------------
-  // Exports
+  // Exports & Statutory P9 Tax Deduction Cards
   // --------------------------------------------------------------------------
   String _csv(List<String> headers, List<List<dynamic>> rows) {
     final buf = StringBuffer();
@@ -572,15 +599,16 @@ class PayrollService {
   String payslipRegisterCsv(List<Map<String, dynamic>> slips) => _csv(
         [
           'StaffNo', 'Employee', 'JobTitle', 'Branch', 'Gross', 'Allowances',
-          'Overtime', 'NSSF(EE)', 'NSSF(ER)', 'SHIF', 'AHL(EE)', 'AHL(ER)',
+          'Overtime', 'UnpaidLeaveDays', 'UnpaidLeaveDeduction',
+          'NSSF(EE)', 'NSSF(ER)', 'SHIF', 'AHL(EE)', 'AHL(ER)',
           'Pension', 'Taxable', 'PAYE', 'Relief', 'NetPay', 'EmployerCost'
         ],
         slips
             .map((s) => [
                   s['staff_no'], s['staff_name'], s['job_title'], s['branch_name'],
                   for (final k in [
-                    'gross_pay', 'allowances', 'overtime_pay', 'nssf_employee',
-                    'nssf_employer', 'shif', 'ahl_employee', 'ahl_employer',
+                    'gross_pay', 'allowances', 'overtime_pay', 'unpaid_leave_days', 'unpaid_leave_deduction',
+                    'nssf_employee', 'nssf_employer', 'shif', 'ahl_employee', 'ahl_employer',
                     'pension', 'taxable_income', 'paye', 'personal_relief',
                     'net_pay', 'employer_cost'
                   ])
@@ -600,5 +628,102 @@ class PayrollService {
             ])
         .toList();
     return _csv(['StaffNo', 'Employee', 'MembershipNo', '$body (KES)'], rows);
+  }
+
+  /// Generates a standard KRA P9A Tax Deduction Card CSV for a staff member
+  String exportP9Card({
+    required Map<String, dynamic> staff,
+    required List<Map<String, dynamic>> payslipsForYear,
+    required int year,
+  }) {
+    final months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    final rows = <List<dynamic>>[];
+    double totalBasic = 0, totalGross = 0, totalNssf = 0, totalTaxable = 0, totalTaxCharged = 0, totalRelief = 0, totalPaye = 0;
+
+    for (int m = 1; m <= 12; m++) {
+      final monthName = months[m - 1];
+      final monthKey = '$year-${m.toString().padLeft(2, '0')}';
+      final slip = payslipsForYear.firstWhere(
+        (p) => p['period_label'] == monthKey || (p['payroll_run']?['period_label'] == monthKey),
+        orElse: () => <String, dynamic>{},
+      );
+
+      double n(String k) => (slip[k] as num?)?.toDouble() ?? 0.0;
+
+      final gross = n('gross_pay');
+      final allowances = n('allowances');
+      final basic = (gross - allowances).clamp(0.0, gross);
+      final nssf = n('nssf_employee');
+      final taxable = n('taxable_income');
+      final taxCharged = n('paye_before_relief');
+      final relief = n('personal_relief');
+      final paye = n('paye');
+
+      totalBasic += basic;
+      totalGross += gross;
+      totalNssf += nssf;
+      totalTaxable += taxable;
+      totalTaxCharged += taxCharged;
+      totalRelief += relief;
+      totalPaye += paye;
+
+      rows.add([
+        monthName,
+        basic.toStringAsFixed(2),
+        allowances.toStringAsFixed(2),
+        '0.00',
+        gross.toStringAsFixed(2),
+        (basic * 0.30).toStringAsFixed(2),
+        nssf.toStringAsFixed(2),
+        '30000.00',
+        nssf.toStringAsFixed(2),
+        taxable.toStringAsFixed(2),
+        taxCharged.toStringAsFixed(2),
+        relief.toStringAsFixed(2),
+        '0.00',
+        paye.toStringAsFixed(2),
+      ]);
+    }
+
+    rows.add([
+      'TOTALS',
+      totalBasic.toStringAsFixed(2),
+      (totalGross - totalBasic).toStringAsFixed(2),
+      '0.00',
+      totalGross.toStringAsFixed(2),
+      (totalBasic * 0.30).toStringAsFixed(2),
+      totalNssf.toStringAsFixed(2),
+      '360000.00',
+      totalNssf.toStringAsFixed(2),
+      totalTaxable.toStringAsFixed(2),
+      totalTaxCharged.toStringAsFixed(2),
+      totalRelief.toStringAsFixed(2),
+      '0.00',
+      totalPaye.toStringAsFixed(2),
+    ]);
+
+    final headers = [
+      'Month', 'Basic Salary (A)', 'Benefits/Allowances (B)', 'Quarters (C)',
+      'Total Gross (D)', 'Defined Contrib 30% (E1)', 'Actual NSSF (E2)',
+      'Fixed Cap (E3)', 'Retirement Deductions (G)', 'Net Taxable Pay (H)',
+      'Tax Charged (J)', 'Personal Relief (K)', 'Insurance Relief (L)',
+      'PAYE Tax (P)'
+    ];
+
+    final employeeHeader = '''
+"KENYA REVENUE AUTHORITY - DOMESTIC TAXES DEPARTMENT"
+"P9A TAX DEDUCTION CARD - YEAR $year"
+"Employer Name: Mediocare Pharmacy Group Kenya"
+"Employer PIN: P051234567Z"
+"Employee Name: ${staff['first_name']} ${staff['last_name']}"
+"Employee PIN: ${staff['kra_pin'] ?? 'N/A'}"
+"Employee Staff No: ${staff['staff_no'] ?? 'N/A'}"
+''';
+
+    return employeeHeader + _csv(headers, rows);
   }
 }

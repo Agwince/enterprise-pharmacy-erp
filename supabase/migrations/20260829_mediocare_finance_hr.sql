@@ -63,7 +63,7 @@ create index if not exists idx_journal_lines_account on public.journal_lines(acc
 create index if not exists idx_journal_entries_date   on public.journal_entries(journal_date desc);
 
 -- =============================================================================
--- 3. SUPPLIERS / CREDITORS
+-- 3. SUPPLIERS / CREDITORS (Empty by default, user-entered parameters)
 -- =============================================================================
 create table if not exists public.suppliers (
   id            uuid primary key default gen_random_uuid(),
@@ -73,13 +73,36 @@ create table if not exists public.suppliers (
   phone         text,
   email         text,
   contact_person text,
-  payment_terms text default '30 Days',
-  credit_limit  numeric(16,2) default 0,
+  payment_terms text,
+  credit_limit  numeric(16,2),
   balance       numeric(16,2) default 0,
-  lead_time_days int default 3,
+  lead_time_days int,
   is_active     boolean default true,
   created_at    timestamptz default now()
 );
+
+-- Extensions to existing purchase_orders table (Module 2: LPO & GRN & 3-Way Match)
+alter table public.purchase_orders add column if not exists supplier_id uuid references public.suppliers(id) on delete set null;
+alter table public.purchase_orders add column if not exists delivery_date date;
+alter table public.purchase_orders add column if not exists notes text;
+alter table public.purchase_orders add column if not exists approved_by text;
+alter table public.purchase_orders add column if not exists approved_at timestamptz;
+alter table public.purchase_orders add column if not exists grn_number text;
+alter table public.purchase_orders add column if not exists grn_date timestamptz;
+alter table public.purchase_orders add column if not exists received_by text;
+alter table public.purchase_orders add column if not exists invoice_number text;
+alter table public.purchase_orders add column if not exists invoice_amount numeric(16,2);
+alter table public.purchase_orders add column if not exists match_status text default 'UNMATCHED';
+alter table public.purchase_orders add column if not exists match_tolerance numeric(16,2) default 500.00;
+alter table public.purchase_orders add column if not exists gl_journal_id uuid references public.journal_entries(id) on delete set null;
+alter table public.purchase_orders add column if not exists gl_payment_journal_id uuid references public.journal_entries(id) on delete set null;
+
+-- Extensions to existing purchase_order_items table
+alter table public.purchase_order_items add column if not exists real_grn_cost numeric(14,2);
+alter table public.purchase_order_items add column if not exists batch_no text;
+alter table public.purchase_order_items add column if not exists expiry_date date;
+alter table public.purchase_order_items add column if not exists invoice_unit_cost numeric(14,2);
+alter table public.purchase_order_items add column if not exists invoice_quantity int;
 
 -- =============================================================================
 -- 4. INSURANCE / SHA CLAIMS

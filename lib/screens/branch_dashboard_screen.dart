@@ -6,6 +6,7 @@ import '../widgets/ai_copilot_sheet.dart';
 import '../widgets/leave_application_form.dart';
 import 'kisumu_in_transit_screen.dart';
 import 'etims_workspace_screen.dart';
+import 'procurement_lpo_screen.dart';
 
 class BranchDashboardScreen extends StatefulWidget {
   const BranchDashboardScreen({super.key});
@@ -306,6 +307,13 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                             child: const LeaveApplicationForm(),
                           ),
                         );
+                      },
+                    ),
+                    IconButton(
+                      tooltip: 'Procurement & LPO Hub',
+                      icon: const Icon(Icons.local_shipping_rounded, color: Colors.blueAccent),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProcurementLpoScreen()));
                       },
                     ),
                     IconButton(

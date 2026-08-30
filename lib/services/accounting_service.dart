@@ -39,11 +39,13 @@ class AccountingService {
   static const double vatRate = 0.16;
 
   /// GL account codes used by the automated postings.
+  static const String accCash = '1010';
   static const String accMpesa = '1020';
   static const String accBank = '1030';
   static const String accDebtors = '1200';
   static const String accInsuranceDebtors = '1210';
   static const String accInventory = '1300';
+  static const String accPayables = '2000';
   static const String accVatOutput = '2100';
   static const String accSalesRetail = '4000';
   static const String accSalesWholesale = '4010';

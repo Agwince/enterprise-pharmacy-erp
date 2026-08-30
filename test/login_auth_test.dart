@@ -3,34 +3,66 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:pharmacy_erp/config/supabase_config.dart';
 
 void main() {
-  test('Verify ceo and hr logins', () async {
+  test('Verify complete login and role lookup for catalog@pharmacy.com', () async {
     final client = SupabaseClient(
       SupabaseConfig.url,
       SupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
       headers: {
         'apikey': SupabaseConfig.anonKey,
-        'Authorization': 'Bearer ',
       },
     );
 
-    // 1. CEO login
-    final ceoRes = await client.auth.signInWithPassword(
-      email: 'ceo@pharmacy.com',
+    // 1. Authenticate user
+    final authRes = await client.auth.signInWithPassword(
+      email: 'catalog@pharmacy.com',
       password: 'Pharmacy@2026',
     );
-    expect(ceoRes.user, isNotNull);
-    expect(ceoRes.user?.email, equals('ceo@pharmacy.com'));
-    print('CEO LOGIN VERIFIED: ' + ceoRes.user!.id);
+    expect(authRes.user, isNotNull);
+    expect(authRes.user?.email, equals('catalog@pharmacy.com'));
+    print('1. AUTH SIGN-IN PASSED: ' + authRes.user!.email!);
 
-    // 2. HR login
-    final hrRes = await client.auth.signInWithPassword(
-      email: 'hr@pharmacy.com',
+    // 2. Fetch role from public.roles
+    final roleRes = await client
+        .from('roles')
+        .select('*')
+        .eq('email', authRes.user!.email!)
+        .maybeSingle();
+
+    expect(roleRes, isNotNull);
+    expect(roleRes!['role'], equals('CATALOG_ADMIN'));
+    print('2. ROLE LOOKUP PASSED: role=' + roleRes['role'].toString());
+
+    client.dispose();
+  });
+
+  test('Verify complete login and role lookup for admin@pharmacy.com', () async {
+    final client = SupabaseClient(
+      SupabaseConfig.url,
+      SupabaseConfig.anonKey,
+      authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
+      headers: {
+        'apikey': SupabaseConfig.anonKey,
+      },
+    );
+
+    final authRes = await client.auth.signInWithPassword(
+      email: 'admin@pharmacy.com',
       password: 'Pharmacy@2026',
     );
-    expect(hrRes.user, isNotNull);
-    expect(hrRes.user?.email, equals('hr@pharmacy.com'));
-    print('HR LOGIN VERIFIED: ' + hrRes.user!.id);
+    expect(authRes.user, isNotNull);
+    expect(authRes.user?.email, equals('admin@pharmacy.com'));
+    print('1. AUTH SIGN-IN PASSED: ' + authRes.user!.email!);
+
+    final roleRes = await client
+        .from('roles')
+        .select('*')
+        .eq('email', authRes.user!.email!)
+        .maybeSingle();
+
+    expect(roleRes, isNotNull);
+    expect(roleRes!['role'], equals('SUPER_ADMIN'));
+    print('2. ROLE LOOKUP PASSED: role=' + roleRes['role'].toString());
 
     client.dispose();
   });

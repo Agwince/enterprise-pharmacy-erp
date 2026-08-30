@@ -128,7 +128,7 @@ class AuthService extends ChangeNotifier {
         final realEmail = response.user!.email ?? email;
         final res = await Supabase.instance.client
             .from('roles')
-            .select('role, full_name, name')
+            .select('*')
             .eq('email', realEmail)
             .maybeSingle();
 

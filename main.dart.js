@@ -35714,8 +35714,9 @@ var $async$AQ=A.r(function(a,b){if(a===1){p.push(b)
 s=q}for(;;)switch(s){case 0:q=3
 if($.aw==null)A.a7T()
 $.aw.toString
+l=t.N
 s=6
-return A.j(A.aPx(u.o,"https://sodxtvyusndehtycgino.supabase.co"),$async$AQ)
+return A.j(A.aPx(A.z(["apikey",u.o,"Authorization","Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvZHh0dnl1c25kZWh0eWNnaW5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2NTQ0MDAsImV4cCI6MjEwMDIzMDQwMH0.URYtK86DQOW2-q_qHPFpEnDqF-onYzj8J69n74tyUQM"],l,l),u.o,"https://sodxtvyusndehtycgino.supabase.co"),$async$AQ)
 case 6:l=$.c0().b
 l===$&&A.c()
 s=7
@@ -39812,8 +39813,8 @@ azI:function azI(){},
 aNO:function aNO(a){this.b=a},
 aNN:function aNN(a){this.a=a
 this.b=$},
-aPx(a,b){var s=0,r=A.w(t._k),q,p,o,n,m,l,k,j
-var $async$aPx=A.r(function(c,d){if(c===1)return A.t(d,r)
+aPx(a,b,c){var s=0,r=A.w(t._k),q,p,o,n,m,l,k,j
+var $async$aPx=A.r(function(d,e){if(d===1)return A.t(e,r)
 for(;;)switch(s){case 0:j=$.c0()
 if(j.a){$.bsz().bt(B.j8,"Supabase is already initialized. Skipping reinitialization.",null,null)
 q=j
@@ -39824,11 +39825,12 @@ p.bt(B.hC,"Initialize Supabase v2.17.1",null,null)
 o=new A.aNN(new A.bf(new A.ar($.aC,t.U),t.gR))
 o.Iw()
 n=B.a36.aVI(o)
-if(n.d==null){o=A.e0(b,0,null)
+if(n.d==null){o=A.e0(c,0,null)
 o=B.b.gY(o.go_(o).split("."))
 n=n.aVA(new A.aNO("sb-"+o+"-auth-token"))}o=t.N
 o=A.df($.bCM(),o,o)
-j.b=A.bpo(b,a,null,n,o,null,B.r_,B.r1,B.r2,B.r4)
+o.O(0,a)
+j.b=A.bpo(c,b,null,n,o,null,B.r_,B.r1,B.r2,B.r4)
 j.aOu()
 j.a=!0
 m=j.c=new A.a6x($.bCG(),A.hg("supabase.supabase_flutter"))

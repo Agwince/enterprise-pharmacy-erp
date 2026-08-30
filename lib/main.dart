@@ -33,7 +33,7 @@ void main() async {
     // Initialize Supabase Client
     await Supabase.initialize(
       url: SupabaseConfig.url,
-      publishableKey: SupabaseConfig.anonKey,
+      anonKey: SupabaseConfig.anonKey,
     );
     // Force clear any stale session tokens from localStorage
     await Supabase.instance.client.auth.signOut();

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import '../services/ai_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -25,6 +27,8 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
   final _aiService = AiService();
   final List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+  StreamSubscription<String>? _streamSubscription;
+  http.Client? _activeClient;
   final _supabase = Supabase.instance.client;
 
   final List<String> _quickPrompts = [
@@ -42,9 +46,20 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
 
   @override
   void dispose() {
+    _cancelStreaming();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _cancelStreaming() {
+    _streamSubscription?.cancel();
+    _streamSubscription = null;
+    _activeClient?.close();
+    _activeClient = null;
+    if (_isLoading && mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   void _scrollToBottom() {
@@ -52,7 +67,7 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
         );
       }
@@ -87,7 +102,7 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
         if (_messages.isEmpty) {
           _messages.add({
             'role': 'assistant',
-            'content': '👋 Greetings Executive. I am your Mediocare Operations Copilot powered by Minimax M3.\n\nI have real-time synchronization with your 782 pharmaceutical SKUs, 4 regional hubs (Nairobi, Kisumu, Mombasa, Eldoret), and live GPS telemetry. Ask any question below or pick a prompt to analyze.'
+            'content': '👋 Greetings Executive. I am your Mediocare Operations Copilot powered by real-time streaming.\n\nI have instant synchronization with your 782 pharmaceutical SKUs, 4 regional hubs (Nairobi, Kisumu, Mombasa, Eldoret), and live GPS telemetry. Ask any question below or pick a prompt to analyze.'
           });
         }
         setState(() => _isLoading = false);
@@ -100,8 +115,12 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
     final text = (presetText ?? _controller.text).trim();
     if (text.isEmpty) return;
 
+    _cancelStreaming();
+    _activeClient = http.Client();
+
     setState(() {
       _messages.add({"role": "user", "content": text});
+      _messages.add({"role": "assistant", "content": ""});
       _isLoading = true;
     });
     if (presetText == null) {
@@ -116,21 +135,48 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
       } catch (_) {}
     }
 
-    final history = _messages.take(_messages.length - 1).toList();
-    final response = await _aiService.sendMessage(text, history);
+    final history = _messages.take(_messages.length - 2).toList();
+    final responseBuffer = StringBuffer();
 
-    if (mounted) {
-      setState(() {
-        _messages.add({"role": "assistant", "content": response});
-        _isLoading = false;
-      });
-      _scrollToBottom();
-      if (user != null) {
-        try {
-          await _supabase.from('ai_chat_messages').insert({'user_id': user.id, 'role': 'assistant', 'content': response});
-        } catch (_) {}
-      }
-    }
+    _streamSubscription = _aiService
+        .streamMessage(text, history, client: _activeClient)
+        .listen(
+      (delta) {
+        if (mounted) {
+          responseBuffer.write(delta);
+          setState(() {
+            _messages.last['content'] = responseBuffer.toString();
+          });
+          _scrollToBottom();
+        }
+      },
+      onError: (err) {
+        if (mounted) {
+          setState(() {
+            _messages.last['content'] = "Advisory unavailable ($err). Please try again.";
+            _isLoading = false;
+          });
+          _scrollToBottom();
+        }
+      },
+      onDone: () async {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          _scrollToBottom();
+          final user = _supabase.auth.currentUser;
+          if (user != null && responseBuffer.isNotEmpty) {
+            try {
+              await _supabase.from('ai_chat_messages').insert({
+                'user_id': user.id,
+                'role': 'assistant',
+                'content': responseBuffer.toString(),
+              });
+            } catch (_) {}
+          }
+        }
+      },
+      cancelOnError: true,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _fetchFullHistory() async {
@@ -413,18 +459,32 @@ class _AiCopilotSheetState extends State<AiCopilotSheet> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF0D9488), Color(0xFF2563EB)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: IconButton(
-                                  icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-                                  onPressed: _isLoading ? null : () => _sendMessage(),
-                                ),
-                              ),
+                              _isLoading
+                                  ? Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                                      ),
+                                      child: IconButton(
+                                        tooltip: 'Stop generation',
+                                        icon: const Icon(Icons.stop_circle_rounded, color: Colors.redAccent, size: 20),
+                                        onPressed: _cancelStreaming,
+                                      ),
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF0D9488), Color(0xFF2563EB)],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: IconButton(
+                                        tooltip: 'Send message',
+                                        icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                                        onPressed: () => _sendMessage(),
+                                      ),
+                                    ),
                             ],
                           ),
                         ),

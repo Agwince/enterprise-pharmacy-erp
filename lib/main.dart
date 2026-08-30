@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'services/offline_sync_service.dart';
 import 'services/cache_service.dart';
+import 'services/ai_service.dart';
 import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/super_admin_workspace.dart';
@@ -39,6 +41,8 @@ void main() async {
     try {
       await OfflineSyncService().initialize();
       await CacheService().initialize();
+      // Pre-warm AI model asynchronously in background with 1 token
+      unawaited(AiService().prewarm());
     } catch (e) {
       debugPrint('Offline sync & cache initialization note: $e');
     }

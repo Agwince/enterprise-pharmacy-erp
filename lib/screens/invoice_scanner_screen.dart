@@ -29,7 +29,7 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
 
       final Uint8List imageBytes = await image.readAsBytes();
       final base64Image = base64Encode(imageBytes);
-      String extractedText = await AiService().extractTextFromImage(base64Image);
+      String extractedText = await AiService().extractTextFromImage(base64Image, rawBytes: imageBytes);
 
       final supabase = Supabase.instance.client;
       final res = await supabase.from('drugs').select('id, name, target_shelf').order('name');

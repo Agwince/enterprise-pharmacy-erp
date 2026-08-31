@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_admin.dart';
 import '../services/branch_service.dart';
@@ -323,6 +325,327 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showLocationPickerDialog(Map<String, dynamic> branch) {
+    final branchId = branch['id'].toString();
+    final branchCode = (branch['code'] ?? '').toString().toUpperCase();
+    final branchName = (branch['name'] ?? '').toString();
+
+    final initialLat = (branch['latitude'] as num?)?.toDouble();
+    final initialLng = (branch['longitude'] as num?)?.toDouble();
+
+    LatLng? selectedPoint = (initialLat != null && initialLng != null)
+        ? LatLng(initialLat, initialLng)
+        : null;
+
+    final latCtrl = TextEditingController(
+        text: selectedPoint != null ? selectedPoint.latitude.toStringAsFixed(6) : '');
+    final lngCtrl = TextEditingController(
+        text: selectedPoint != null ? selectedPoint.longitude.toStringAsFixed(6) : '');
+
+    final mapController = MapController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final center = selectedPoint ?? const LatLng(-1.2921, 36.8219);
+          final double initialZoom = selectedPoint != null ? 14.0 : 6.5;
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.tealAccent.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.pin_drop_rounded, color: Colors.tealAccent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Set Location on Map',
+                          style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('$branchCode • $branchName',
+                          style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 580,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.touch_app_rounded, color: Colors.amberAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Tap anywhere on the map to place/move the pin, or enter coordinates below.',
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Map Container
+                    Container(
+                      height: 320,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: FlutterMap(
+                          mapController: mapController,
+                          options: MapOptions(
+                            initialCenter: center,
+                            initialZoom: initialZoom,
+                            minZoom: 3.0,
+                            maxZoom: 19.0,
+                            onTap: (tapPosition, point) {
+                              setModalState(() {
+                                selectedPoint = point;
+                                latCtrl.text = point.latitude.toStringAsFixed(6);
+                                lngCtrl.text = point.longitude.toStringAsFixed(6);
+                              });
+                            },
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.yourcompany.pharmacyerp',
+                              maxZoom: 19,
+                            ),
+                            if (selectedPoint != null)
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: selectedPoint!,
+                                    width: 54,
+                                    height: 54,
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF0F172A),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.tealAccent),
+                                          ),
+                                          child: Text(
+                                            branchCode,
+                                            style: GoogleFonts.jetBrainsMono(
+                                              color: Colors.tealAccent,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.location_on,
+                                          color: Colors.amberAccent,
+                                          size: 28,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Manual Coordinate Inputs (Fallback)
+                    Text('Manual Coordinate Fallback:',
+                        style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _fieldLabel('Latitude (e.g. -1.292100)'),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: latCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                                style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 12),
+                                decoration: InputDecoration(
+                                  hintText: '-1.292100',
+                                  hintStyle: GoogleFonts.jetBrainsMono(color: Colors.white24, fontSize: 12),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0F172A),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                ),
+                                onChanged: (val) {
+                                  final lat = double.tryParse(val.trim());
+                                  final lng = double.tryParse(lngCtrl.text.trim());
+                                  if (lat != null && lng != null) {
+                                    setModalState(() {
+                                      selectedPoint = LatLng(lat, lng);
+                                      mapController.move(selectedPoint!, 14.0);
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _fieldLabel('Longitude (e.g. 36.821900)'),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: lngCtrl,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                                style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 12),
+                                decoration: InputDecoration(
+                                  hintText: '36.821900',
+                                  hintStyle: GoogleFonts.jetBrainsMono(color: Colors.white24, fontSize: 12),
+                                  filled: true,
+                                  fillColor: const Color(0xFF0F172A),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                ),
+                                onChanged: (val) {
+                                  final lng = double.tryParse(val.trim());
+                                  final lat = double.tryParse(latCtrl.text.trim());
+                                  if (lat != null && lng != null) {
+                                    setModalState(() {
+                                      selectedPoint = LatLng(lat, lng);
+                                      mapController.move(selectedPoint!, 14.0);
+                                    });
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Cancel', style: GoogleFonts.inter(color: Colors.white60)),
+              ),
+              if (selectedPoint != null)
+                TextButton(
+                  onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    try {
+                      await _branchService.updateBranch(branchId, {
+                        'latitude': null,
+                        'longitude': null,
+                      });
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _loadData();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Coordinates cleared for $branchCode.'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                    } catch (e) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  },
+                  child: Text('Clear Location', style: GoogleFonts.inter(color: Colors.redAccent)),
+                ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final lat = double.tryParse(latCtrl.text.trim());
+                  final lng = double.tryParse(lngCtrl.text.trim());
+
+                  if (lat == null || lng == null) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Please tap the map to drop a pin or enter valid numeric coordinates.'),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Coordinates out of range (Lat: -90..90, Lng: -180..180).'),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    await _branchService.setBranchLocation(
+                      branchId,
+                      latitude: lat,
+                      longitude: lng,
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _loadData();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Location saved for $branchCode: (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Save error: $e'), backgroundColor: Colors.redAccent),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.tealAccent,
+                  foregroundColor: Colors.black,
+                ),
+                icon: const Icon(Icons.save_rounded, size: 18),
+                label: Text('Save Location', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -711,6 +1034,7 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                   DataColumn(label: Text('County')),
                   DataColumn(label: Text('Manager')),
                   DataColumn(label: Text('Phone')),
+                  DataColumn(label: Text('Coordinates / Location')),
                   DataColumn(label: Text('Status')),
                   DataColumn(label: Text('POS Default')),
                   DataColumn(label: Text('Actions')),
@@ -718,6 +1042,9 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                 rows: _branches.map((b) {
                   final bool active = b['is_active'] == true;
                   final bool isDefault = b['is_pos_default'] == true;
+                  final lat = (b['latitude'] as num?)?.toDouble();
+                  final lng = (b['longitude'] as num?)?.toDouble();
+                  final bool hasCoords = lat != null && lng != null;
 
                   return DataRow(
                     cells: [
@@ -736,6 +1063,67 @@ class _BranchManagementScreenState extends State<BranchManagementScreen> {
                       DataCell(Text(b['county']?.toString() ?? '—', style: GoogleFonts.inter(color: Colors.white70))),
                       DataCell(Text(b['manager_name']?.toString() ?? '—', style: GoogleFonts.inter(color: Colors.white70))),
                       DataCell(Text(b['phone']?.toString() ?? '—', style: GoogleFonts.inter(color: Colors.white70))),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (hasCoords)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.tealAccent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.location_on, color: Colors.tealAccent, size: 13),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)}',
+                                      style: GoogleFonts.jetBrainsMono(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Coordinates not set',
+                                  style: GoogleFonts.inter(color: Colors.white38, fontSize: 11, fontStyle: FontStyle.italic),
+                                ),
+                              ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: () => _showLocationPickerDialog(b),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: hasCoords ? Colors.tealAccent : Colors.amberAccent,
+                                side: BorderSide(
+                                  color: hasCoords
+                                      ? Colors.tealAccent.withValues(alpha: 0.5)
+                                      : Colors.amberAccent.withValues(alpha: 0.5),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: const Size(0, 28),
+                              ),
+                              icon: Icon(
+                                hasCoords ? Icons.edit_location_alt_rounded : Icons.add_location_alt_rounded,
+                                size: 14,
+                              ),
+                              label: Text(
+                                hasCoords ? 'Edit Location' : 'Set location on map',
+                                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       DataCell(
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

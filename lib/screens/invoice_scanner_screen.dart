@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
 import 'dart:convert';
+import '../config/app_config.dart';
 import '../services/ai_service.dart';
 import '../services/auth_service.dart';
 import '../utils/invoice_parser.dart';
@@ -21,8 +22,26 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
   bool _isProcessing = false;
 
   Future<void> _processImage() async {
+    // Startup / Trigger Guard: If OCR key is not configured, disable feature and notify
+    if (!AppConfig.isOcrConfigured) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Document scanning is not configured'),
+          backgroundColor: Colors.orangeAccent,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+      // Compress and resize longest edge to ~1600 px, quality 80 at capture time
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 80,
+      );
       if (image == null) return;
 
       setState(() => _isProcessing = true);
@@ -30,6 +49,22 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
       final Uint8List imageBytes = await image.readAsBytes();
       final base64Image = base64Encode(imageBytes);
       String extractedText = await AiService().extractTextFromImage(base64Image, rawBytes: imageBytes);
+
+      // Check if OCR failed or returned empty/no legible text
+      if (extractedText.trim().isEmpty ||
+          extractedText.trim() == 'No legible text detected from prescription scan.') {
+        if (mounted) {
+          setState(() => _isProcessing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not read this document — try again or enter details manually.'),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
 
       final supabase = Supabase.instance.client;
       final res = await supabase.from('drugs').select('id, name, target_shelf').order('name');
@@ -52,14 +87,22 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
 
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
         setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not read this document — try again or enter details manually.'),
+            backgroundColor: Colors.redAccent,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool isConfigured = AppConfig.isOcrConfigured;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0B1120),
       appBar: AppBar(
@@ -89,11 +132,39 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(color: Colors.tealAccent.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: const Icon(Icons.document_scanner_rounded, size: 80, color: Colors.tealAccent),
+                    decoration: BoxDecoration(
+                      color: isConfigured
+                          ? Colors.tealAccent.withValues(alpha: 0.1)
+                          : Colors.orangeAccent.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isConfigured ? Icons.document_scanner_rounded : Icons.scanner_outlined,
+                      size: 80,
+                      color: isConfigured ? Colors.tealAccent : Colors.orangeAccent,
+                    ),
                   ),
                   const SizedBox(height: 32),
-                  Text('Ready to Scan', style: GoogleFonts.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  Text(
+                    isConfigured ? 'Ready to Scan' : 'Scanner Disabled',
+                    style: GoogleFonts.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  if (!isConfigured)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.orangeAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: Text(
+                        'Document scanning is not configured',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -104,17 +175,21 @@ class _InvoiceScannerScreenState extends State<InvoiceScannerScreen> {
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: _processImage,
+            onPressed: isConfigured ? _processImage : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.tealAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: isConfigured ? Colors.tealAccent : Colors.white24,
+              foregroundColor: isConfigured ? Colors.black : Colors.white38,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             icon: const Icon(Icons.camera_alt_rounded),
-            label: Text('Scan Invoice', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+            label: Text(
+              isConfigured ? 'Scan Invoice' : 'Document scanning is not configured',
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ),
     );
   }
 }
+

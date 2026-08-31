@@ -122,6 +122,8 @@ class BranchService {
     String? phone,
     String? managerName,
     String? county,
+    double? latitude,
+    double? longitude,
     bool isActive = true,
     bool isPosDefault = false,
   }) async {
@@ -134,7 +136,7 @@ class BranchService {
     // Check duplicate code
     final existing = await _db.from('branches').select('id').eq('code', cleanCode).maybeSingle();
     if (existing != null) {
-      throw Exception('Branch code   already exists. Please choose a unique code.');
+      throw Exception('Branch code $cleanCode already exists. Please choose a unique code.');
     }
 
     final payload = {
@@ -144,6 +146,8 @@ class BranchService {
       'phone': phone?.trim().isEmpty == true ? null : phone?.trim(),
       'manager_name': managerName?.trim().isEmpty == true ? null : managerName?.trim(),
       'county': county?.trim().isEmpty == true ? null : county?.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
       'is_active': isActive,
       'is_pos_default': isPosDefault,
       'updated_at': DateTime.now().toIso8601String(),
@@ -165,6 +169,18 @@ class BranchService {
     );
 
     return verified;
+  }
+
+  /// Set branch latitude and longitude coordinates
+  Future<Map<String, dynamic>> setBranchLocation(
+    String id, {
+    required double latitude,
+    required double longitude,
+  }) async {
+    return await updateBranch(id, {
+      'latitude': latitude,
+      'longitude': longitude,
+    });
   }
 
   /// Update branch details

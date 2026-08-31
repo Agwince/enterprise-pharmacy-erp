@@ -26,14 +26,14 @@ class JournalLineDraft {
       };
 }
 
-/// Finance & General Ledger engine (Sage-class).
+/// Finance & General Ledger engine.
 /// Every figure returned here comes from live Supabase tables:
 /// transactions -> journal_entries -> journal_lines -> chart_of_accounts.
 /// Nothing is simulated: if the schema is absent the service reports
 /// [schemaMissing] and the UI shows the migration prompt instead of fake
 /// numbers.
 class AccountingService {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   /// KRA standard VAT rate (Kenya).
   static const double vatRate = 0.16;
@@ -112,6 +112,7 @@ class AccountingService {
     {'code': '2210', 'name': 'NSSF Payable', 'type': 'liability', 'category': 'Current Liabilities'},
     {'code': '2220', 'name': 'SHIF / SHA Contributions Payable', 'type': 'liability', 'category': 'Current Liabilities'},
     {'code': '2230', 'name': 'Affordable Housing Levy Payable', 'type': 'liability', 'category': 'Current Liabilities'},
+    {'code': '2240', 'name': 'NITA Payable', 'type': 'liability', 'category': 'Current Liabilities'},
     {'code': '2300', 'name': 'Accrued Salaries & Wages', 'type': 'liability', 'category': 'Current Liabilities'},
     {'code': '2400', 'name': 'Loans & Borrowings', 'type': 'liability', 'category': 'Non-Current Liabilities'},
     {'code': '2500', 'name': 'Dividends Payable', 'type': 'liability', 'category': 'Current Liabilities'},
@@ -577,7 +578,7 @@ class AccountingService {
   }
 
   // --------------------------------------------------------------------------
-  // Sage / Excel export helpers
+  // General Ledger CSV Export Helpers
   // --------------------------------------------------------------------------
   String _csv(List<String> headers, List<List<dynamic>> rows) {
     final buf = StringBuffer();
@@ -590,8 +591,8 @@ class AccountingService {
 
   String _esc(String v) => '"${v.replaceAll('"', '""')}"';
 
-  /// Sage-compatible journal import file (Date, Reference, Memo, Account, Debit, Credit).
-  Future<String> sageJournalCsv() async {
+  /// General ledger journal export file (Date, Reference, Memo, Account, Debit, Credit).
+  Future<String> journalExportCsv() async {
     final journals = await fetchJournals(limit: 500);
     final rows = <List<dynamic>>[];
     for (final j in journals) {

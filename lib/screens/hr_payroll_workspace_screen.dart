@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../config/app_admin.dart';
 import '../services/accounting_service.dart';
 import '../services/payroll_service.dart';
 import '../services/hr_leave_service.dart';
 import '../widgets/leave_application_form.dart';
 
-/// HR & Payroll Workspace — Sage People-class people management with full
-/// Kenyan statutory payroll (KRA PAYE, NSSF Tier I/II, SHIF/SHA, Housing Levy).
+/// HR & Payroll Workspace — Employee management with full
+/// Kenyan statutory payroll (KRA PAYE, NSSF Phase IV Tier I/II, SHIF/SHA, Housing Levy).
 /// Every employee, shift and payslip is a live Supabase record.
 class HrPayrollWorkspaceScreen extends StatefulWidget {
   const HrPayrollWorkspaceScreen({super.key});
@@ -130,7 +131,7 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'Sage People-class • ${_staff.length} employees on file • $active active',
+                    'HR & Payroll • ${_staff.length} employees on file • $active active',
                     style: GoogleFonts.inter(color: Colors.white54, fontSize: 10),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -364,32 +365,41 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
               ),
             ),
             if (!wide) const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              children: [
-                _chip(active ? 'Active' : s['status'].toString(),
-                    active ? Colors.greenAccent : Colors.orangeAccent),
-                IconButton(
-                  icon: const Icon(Icons.edit_rounded,
-                      color: Colors.amberAccent, size: 18),
-                  onPressed: () => _openStaffDialog(s),
-                  tooltip: 'Edit',
-                ),
-                IconButton(
-                  icon: Icon(
-                      active ? Icons.pause_circle_rounded : Icons.play_circle_rounded,
-                      color: Colors.white54,
-                      size: 18),
-                  onPressed: () async {
-                    await _pay.updateStaffStatus(
-                        s['id'].toString(), active ? 'Suspended' : 'Active');
-                    _snack('${s['first_name']} status updated');
-                    await _load();
-                  },
-                  tooltip: active ? 'Suspend' : 'Reactivate',
-                ),
-              ],
-            ),
+            () {
+              final bool isProtected = AppAdmin.isImmutableAdmin(s['email']?.toString(), s['job_title']?.toString()) ||
+                  AppAdmin.isImmutableAdmin(s['email']?.toString(), s['department']?.toString());
+
+              if (isProtected) {
+                return _chip('Immutable Root/Exec', Colors.amberAccent);
+              }
+
+              return Wrap(
+                spacing: 6,
+                children: [
+                  _chip(active ? 'Active' : s['status'].toString(),
+                      active ? Colors.greenAccent : Colors.orangeAccent),
+                  IconButton(
+                    icon: const Icon(Icons.edit_rounded,
+                        color: Colors.amberAccent, size: 18),
+                    onPressed: () => _openStaffDialog(s),
+                    tooltip: 'Edit',
+                  ),
+                  IconButton(
+                    icon: Icon(
+                        active ? Icons.pause_circle_rounded : Icons.play_circle_rounded,
+                        color: Colors.white54,
+                        size: 18),
+                    onPressed: () async {
+                      await _pay.updateStaffStatus(
+                          s['id'].toString(), active ? 'Suspended' : 'Active');
+                      _snack('${s['first_name']} status updated');
+                      await _load();
+                    },
+                    tooltip: active ? 'Suspend' : 'Reactivate',
+                  ),
+                ],
+              );
+            }(),
           ],
         );
       }),

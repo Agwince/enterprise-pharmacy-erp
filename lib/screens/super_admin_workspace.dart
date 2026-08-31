@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_admin.dart';
 import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
+import 'branch_management_screen.dart';
 import 'register_product_screen.dart';
 import 'catalog_list_screen.dart';
 
@@ -616,6 +618,28 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const BranchManagementScreen(isSuperAdmin: true),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.amberAccent,
+                            side: const BorderSide(color: Colors.amberAccent),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.apartment_rounded, size: 18),
+                          label: Text(
+                            'Manage Branches & Hubs',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         ElevatedButton.icon(
                           onPressed: _showProvisionTenantDialog,
                           style: ElevatedButton.styleFrom(
@@ -645,6 +669,31 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                           style: GoogleFonts.inter(fontSize: 13, color: Colors.white70),
                         ),
                         const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const BranchManagementScreen(isSuperAdmin: true),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.amberAccent,
+                              side: const BorderSide(color: Colors.amberAccent),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.apartment_rounded, size: 18),
+                            label: Text(
+                              'Manage Branches & Hubs',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -856,26 +905,47 @@ class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
                                 ),
                               ),
                             )),
-                            DataCell(Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.manage_accounts, color: Colors.amberAccent, size: 20),
-                                  onPressed: () => _showManageTenantDialog(t),
-                                  tooltip: 'Manage Tenant',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
-                                  onPressed: () => _showEditTenantDialog(t, index),
-                                  tooltip: 'Edit Price & Tier',
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
-                                  onPressed: () => _showDeleteConfirmation(t, index),
-                                  tooltip: 'Delete Account',
-                                ),
-                              ],
-                            )),
+                            DataCell(() {
+                              final bool isProtected = AppAdmin.isImmutableAdmin(t['email']?.toString(), t['role']?.toString()) ||
+                                  (t['name']?.toString().toUpperCase().contains('ROOT') ?? false) ||
+                                  (t['name']?.toString().toUpperCase().contains('MEGA') ?? false);
+
+                              if (isProtected) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.lock_rounded, size: 14, color: Colors.amberAccent),
+                                      const SizedBox(width: 4),
+                                      Text('Protected Root', style: GoogleFonts.inter(color: Colors.amberAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.manage_accounts, color: Colors.amberAccent, size: 20),
+                                    onPressed: () => _showManageTenantDialog(t),
+                                    tooltip: 'Manage Tenant',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 20),
+                                    onPressed: () => _showEditTenantDialog(t, index),
+                                    tooltip: 'Edit Price & Tier',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 20),
+                                    onPressed: () => _showDeleteConfirmation(t, index),
+                                    tooltip: 'Delete Account',
+                                  ),
+                                ],
+                              );
+                            }()),
                           ],
                         );
                       }).toList(),

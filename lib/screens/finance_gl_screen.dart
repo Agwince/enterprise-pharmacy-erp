@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/accounting_service.dart';
 import 'etims_workspace_screen.dart';
 
-/// Finance Hub — Sage-class General Ledger.
+/// Finance Hub — General Ledger.
 /// All balances are computed from real posted journals in Supabase.
 class FinanceGlScreen extends StatefulWidget {
   const FinanceGlScreen({super.key});
@@ -124,15 +124,14 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(color: Colors.white)),
-      backgroundColor: error ? Colors.redAccent : Colors.teal,
+      backgroundColor: error ? Colors.redAccent : Colors.tealAccent.shade700,
       behavior: SnackBarBehavior.floating,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 900;
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       backgroundColor: const Color(0xFF050B18),
@@ -147,7 +146,7 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
                 color: Colors.amberAccent.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.account_balance_rounded,
+              child: const Icon(Icons.account_balance_wallet_rounded,
                   color: Colors.amberAccent, size: 18),
             ),
             const SizedBox(width: 10),
@@ -165,7 +164,7 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    'Sage-class double entry • Live Supabase ledgers',
+                    'Double-entry General Ledger • Live Supabase ledgers',
                     style: GoogleFonts.inter(color: Colors.white54, fontSize: 10),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -202,7 +201,7 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
             Tab(text: 'Trial Balance'),
             Tab(text: 'Profit & Loss'),
             Tab(text: 'Balance Sheet'),
-            Tab(text: 'Sage Sync'),
+            Tab(text: 'GL Export'),
           ],
         ),
       ),
@@ -220,7 +219,7 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
                     _buildTrialBalance(isDesktop),
                     _buildProfitLoss(isDesktop),
                     _buildBalanceSheet(isDesktop),
-                    _buildSageSync(isDesktop),
+                    _buildExport(isDesktop),
                   ],
                 ),
     );
@@ -1156,14 +1155,14 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
   }
 
   // ==========================================================================
-  // SAGE SYNC
+  // GENERAL LEDGER EXPORT
   // ==========================================================================
-  Widget _buildSageSync(bool isDesktop) {
+  Widget _buildExport(bool isDesktop) {
     return ListView(
       padding: EdgeInsets.all(isDesktop ? 24 : 14),
       children: [
         _panel(
-          title: 'Sage Integration Bridge',
+          title: 'General Ledger Export Bridge',
           icon: Icons.sync_alt_rounded,
           accent: Colors.greenAccent,
           child: Column(
@@ -1171,9 +1170,8 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
             children: [
               Text(
                 'Mediocare posts every sale, purchase, payroll and insurance movement into its own '
-                'double-entry ledger. The bridge below emits Sage-ready import files (journals, '
-                'nominal ledger, trial balance) so your accountant can load them straight into '
-                'Sage Accounting / Sage Intacct without re-keying.',
+                'double-entry ledger. The export tools below generate standard financial reports and CSV files '
+                '(journals, nominal ledger, trial balance) for audit, management accounting, and reporting.',
                 style: GoogleFonts.inter(
                     color: Colors.white70, fontSize: 12, height: 1.5),
               ),
@@ -1184,11 +1182,11 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
                 children: [
                   ElevatedButton.icon(
                     onPressed: () async {
-                      final csv = await _acct.sageJournalCsv();
-                      _showCsv('Sage Journal Import (CSV)', csv);
+                      final csv = await _acct.journalExportCsv();
+                      _showCsv('General Ledger Journal Export (CSV)', csv);
                     },
                     icon: const Icon(Icons.description_rounded, size: 18),
-                    label: const Text('Generate Sage Journal File'),
+                    label: const Text('Generate Journal Export File'),
                     style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.greenAccent,
                         foregroundColor: Colors.black),
@@ -1196,7 +1194,7 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
                   OutlinedButton.icon(
                     onPressed: () async {
                       final csv = await _acct.chartOfAccountsCsv();
-                      _showCsv('Sage Nominal Ledger (CSV)', csv);
+                      _showCsv('Nominal Ledger Chart of Accounts (CSV)', csv);
                     },
                     icon: const Icon(Icons.account_tree_rounded, size: 18),
                     label: const Text('Export Nominal Ledger'),
@@ -1269,8 +1267,8 @@ class _FinanceGlScreenState extends State<FinanceGlScreen>
               _statusRow('Posted journals', '${_journals.length}', Colors.cyanAccent),
               _statusRow('Awaiting posting', '${_unposted.length} sales',
                   _unposted.isEmpty ? Colors.greenAccent : Colors.orangeAccent),
-              _statusRow('Sage live API', 'File export mode (no credentials stored)',
-                  Colors.white54),
+              _statusRow('GL Engine', 'Active (Double-entry balanced)',
+                  Colors.greenAccent),
             ],
           ),
         ),

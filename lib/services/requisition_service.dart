@@ -4,8 +4,12 @@ import '../models/internal_requisition.dart';
 import 'accounting_service.dart';
 
 class RequisitionService {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
   final AccountingService _accounting = AccountingService();
+
+  /// Kisumu Bulk Hub branch ID (KSM-02)
+  static const String kisumuBulkHubId = '1a94f380-a3a8-48de-86dc-88b1372a1ec1';
+  static const String kisumuBulkHubName = 'Kisumu Bulk Warehouse Hub';
 
   Future<List<InternalRequisition>> fetchRequisitions({
     String? status,
@@ -20,10 +24,14 @@ class RequisitionService {
       ''');
 
       if (status != null && status.isNotEmpty) {
-        query = query.eq('status', status);
+        if (status.toUpperCase() == 'PENDING') {
+          query = query.inFilter('status', ['Pending', 'SUBMITTED', 'PENDING']);
+        } else {
+          query = query.eq('status', status);
+        }
       }
       if (branchId != null && branchId.isNotEmpty) {
-        query = query.or('source_branch_id.eq.$branchId,destination_branch_id.eq.$branchId');
+        query = query.or('source_branch_id.eq.$branchId,destination_branch_id.eq.$branchId,requesting_branch_id.eq.$branchId,supplying_branch_id.eq.$branchId');
       }
 
       final res = await query.order('created_at', ascending: false).limit(limit);
@@ -52,23 +60,24 @@ class RequisitionService {
     }
   }
 
-  /// Step 1: Create Requisition (Draft or Submitted)
+  /// Step 1: Create Requisition (Routing automatically to Kisumu Bulk Hub)
   Future<InternalRequisition> createRequisition({
-    required String? sourceBranchId,
-    required String? destinationBranchId,
+    required String? requestingBranchId,
     required String requestedBy,
     required String notes,
     required List<Map<String, dynamic>> items, // {drug_id, drug_name, quantity_requested, unit_cost, bin_location}
     bool autoSubmit = true,
   }) async {
-    final status = autoSubmit ? 'SUBMITTED' : 'DRAFT';
+    final status = autoSubmit ? 'Pending' : 'DRAFT';
     final timestamp = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
     final reqNo = 'REQ-2026-NBO-$timestamp';
 
     final reqPayload = {
       'requisition_no': reqNo,
-      'source_branch_id': sourceBranchId,
-      'destination_branch_id': destinationBranchId,
+      'source_branch_id': kisumuBulkHubId, // Always Kisumu bulk hub
+      'supplying_branch_id': kisumuBulkHubId, // Always Kisumu bulk hub
+      'destination_branch_id': requestingBranchId,
+      'requesting_branch_id': requestingBranchId,
       'requested_by': requestedBy,
       'status': status,
       'notes': notes,
@@ -86,11 +95,12 @@ class RequisitionService {
             'requisition_id': reqId,
             'drug_id': it['drug_id'],
             'drug_name': it['drug_name'],
-            'quantity_requested': it['quantity_requested'] ?? 1,
+            'quantity_requested': it['quantity_requested'] ?? it['requested_qty'] ?? 1,
+            'requested_qty': it['quantity_requested'] ?? it['requested_qty'] ?? 1,
             'quantity_picked': 0,
             'quantity_received': 0,
             'unit_cost': (it['unit_cost'] as num?)?.toDouble() ?? 0.0,
-            'bin_location': it['bin_location'] ?? 'Unassigned',
+            'bin_location': it['bin_location'] ?? 'Bulk Aisle',
           }).toList();
 
       await _db.from('requisition_items').insert(itemPayloads);
@@ -101,7 +111,7 @@ class RequisitionService {
       requisitionId: reqId,
       fromStatus: null,
       toStatus: status,
-      action: autoSubmit ? 'Created & Submitted' : 'Draft Saved',
+      action: autoSubmit ? 'Raised & Routed to Kisumu Bulk Hub' : 'Draft Saved',
       actor: requestedBy,
       notes: notes,
     );
@@ -112,21 +122,46 @@ class RequisitionService {
   /// Step 2: Submit a draft requisition
   Future<void> submitRequisition(String reqId, String actor) async {
     await _db.from('internal_requisitions').update({
-      'status': 'SUBMITTED',
+      'status': 'Pending',
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', reqId);
 
     await _logTransition(
       requisitionId: reqId,
       fromStatus: 'DRAFT',
-      toStatus: 'SUBMITTED',
-      action: 'Submitted to Hub',
+      toStatus: 'Pending',
+      action: 'Submitted to Kisumu Bulk Hub',
       actor: actor,
     );
   }
 
-  /// Step 3: Approve at Kisumu Bulk Hub
+  /// Step 3: Approve at Kisumu Bulk Hub (Verifying Real Available Stock)
   Future<void> approveRequisition(String reqId, String actor, {String? notes}) async {
+    final req = await fetchRequisitionById(reqId);
+    if (req == null) throw Exception('Requisition $reqId not found');
+
+    // Real Stock Check at Kisumu Hub: refuse to approve if stock is insufficient
+    for (final item in req.items) {
+      final drugRes = await _db
+          .from('drugs')
+          .select('id, name, quantity_in_stock, warehouse_quantity')
+          .eq('id', item.drugId)
+          .maybeSingle();
+
+      if (drugRes == null) {
+        throw Exception('Drug "${item.drugName}" does not exist in inventory');
+      }
+
+      final available = (drugRes['warehouse_quantity'] as num?)?.toInt() ??
+          (drugRes['quantity_in_stock'] as num?)?.toInt() ??
+          0;
+
+      if (available < item.quantityRequested) {
+        throw Exception(
+            'Cannot approve requisition: Insufficient stock at Kisumu Hub for "${item.drugName}". Available: $available, Requested: ${item.quantityRequested}');
+      }
+    }
+
     await _db.from('internal_requisitions').update({
       'status': 'APPROVED',
       'approved_by': actor,
@@ -134,17 +169,70 @@ class RequisitionService {
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', reqId);
 
+    // Update approved_qty on items
+    for (final item in req.items) {
+      await _db.from('requisition_items').update({
+        'approved_qty': item.quantityRequested,
+      }).eq('id', item.id);
+    }
+
     await _logTransition(
       requisitionId: reqId,
-      fromStatus: 'SUBMITTED',
+      fromStatus: req.status,
       toStatus: 'APPROVED',
-      action: 'Approved at Hub',
+      action: 'Approved at Kisumu Hub after Stock Verification',
       actor: actor,
       notes: notes,
     );
   }
 
-  /// Step 4: Start Picking
+  /// Step 3b: Reject at Kisumu Bulk Hub (Requires Stated Reason)
+  Future<void> rejectRequisition({
+    required String reqId,
+    required String actor,
+    required String reason,
+  }) async {
+    if (reason.trim().isEmpty) {
+      throw Exception('Rejection requires a stated reason');
+    }
+
+    final req = await fetchRequisitionById(reqId);
+    if (req == null) throw Exception('Requisition $reqId not found');
+
+    await _db.from('internal_requisitions').update({
+      'status': 'REJECTED',
+      'rejection_reason': reason.trim(),
+      'updated_at': DateTime.now().toIso8601String(),
+    }).eq('id', reqId);
+
+    await _logTransition(
+      requisitionId: reqId,
+      fromStatus: req.status,
+      toStatus: 'REJECTED',
+      action: 'Requisition Rejected by Hub',
+      actor: actor,
+      notes: reason.trim(),
+    );
+  }
+
+  /// Step 4: Fetch Real FEFO Batches for Pick List
+  Future<List<Map<String, dynamic>>> fetchFefoBatches(String drugId) async {
+    try {
+      final res = await _db
+          .from('inventory_batches')
+          .select()
+          .eq('drug_id', drugId)
+          .gt('quantity', 0)
+          .order('expiry_date', ascending: true);
+
+      return (res as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      debugPrint('FEFO Batches query note: $e');
+      return [];
+    }
+  }
+
+  /// Step 5: Start Picking
   Future<void> startPicking(String reqId, String actor) async {
     await _db.from('internal_requisitions').update({
       'status': 'PICKING',

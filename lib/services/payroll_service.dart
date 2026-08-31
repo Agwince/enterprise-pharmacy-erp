@@ -1,38 +1,45 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_admin.dart';
 import 'hr_leave_service.dart';
 
 /// Kenya statutory parameters (2026). All editable from the payroll UI so the
 /// numbers are never silently wrong — they are statutory constants, not data.
 class KenyaStatutoryParams {
   final double personalReliefMonthly; // KES 2,400 (KRA)
-  final double nssfRate; // 6% employee & 6% employer (NSSF Act 2013)
-  final double nssfTier1Limit; // lower earnings limit
-  final double nssfTier2Upper; // upper earnings limit
+  final double nssfRate; // 6% employee & 6% employer (NSSF Act 2013 / Phase IV)
+  final double nssfTier1Limit; // KES 9,000 lower earnings limit (Phase IV)
+  final double nssfTier2Upper; // KES 108,000 upper earnings limit (Phase IV)
   final double shifRate; // 2.75% of gross (Social Health Insurance Fund)
   final double shifMinimum; // KES 300 floor
   final double ahlRate; // 1.5% employee + 1.5% employer (Affordable Housing Levy)
   final double pensionMonthlyCap; // KES 30,000 tax-deductible ceiling
   final double pensionPercentCap; // 30% of gross
+  final double insuranceReliefRate; // 15% of qualifying premium
+  final double insuranceReliefMonthlyCap; // KES 5,000 / month max relief
   final double employerNita; // KES 50 / employee / month (employer only)
   final double employerWibaRate; // % of gross (employer only, risk rated)
   final double monthlyHours; // divisor for hourly rate / overtime
   final double overtimeMultiplier;
+  final double unpaidLeaveDaysDivisor; // configurable day basis (default 30 days)
 
   const KenyaStatutoryParams({
     this.personalReliefMonthly = 2400.0,
     this.nssfRate = 0.06,
-    this.nssfTier1Limit = 8000.0,
-    this.nssfTier2Upper = 72000.0,
+    this.nssfTier1Limit = 9000.0,
+    this.nssfTier2Upper = 108000.0,
     this.shifRate = 0.0275,
     this.shifMinimum = 300.0,
     this.ahlRate = 0.015,
     this.pensionMonthlyCap = 30000.0,
     this.pensionPercentCap = 0.30,
+    this.insuranceReliefRate = 0.15,
+    this.insuranceReliefMonthlyCap = 5000.0,
     this.employerNita = 50.0,
     this.employerWibaRate = 0.005,
     this.monthlyHours = 208.0,
     this.overtimeMultiplier = 1.5,
+    this.unpaidLeaveDaysDivisor = 30.0,
   });
 
   KenyaStatutoryParams copyWith({
@@ -45,10 +52,13 @@ class KenyaStatutoryParams {
     double? ahlRate,
     double? pensionMonthlyCap,
     double? pensionPercentCap,
+    double? insuranceReliefRate,
+    double? insuranceReliefMonthlyCap,
     double? employerNita,
     double? employerWibaRate,
     double? monthlyHours,
     double? overtimeMultiplier,
+    double? unpaidLeaveDaysDivisor,
   }) =>
       KenyaStatutoryParams(
         personalReliefMonthly: personalReliefMonthly ?? this.personalReliefMonthly,
@@ -60,10 +70,13 @@ class KenyaStatutoryParams {
         ahlRate: ahlRate ?? this.ahlRate,
         pensionMonthlyCap: pensionMonthlyCap ?? this.pensionMonthlyCap,
         pensionPercentCap: pensionPercentCap ?? this.pensionPercentCap,
+        insuranceReliefRate: insuranceReliefRate ?? this.insuranceReliefRate,
+        insuranceReliefMonthlyCap: insuranceReliefMonthlyCap ?? this.insuranceReliefMonthlyCap,
         employerNita: employerNita ?? this.employerNita,
         employerWibaRate: employerWibaRate ?? this.employerWibaRate,
         monthlyHours: monthlyHours ?? this.monthlyHours,
         overtimeMultiplier: overtimeMultiplier ?? this.overtimeMultiplier,
+        unpaidLeaveDaysDivisor: unpaidLeaveDaysDivisor ?? this.unpaidLeaveDaysDivisor,
       );
 }
 
@@ -79,10 +92,12 @@ class PayslipResult {
   final double shif;
   final double ahlEmployee;
   final double ahlEmployer;
+  final double nitaEmployer;
   final double pension;
   final double taxableIncome;
   final double payeBeforeRelief;
   final double personalRelief;
+  final double insuranceRelief;
   final double paye;
   final double otherDeductions;
   final double totalDeductions;
@@ -100,10 +115,12 @@ class PayslipResult {
     required this.shif,
     required this.ahlEmployee,
     required this.ahlEmployer,
+    this.nitaEmployer = 50.0,
     required this.pension,
     required this.taxableIncome,
     required this.payeBeforeRelief,
     required this.personalRelief,
+    this.insuranceRelief = 0.0,
     required this.paye,
     required this.otherDeductions,
     required this.totalDeductions,
@@ -122,10 +139,12 @@ class PayslipResult {
         'shif': shif,
         'ahl_employee': ahlEmployee,
         'ahl_employer': ahlEmployer,
+        'nita_employer': nitaEmployer,
         'pension': pension,
         'taxable_income': taxableIncome,
         'paye_before_relief': payeBeforeRelief,
         'personal_relief': personalRelief,
+        'insurance_relief': insuranceRelief,
         'paye': paye,
         'other_deductions': otherDeductions,
         'total_deductions': totalDeductions,
@@ -134,10 +153,10 @@ class PayslipResult {
       };
 }
 
-/// HR & payroll engine (Sage People-class) — all reads/writes hit Supabase:
+/// HR & payroll engine — all reads/writes hit Supabase:
 /// staff, attendance_shifts, payroll_runs, payslips.
 class PayrollService {
-  final SupabaseClient _db = Supabase.instance.client;
+  SupabaseClient get _db => Supabase.instance.client;
 
   bool _schemaMissing = false;
   bool get schemaMissing => _schemaMissing;
@@ -223,8 +242,9 @@ class PayrollService {
     final hourlyRate = params.monthlyHours > 0 ? basic / params.monthlyHours : 0.0;
     final overtimePay = overtimeHours * hourlyRate * params.overtimeMultiplier;
 
-    // Unpaid leave deduction (daily rate = basic / 30)
-    final unpaidLeaveDeduction = unpaidLeaveDays > 0 ? (basic / 30.0) * unpaidLeaveDays : 0.0;
+    // Unpaid leave deduction (configurable daily rate divisor)
+    final divisor = params.unpaidLeaveDaysDivisor > 0 ? params.unpaidLeaveDaysDivisor : 30.0;
+    final unpaidLeaveDeduction = unpaidLeaveDays > 0 ? ((basic / divisor) * unpaidLeaveDays * 100).round() / 100.0 : 0.0;
 
     // Earned gross before deduction
     final earnedGross = basic + allowances + overtimePay;
@@ -243,14 +263,23 @@ class PayrollService {
       params.pensionMonthlyCap,
     ].reduce((a, b) => a < b ? a : b);
 
-    final taxable = adjustedGross - nssfEmp - allowablePension;
-    final payeBeforeRelief = payeOnTaxable(taxable > 0 ? taxable : 0.0);
+    // Pre-Tax Taxable Income (Tax Laws Amendment Act 2024 s.15(2))
+    final taxable = (adjustedGross - nssfEmp - shif - ahlEmp - allowablePension).clamp(0.0, 99999999.0);
+    final payeBeforeRelief = payeOnTaxable(taxable);
     final relief = (staff['is_paye_applicable'] == false) ? 0.0 : params.personalReliefMonthly;
-    final paye = (payeBeforeRelief - relief) > 0 ? (payeBeforeRelief - relief) : 0.0;
 
-    final totalDeductions = nssfEmp + shif + ahlEmp + declaredPension + paye + unpaidLeaveDeduction + otherDeductions;
-    final net = (earnedGross - totalDeductions).clamp(0.0, 99999999.0);
-    final employerCost = adjustedGross + nssfEr + ahlEr + params.employerNita + (adjustedGross * params.employerWibaRate);
+    final declaredInsurance = n('insurance_premium');
+    final insuranceRelief = [
+      declaredInsurance * params.insuranceReliefRate,
+      params.insuranceReliefMonthlyCap,
+    ].reduce((a, b) => a < b ? a : b);
+
+    final payeRaw = payeBeforeRelief - relief - insuranceRelief;
+    final paye = payeRaw > 0 ? ((payeRaw * 100).round() / 100.0) : 0.0;
+
+    final totalDeductions = ((nssfEmp + shif + ahlEmp + declaredPension + paye + unpaidLeaveDeduction + otherDeductions) * 100).round() / 100.0;
+    final net = ((earnedGross - totalDeductions) * 100).round() / 100.0;
+    final employerCost = ((adjustedGross + nssfEr + ahlEr + params.employerNita + (adjustedGross * params.employerWibaRate)) * 100).round() / 100.0;
 
     return PayslipResult(
       grossPay: earnedGross,
@@ -263,10 +292,12 @@ class PayrollService {
       shif: shif,
       ahlEmployee: ahlEmp,
       ahlEmployer: ahlEr,
+      nitaEmployer: params.employerNita,
       pension: declaredPension,
       taxableIncome: taxable > 0 ? taxable : 0.0,
       payeBeforeRelief: payeBeforeRelief,
       personalRelief: relief,
+      insuranceRelief: insuranceRelief,
       paye: paye,
       otherDeductions: otherDeductions,
       totalDeductions: totalDeductions,
@@ -302,6 +333,23 @@ class PayrollService {
 
   Future<void> saveStaff(Map<String, dynamic> payload, {String? id}) async {
     try {
+      final email = payload['email']?.toString();
+      final jobTitle = payload['job_title']?.toString();
+      final department = payload['department']?.toString();
+
+      if (id != null) {
+        final existing = await _db.from('staff').select('email, job_title').eq('id', id).maybeSingle();
+        if (existing != null) {
+          if (AppAdmin.isImmutableAdmin(existing['email']?.toString(), existing['job_title']?.toString())) {
+            throw Exception('Root Admin & Executive accounts (SUPER_ADMIN, CEO) are immutable and cannot be modified.');
+          }
+        }
+      }
+
+      if (AppAdmin.isImmutableAdmin(email, jobTitle) || AppAdmin.isImmutableAdmin(email, department)) {
+        throw Exception('Cannot escalate staff account to Root Admin or Executive roles.');
+      }
+
       if (id == null) {
         await _db.from('staff').insert(payload);
       } else {
@@ -314,7 +362,36 @@ class PayrollService {
   }
 
   Future<void> updateStaffStatus(String id, String status) async {
+    final existing = await _db.from('staff').select('email, job_title').eq('id', id).maybeSingle();
+    if (existing != null) {
+      if (AppAdmin.isImmutableAdmin(existing['email']?.toString(), existing['job_title']?.toString())) {
+        throw Exception('Root Admin & Executive accounts (SUPER_ADMIN, CEO) cannot be suspended or modified.');
+      }
+    }
     await _db.from('staff').update({'status': status}).eq('id', id);
+  }
+
+  Future<void> deleteStaff(String id) async {
+    final existing = await _db.from('staff').select('email, job_title, user_id').eq('id', id).maybeSingle();
+    if (existing != null) {
+      if (AppAdmin.isImmutableAdmin(existing['email']?.toString(), existing['job_title']?.toString())) {
+        throw Exception('Root Admin & Executive accounts (SUPER_ADMIN, CEO) are permanent and cannot be deleted.');
+      }
+    }
+
+    final payslips = await _db.from('payslips').select('id').eq('staff_id', id).limit(1);
+    if ((payslips as List).isNotEmpty) {
+      await _db.from('staff').update({'status': 'Inactive'}).eq('id', id);
+      if (existing != null && existing['user_id'] != null) {
+        await _db.from('users').update({'status': 'Inactive'}).eq('id', existing['user_id']);
+      }
+      return;
+    }
+
+    await _db.from('staff').delete().eq('id', id);
+    if (existing != null && existing['user_id'] != null) {
+      await _db.from('users').delete().eq('id', existing['user_id']);
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -558,14 +635,17 @@ class PayrollService {
     final shif = n('shif_total');
     final ahlE = n('ahl_employee_total');
     final ahlR = n('ahl_employer_total');
+    final headcount = (run['headcount'] as num?)?.toInt() ?? 1;
+    final nitaR = headcount * 50.0;
 
     return [
       {'account_code': '6000', 'debit': gross, 'credit': 0.0, 'line_memo': 'Gross salaries & wages'},
-      {'account_code': '6010', 'debit': nssfR + ahlR, 'credit': 0.0, 'line_memo': 'Employer statutory contributions'},
+      {'account_code': '6010', 'debit': nssfR + ahlR + nitaR, 'credit': 0.0, 'line_memo': 'Employer statutory contributions (NSSF/AHL/NITA)'},
       {'account_code': '2200', 'debit': 0.0, 'credit': paye, 'line_memo': 'PAYE withheld (KRA)'},
       {'account_code': '2210', 'debit': 0.0, 'credit': nssfE + nssfR, 'line_memo': 'NSSF employee + employer'},
       {'account_code': '2220', 'debit': 0.0, 'credit': shif, 'line_memo': 'SHIF / SHA contributions'},
       {'account_code': '2230', 'debit': 0.0, 'credit': ahlE + ahlR, 'line_memo': 'Affordable Housing Levy'},
+      {'account_code': '2240', 'debit': 0.0, 'credit': nitaR, 'line_memo': 'NITA levy payable'},
       {'account_code': '2300', 'debit': 0.0, 'credit': net, 'line_memo': 'Net pay due to employees'},
     ];
   }

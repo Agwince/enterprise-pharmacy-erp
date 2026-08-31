@@ -4,9 +4,9 @@ import '../services/auth_service.dart';
 import 'branch_dashboard_screen.dart';
 import 'kisumu_in_transit_screen.dart';
 import 'location_manager_screen.dart';
-import 'store_mapping_screen.dart';
 import 'wholesale_catalog_screen.dart';
 import 'ppb_compliance_screen.dart';
+import 'reorder_advisor_screen.dart';
 
 class BranchManagerHome extends StatefulWidget {
   const BranchManagerHome({super.key});
@@ -23,15 +23,15 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
       case 0:
         return const BranchDashboardScreen();
       case 1:
-        return const KisumuInTransitScreen();
+        return const ReorderAdvisorScreen();
       case 2:
-        return const PpbComplianceScreen();
+        return const KisumuInTransitScreen();
       case 3:
-        return const WholesaleCatalogScreen();
+        return const PpbComplianceScreen();
       case 4:
-        return const LocationManagerScreen();
+        return const WholesaleCatalogScreen();
       case 5:
-        return const StoreMappingScreen();
+        return const LocationManagerScreen();
       default:
         return const BranchDashboardScreen();
     }
@@ -113,6 +113,11 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.warning_amber_rounded),
+              activeIcon: Icon(Icons.warning_amber_rounded, color: Colors.tealAccent),
+              label: 'Reorder',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.local_shipping_rounded),
               activeIcon: Icon(Icons.local_shipping_rounded, color: Colors.tealAccent),
               label: 'Kisumu Transit',
@@ -131,11 +136,6 @@ class _BranchManagerHomeState extends State<BranchManagerHome> {
               icon: Icon(Icons.location_city_rounded),
               activeIcon: Icon(Icons.location_city_rounded, color: Colors.tealAccent),
               label: 'Locations',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.qr_code_scanner_rounded),
-              activeIcon: Icon(Icons.qr_code_scanner_rounded, color: Colors.tealAccent),
-              label: 'Map Store',
             ),
           ],
         ),

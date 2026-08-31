@@ -36,7 +36,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
       // 2. Fetch real medicines for new requisition builder
       final drugRes = await db
           .from('drugs')
-          .select('id, name, barcode, sku, category, target_shelf, price, cost_price, quantity_in_stock, warehouse_quantity')
+          .select('id, name, barcode, category, target_shelf, price, quantity_in_stock, warehouse_quantity, shelf_quantity')
           .order('name')
           .limit(100);
 
@@ -226,8 +226,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                               setState(() => _isLoading = true);
                               try {
                                 await _requisitionService.createRequisition(
-                                  sourceBranchId: '9bdf6137-8825-4bc2-8bbd-f128c975c7a5', // Kisumu
-                                  destinationBranchId: '9bdf6137-8825-4bc2-8bbd-f128c975c7a5', // Nairobi Central
+                                  requestingBranchId: '9bdf6137-8825-4bc2-8bbd-f128c975c7a5', // Nairobi Central
                                   requestedBy: 'Branch Manager',
                                   notes: notesCtrl.text.trim().isEmpty ? 'Routine branch replenishment' : notesCtrl.text.trim(),
                                   items: selectedItems,
@@ -279,6 +278,79 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _openRejectDialog(InternalRequisition req) {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Reject Requisition (${req.requisitionNo})', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Rejection requires a stated audit reason:', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                maxLines: 3,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'e.g. Stock reserved for critical emergency batch / Invalid dosage form requested',
+                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+              onPressed: () async {
+                final reason = reasonCtrl.text.trim();
+                if (reason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a rejection reason'), backgroundColor: Colors.red),
+                  );
+                  return;
+                }
+                Navigator.pop(ctx);
+                setState(() => _isLoading = true);
+                try {
+                  await _requisitionService.rejectRequisition(
+                    reqId: req.id,
+                    actor: 'Kisumu Hub Manager',
+                    reason: reason,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Requisition ${req.requisitionNo} rejected.'), backgroundColor: Colors.orange),
+                    );
+                  }
+                  _loadData();
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                    setState(() => _isLoading = false);
+                  }
+                }
+              },
+              child: const Text('Reject Requisition'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _openPickDialog(InternalRequisition req) {
@@ -860,14 +932,33 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
   }
 
   Widget _buildActionButtons(InternalRequisition req) {
-    if (req.status == 'SUBMITTED' || req.status == 'DRAFT') {
-      return ElevatedButton.icon(
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
-        onPressed: () => _approveRequisition(req),
-        icon: const Icon(Icons.check_circle_outline, size: 16),
-        label: const Text('Approve at Kisumu Hub'),
+    final status = req.status.toUpperCase();
+    if (status == 'PENDING' || status == 'SUBMITTED' || status == 'DRAFT') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent, foregroundColor: Colors.white),
+            onPressed: () => _approveRequisition(req),
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: const Text('Approve at Kisumu Hub'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Colors.redAccent)),
+            onPressed: () => _openRejectDialog(req),
+            icon: const Icon(Icons.cancel_outlined, size: 16),
+            label: const Text('Reject Requisition'),
+          ),
+        ],
       );
-    } else if (req.status == 'APPROVED' || req.status == 'PICKING') {
+    } else if (status == 'REJECTED') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+        child: const Text('REJECTED', style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+      );
+    } else if (status == 'APPROVED' || status == 'PICKING') {
       return ElevatedButton.icon(
         style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white),
         onPressed: () => _openPickDialog(req),

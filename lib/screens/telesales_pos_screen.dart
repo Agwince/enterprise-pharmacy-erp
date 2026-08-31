@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/accounting_service.dart';
+import '../services/branch_service.dart';
 import '../services/cache_service.dart';
 import '../services/offline_sync_service.dart';
 import '../models/transaction.dart';
@@ -197,7 +198,20 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
     setState(() => _isLoading = true);
     try {
       final db = Supabase.instance.client;
-      const branchId = '9bdf6137-8825-4bc2-8bbd-f128c975c7a5';
+      final defaultBranch = await BranchService(db: db).getDefaultPosBranch();
+      if (defaultBranch == null) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No active POS branch configured. Please activate a branch in settings.'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+      final String branchId = defaultBranch['id'].toString();
       final isInsurance = insurance != null;
 
       final payloads = _cart.map((item) {

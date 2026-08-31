@@ -258,6 +258,9 @@ create table if not exists public.payslips (
 
 create index if not exists idx_payslips_run on public.payslips(payroll_run_id);
 
+-- Backward compatibility alias for payroll_items
+create or replace view public.payroll_items as select * from public.payslips;
+
 -- =============================================================================
 -- 9. EXTEND TRANSACTIONS (GL traceability + insurance + cost/COGS)
 -- =============================================================================
@@ -298,6 +301,7 @@ insert into public.chart_of_accounts (code, name, type, category, is_control) va
  ('2210','NSSF Payable','liability','Current Liabilities',true),
  ('2220','SHIF / SHA Contributions Payable','liability','Current Liabilities',true),
  ('2230','Affordable Housing Levy Payable','liability','Current Liabilities',true),
+ ('2240','NITA Payable','liability','Current Liabilities',true),
  ('2300','Accrued Salaries & Wages','liability','Current Liabilities',false),
  ('2400','Loans & Borrowings','liability','Non-Current Liabilities',false),
  ('2500','Dividends Payable','liability','Current Liabilities',false),
@@ -551,6 +555,33 @@ create table if not exists public.internal_requisitions (
   updated_at            timestamptz default now()
 );
 
+-- Ensure all columns exist even if internal_requisitions pre-existed
+alter table public.internal_requisitions add column if not exists requisition_no text;
+alter table public.internal_requisitions add column if not exists requesting_branch_id uuid references public.branches(id) on delete set null;
+alter table public.internal_requisitions add column if not exists supplying_branch_id uuid references public.branches(id) on delete set null;
+alter table public.internal_requisitions add column if not exists source_branch_id uuid references public.branches(id) on delete set null;
+alter table public.internal_requisitions add column if not exists destination_branch_id uuid references public.branches(id) on delete set null;
+alter table public.internal_requisitions add column if not exists requested_by text;
+alter table public.internal_requisitions add column if not exists notes text;
+alter table public.internal_requisitions add column if not exists total_items_count int default 0;
+alter table public.internal_requisitions add column if not exists rider_id text;
+alter table public.internal_requisitions add column if not exists rider_name text;
+alter table public.internal_requisitions add column if not exists vehicle_id text;
+alter table public.internal_requisitions add column if not exists vehicle_plate text;
+alter table public.internal_requisitions add column if not exists approved_by text;
+alter table public.internal_requisitions add column if not exists approved_at timestamptz;
+alter table public.internal_requisitions add column if not exists rejection_reason text;
+alter table public.internal_requisitions add column if not exists picked_by text;
+alter table public.internal_requisitions add column if not exists picked_at timestamptz;
+alter table public.internal_requisitions add column if not exists dispatched_by text;
+alter table public.internal_requisitions add column if not exists dispatched_at timestamptz;
+alter table public.internal_requisitions add column if not exists delivered_by text;
+alter table public.internal_requisitions add column if not exists delivered_at timestamptz;
+alter table public.internal_requisitions add column if not exists received_by text;
+alter table public.internal_requisitions add column if not exists received_at timestamptz;
+alter table public.internal_requisitions add column if not exists gl_journal_id uuid references public.journal_entries(id) on delete set null;
+alter table public.internal_requisitions add column if not exists updated_at timestamptz default now();
+
 create table if not exists public.requisition_items (
   id                   uuid primary key default gen_random_uuid(),
   requisition_id       uuid not null references public.internal_requisitions(id) on delete cascade,
@@ -565,6 +596,19 @@ create table if not exists public.requisition_items (
   bin_location         text,
   created_at           timestamptz default now()
 );
+
+-- Ensure all columns exist even if requisition_items pre-existed
+alter table public.requisition_items add column if not exists quantity_requested int default 1;
+alter table public.requisition_items add column if not exists approved_qty int default 0;
+alter table public.requisition_items add column if not exists picked_qty int default 0;
+alter table public.requisition_items add column if not exists quantity_picked int default 0;
+alter table public.requisition_items add column if not exists quantity_received int default 0;
+alter table public.requisition_items add column if not exists unit_cost numeric(14,2) default 0.0;
+alter table public.requisition_items add column if not exists batch_id uuid;
+alter table public.requisition_items add column if not exists batch_no text;
+alter table public.requisition_items add column if not exists expiry_date date;
+alter table public.requisition_items add column if not exists bin_location text;
+alter table public.requisition_items add column if not exists created_at timestamptz default now();
 
 create table if not exists public.requisition_audit_logs (
   id             uuid primary key default gen_random_uuid(),
@@ -593,7 +637,7 @@ insert into public.leave_types (code, name, default_days, is_statutory, pay_perc
   ('ANNUAL', 'Annual Leave', 21, true, 100.00, 'Statutory minimum under Employment Act 2007 (21 working days with full pay)'),
   ('SICK_FULL', 'Sick Leave (Full Pay)', 7, true, 100.00, 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on full pay)'),
   ('SICK_HALF', 'Sick Leave (Half Pay)', 7, true, 50.00, 'Statutory sick leave under Employment Act 2007 Section 30 (7 consecutive days on half pay)'),
-  ('SICK_POLICY', 'Extended Sick Leave (Company Policy)', 16, false, 100.00, 'Configurable Mediocare group benefit policy extending paid sick days beyond statutory minimum'),
+  ('SICK_POLICY', 'Extended Sick Leave (Company Policy)', 16, false, 100.00, 'Configurable group benefit policy extending paid sick days beyond statutory minimum'),
   ('MATERNITY', 'Maternity Leave', 90, true, 100.00, 'Statutory maternity entitlement under Employment Act 2007 (3 calendar months fully paid)'),
   ('PATERNITY', 'Paternity Leave', 14, true, 100.00, 'Statutory paternity entitlement under Employment Act 2007 (2 weeks fully paid)'),
   ('COMPASSIONATE', 'Compassionate Leave', 5, false, 100.00, 'Configurable company policy for bereavement and immediate family emergencies'),
@@ -617,6 +661,17 @@ create table if not exists public.leave_requests (
   reviewed_at    timestamptz,
   created_at     timestamptz default now()
 );
+
+-- Ensure all columns exist even if leave_requests pre-existed
+alter table public.leave_requests add column if not exists staff_id uuid references public.staff(id) on delete set null;
+alter table public.leave_requests add column if not exists staff_name text;
+alter table public.leave_requests add column if not exists staff_no text;
+alter table public.leave_requests add column if not exists department text;
+alter table public.leave_requests add column if not exists leave_type text default 'ANNUAL';
+alter table public.leave_requests add column if not exists total_days int default 1;
+alter table public.leave_requests add column if not exists manager_comment text;
+alter table public.leave_requests add column if not exists reviewed_by text;
+alter table public.leave_requests add column if not exists reviewed_at timestamptz;
 
 create table if not exists public.leave_balances (
   id             uuid primary key default gen_random_uuid(),

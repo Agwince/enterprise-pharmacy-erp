@@ -33,7 +33,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter Web
-        run: flutter build web --release --base-href "/enterprise-pharmacy-erp/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build web --release --base-href "/enterprise-pharmacy-erp/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} --dart-define=OCR_API_KEY=${{ secrets.OCR_API_KEY }}
 
       - name: Create 404 SPA fallback
         run: cp build/web/index.html build/web/404.html

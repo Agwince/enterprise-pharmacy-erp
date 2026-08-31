@@ -36,7 +36,7 @@ jobs:
       # Build & Deploy #1: Netlify (Root base-href "/")
       # ------------------------------------------------------------------------
       - name: Build Web for Netlify
-        run: flutter build web --release --base-href "/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build web --release --base-href "/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} --dart-define=OCR_API_KEY=${{ secrets.OCR_API_KEY }}
 
       - name: Deploy to Netlify
         run: npx netlify-cli deploy --prod --dir=build/web
@@ -49,7 +49,7 @@ jobs:
       # Build & Deploy #2: GitHub Pages (Sub-path base-href "/enterprise-pharmacy-erp/")
       # ------------------------------------------------------------------------
       - name: Build Web for GitHub Pages
-        run: flutter build web --release --base-href "/enterprise-pharmacy-erp/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+        run: flutter build web --release --base-href "/enterprise-pharmacy-erp/" --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }} --dart-define=OCR_API_KEY=${{ secrets.OCR_API_KEY }}
 
       - name: Create 404 SPA fallback
         run: cp build/web/index.html build/web/404.html

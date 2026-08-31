@@ -1,6 +1,6 @@
 -- =============================================================================
 -- MEDIOCARE PHARMACY ERP
--- FINANCE & GENERAL LEDGER (Sage-class)  +  HR & PAYROLL (Sage People-class)
+-- FINANCE & GENERAL LEDGER  +  HR & PAYROLL
 -- Migration: 20260829_mediocare_finance_hr.sql
 --
 -- HOW TO RUN:  Supabase Dashboard -> SQL Editor -> New query -> paste -> RUN
@@ -22,7 +22,7 @@ create table if not exists public.chart_of_accounts (
   normal_balance text default 'debit' check (normal_balance in ('debit','credit')),
   is_control    boolean default false,   -- control accounts (bank, VAT, payroll)
   is_active     boolean default true,
-  sage_ledger   text,                    -- mapping to Sage nominal ledger if used
+  external_ledger text,                  -- mapping to external nominal ledger if used
   created_at    timestamptz default now()
 );
 
@@ -145,7 +145,7 @@ create table if not exists public.inventory_batches (
 create index if not exists idx_inventory_batches_drug on public.inventory_batches(drug_id);
 
 -- =============================================================================
--- 6. STAFF / EMPLOYEE MASTER  (Sage People-class HR)
+-- 6. STAFF / EMPLOYEE MASTER  (HR & Payroll)
 -- =============================================================================
 create table if not exists public.staff (
   id                  uuid primary key default gen_random_uuid(),

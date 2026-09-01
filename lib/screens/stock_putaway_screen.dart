@@ -23,9 +23,6 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
   bool _isUploading = false;
   final _quantityController = TextEditingController();
 
-  // Task 1: Seeded Official Nairobi PDF Catalog Items
-  final List<Drug> _seededNairobiPdfCatalog = [];
-
   @override
   void initState() {
     super.initState();
@@ -37,7 +34,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
 
     try {
       final client = Supabase.instance.client;
-      final response = await client.from('drugs').select();
+      final response = await client.from('drugs').select().order('name');
       final list = response as List<dynamic>;
 
       List<Drug> drugs = [];
@@ -45,18 +42,9 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
         drugs = list.map((json) => Drug.fromJson(json as Map<String, dynamic>)).toList();
       }
 
-      // Merge seeded Nairobi catalog with live database items
-      final Map<String, Drug> mergedMap = {};
-      for (final seedItem in _seededNairobiPdfCatalog) {
-        mergedMap[seedItem.name] = seedItem;
-      }
-      for (final liveItem in drugs) {
-        mergedMap[liveItem.name] = liveItem;
-      }
-
       if (mounted) {
         setState(() {
-          _drugsCatalog = mergedMap.values.toList();
+          _drugsCatalog = drugs;
           _isLoading = false;
         });
       }
@@ -64,7 +52,7 @@ class _StockPutawayScreenState extends State<StockPutawayScreen> {
       debugPrint('Live catalog query note: $e');
       if (mounted) {
         setState(() {
-          _drugsCatalog = _seededNairobiPdfCatalog;
+          _drugsCatalog = [];
           _isLoading = false;
         });
       }

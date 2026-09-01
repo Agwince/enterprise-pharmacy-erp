@@ -47,10 +47,10 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
       final queryText = (search ?? _searchCtrl.text).trim();
       var query = Supabase.instance.client
           .from('drugs')
-          .select('id, name, generic_name, barcode, target_shelf, price, shelf_quantity, warehouse_quantity, category');
+          .select('id, name, generic_name, barcode, target_shelf, price, quantity_in_stock, shelf_quantity, warehouse_quantity, category');
 
       if (queryText.isNotEmpty) {
-        query = query.or('name.ilike.%$queryText%,generic_name.ilike.%$queryText%,barcode.ilike.%$queryText%');
+        query = query.or('name.ilike.%$queryText%,barcode.ilike.%$queryText%,category.ilike.%$queryText%');
       }
 
       final offset = page * _pageSize;
@@ -60,9 +60,9 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
 
       final list = (res as List).map((d) {
         final name = (d['name'] ?? '') as String;
-        final whQty = (d['warehouse_quantity'] as num?)?.toInt() ?? 0;
-        final pallets = (whQty / 10).ceil();
-        final boxes = whQty;
+        final totalQty = (d['quantity_in_stock'] as num?)?.toInt() ?? ((d['warehouse_quantity'] as num?)?.toInt() ?? 0);
+        final pallets = (totalQty / 10).ceil();
+        final boxes = totalQty;
         final category = (d['category'] ?? '').toString();
 
         return {
@@ -74,7 +74,7 @@ class _WholesaleCatalogScreenState extends State<WholesaleCatalogScreen> {
           'binLocation': d['target_shelf'] ?? '',
           'pallets': pallets,
           'boxesAvailable': '$boxes Units',
-          'warehouseQty': whQty,
+          'warehouseQty': totalQty,
           'price': (d['price'] as num?)?.toDouble() ?? 0.0,
         };
       }).toList();

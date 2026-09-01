@@ -44,7 +44,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
     setState(() => _isLoading = true);
     try {
       final db = Supabase.instance.client;
-      final res = await db.from('drugs').select().order('name').limit(150);
+      final res = await db.from('drugs').select().order('name').limit(2500);
       final list = List<Map<String, dynamic>>.from(res as List);
 
       // Load real insurance claims

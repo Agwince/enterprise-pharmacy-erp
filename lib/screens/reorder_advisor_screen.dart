@@ -72,9 +72,8 @@ class _ReorderAdvisorScreenState extends State<ReorderAdvisorScreen> {
 
       for (final drug in drugsList) {
         final reorderLevel = (drug['reorder_level'] as num?)?.toInt() ?? 10;
-        final onHand = (drug['shelf_quantity'] as num?)?.toInt() ??
-            (drug['quantity_in_stock'] as num?)?.toInt() ??
-            0;
+        final onHand = (drug['quantity_in_stock'] as num?)?.toInt() ??
+            (((drug['warehouse_quantity'] as num?)?.toInt() ?? 0) + ((drug['shelf_quantity'] as num?)?.toInt() ?? 0));
 
         // Determine stock classification
         final bool isOutOfStock = onHand <= 0;

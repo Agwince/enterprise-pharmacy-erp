@@ -38,7 +38,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
           .from('drugs')
           .select('id, name, barcode, category, target_shelf, price, quantity_in_stock, warehouse_quantity, shelf_quantity')
           .order('name')
-          .limit(100);
+          .limit(2500);
 
       // 3. Fetch fleet vehicles telemetry
       final fleetRes = await db.from('fleet_vehicles').select();

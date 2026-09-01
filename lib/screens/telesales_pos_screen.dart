@@ -110,13 +110,13 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
       if (mounted) setState(() {});
     }
 
-    // 2. Fetch full live medicines catalog from Supabase
+    // 2. Fetch full live medicines catalog from Supabase (all available products)
     try {
       final res = await Supabase.instance.client
           .from('drugs')
           .select('id, name, generic_name, price, barcode, category, package_unit, quantity_in_stock, image_url, box_image_url, inner_unit_image_url')
           .order('name')
-          .limit(500);
+          .limit(2500);
 
       final freshList = List<Map<String, dynamic>>.from(res as List);
       if (mounted) {

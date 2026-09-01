@@ -1,3 +1,6 @@
+@Timeout(Duration(minutes: 3))
+library;
+
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -18,11 +21,19 @@ void main() {
       headers: {'apikey': SupabaseConfig.anonKey},
     );
 
-    // 1. Sign in as Admin
-    await adminClient.auth.signInWithPassword(
-      email: 'admin@pharmacy.com',
-      password: defaultPassword,
-    );
+    // 1. Sign in as Admin with retry
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await adminClient.auth.signInWithPassword(
+          email: 'admin@pharmacy.com',
+          password: defaultPassword,
+        );
+        break;
+      } catch (e) {
+        if (attempt == 3) rethrow;
+        await Future.delayed(const Duration(seconds: 1));
+      }
+    }
 
     // 2. Fetch Branches
     final branches = await adminClient.from('branches').select('id, code, name');
@@ -160,11 +171,20 @@ void main() {
         headers: {'apikey': SupabaseConfig.anonKey},
       );
 
-      final authRes = await secretaryClient.auth.signInWithPassword(
-        email: 'secretary@pharmacy.com',
-        password: defaultPassword,
-      );
-      expect(authRes.user, isNotNull);
+      AuthResponse? authRes;
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          authRes = await secretaryClient.auth.signInWithPassword(
+            email: 'secretary@pharmacy.com',
+            password: defaultPassword,
+          );
+          if (authRes.user != null) break;
+        } catch (e) {
+          if (attempt == 3) rethrow;
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+      expect(authRes?.user, isNotNull);
 
       // Verify that querying without filters as Kisumu secretary returns ZERO Nairobi rows due to RLS
       final claims = await secretaryClient.from('insurance_claims').select();

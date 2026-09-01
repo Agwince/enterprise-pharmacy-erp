@@ -38,8 +38,6 @@ void main() async {
         'Authorization': 'Bearer ${SupabaseConfig.anonKey}',
       },
     );
-    // Force clear any stale session tokens from localStorage
-    await Supabase.instance.client.auth.signOut();
 
     // Initialize Offline Caching Queue & Catalog Cache (Hive)
     try {

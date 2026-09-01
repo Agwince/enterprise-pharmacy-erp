@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pharmacy_erp/config/supabase_config.dart';
+import 'config/test_supabase_config.dart';
 import 'package:pharmacy_erp/services/auth_service.dart';
 
 void main() {
@@ -11,11 +11,11 @@ void main() {
 
   test('Verify real sign-in and correct role workspace mapping for all 11 roles including RIDER', () async {
     final client = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
+      TestSupabaseConfig.url,
+      TestSupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
       headers: {
-        'apikey': SupabaseConfig.anonKey,
+        'apikey': TestSupabaseConfig.anonKey,
       },
     );
 
@@ -108,11 +108,11 @@ void main() {
 
   test('Wrong password returns real authentication error from Supabase', () async {
     final client = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
+      TestSupabaseConfig.url,
+      TestSupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
       headers: {
-        'apikey': SupabaseConfig.anonKey,
+        'apikey': TestSupabaseConfig.anonKey,
       },
     );
 
@@ -132,11 +132,11 @@ void main() {
 
   test('Account with no roles row returns "No role assigned to this user."', () async {
     final client = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
+      TestSupabaseConfig.url,
+      TestSupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
       headers: {
-        'apikey': SupabaseConfig.anonKey,
+        'apikey': TestSupabaseConfig.anonKey,
       },
     );
 

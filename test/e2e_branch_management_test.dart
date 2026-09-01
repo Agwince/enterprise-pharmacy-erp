@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pharmacy_erp/config/supabase_config.dart';
+import 'config/test_supabase_config.dart';
 import 'package:pharmacy_erp/services/branch_service.dart';
 
 void main() {
@@ -12,11 +12,11 @@ void main() {
 
   setUpAll(() async {
     client = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
+      TestSupabaseConfig.url,
+      TestSupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
       headers: {
-        'apikey': SupabaseConfig.anonKey,
+        'apikey': TestSupabaseConfig.anonKey,
       },
     );
 
@@ -30,7 +30,9 @@ void main() {
   });
 
   tearDownAll(() {
-    client.dispose();
+    try {
+      client.dispose();
+    } catch (_) {}
   });
 
   group('Branch Management & Super Admin Delete Protection Verification', () {
@@ -60,10 +62,10 @@ void main() {
 
     test('STEP 3: Proof Non-Admin/HR is blocked by Database RLS from deleting or modifying branches', () async {
       final nonAdminClient = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.anonKey,
+        TestSupabaseConfig.url,
+        TestSupabaseConfig.anonKey,
         authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-        headers: {'apikey': SupabaseConfig.anonKey},
+        headers: {'apikey': TestSupabaseConfig.anonKey},
       );
 
       // Authenticate as non-admin user

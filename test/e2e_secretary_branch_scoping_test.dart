@@ -4,7 +4,7 @@ library;
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pharmacy_erp/config/supabase_config.dart';
+import 'config/test_supabase_config.dart';
 
 void main() {
   const defaultPassword = 'Pharmacy@2026';
@@ -15,10 +15,10 @@ void main() {
 
   setUpAll(() async {
     adminClient = SupabaseClient(
-      SupabaseConfig.url,
-      SupabaseConfig.anonKey,
+      TestSupabaseConfig.url,
+      TestSupabaseConfig.anonKey,
       authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-      headers: {'apikey': SupabaseConfig.anonKey},
+      headers: {'apikey': TestSupabaseConfig.anonKey},
     );
 
     // 1. Sign in as Admin with retry
@@ -44,11 +44,12 @@ void main() {
   });
 
   tearDownAll(() async {
-    // Re-authenticate as admin to clean up
-    await adminClient.auth.signInWithPassword(
-      email: 'admin@pharmacy.com',
-      password: defaultPassword,
-    );
+    try {
+      // Re-authenticate as admin to clean up
+      await adminClient.auth.signInWithPassword(
+        email: 'admin@pharmacy.com',
+        password: defaultPassword,
+      );
 
     // Delete any test rows
     await adminClient.from('insurance_claims').delete().neq('id', '00000000-0000-0000-0000-000000000000');
@@ -64,6 +65,7 @@ void main() {
     await adminClient.from('staff').update({'branch_id': nairobiBranchId}).eq('email', 'secretary@pharmacy.com');
 
     adminClient.dispose();
+    } catch (_) {}
   });
 
   group('Secretary Branch Scoping & RLS Enforcement', () {
@@ -165,10 +167,10 @@ void main() {
 
     test('4. Log in as Kisumu-assigned secretary and verify RLS prevents reading ANY Nairobi rows', () async {
       secretaryClient = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.anonKey,
+        TestSupabaseConfig.url,
+        TestSupabaseConfig.anonKey,
         authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-        headers: {'apikey': SupabaseConfig.anonKey},
+        headers: {'apikey': TestSupabaseConfig.anonKey},
       );
 
       AuthResponse? authRes;
@@ -216,10 +218,10 @@ void main() {
 
     test('5. Kisumu secretary logs a Kisumu claim and can only see their own branch claim', () async {
       final kisumuSecretary = SupabaseClient(
-        SupabaseConfig.url,
-        SupabaseConfig.anonKey,
+        TestSupabaseConfig.url,
+        TestSupabaseConfig.anonKey,
         authOptions: const AuthClientOptions(authFlowType: AuthFlowType.implicit),
-        headers: {'apikey': SupabaseConfig.anonKey},
+        headers: {'apikey': TestSupabaseConfig.anonKey},
       );
 
       await kisumuSecretary.auth.signInWithPassword(

@@ -9,7 +9,7 @@ class SupabaseService {
   final CacheService _cache = CacheService();
 
   static const String drugSelectColumns =
-      'id, name, generic_name, barcode, category, package_unit, target_shelf, price, cost, reorder_level, max_level, quantity_in_stock, thumb_url';
+      'id, name, generic_name, barcode, category, package_unit, target_shelf, price, cost_price, reorder_level, quantity_in_stock, image_url, box_image_url, inner_unit_image_url';
 
   /// Fetch all active pharmacy branches (15-min Hive cached)
   Future<List<Branch>> fetchBranches({bool forceRefresh = false}) async {

@@ -90,9 +90,9 @@ class _DispatchMapScreenState extends State<DispatchMapScreen> {
             if (lat != null && lng != null) {
               _selectedRiderPos = LatLng(lat, lng);
               _selectedRiderName =
-                  first['rider_name']?.toString() ?? 'Active Courier';
+                  first['rider_name']?.toString() ?? 'Courier';
               _selectedRiderVehicle =
-                  first['vehicle_plate']?.toString() ?? 'KDC 482J';
+                  first['vehicle_plate']?.toString() ?? 'Vehicle';
               _selectedRiderLastSeen = first['updated_at'] != null
                   ? DateTime.tryParse(first['updated_at'].toString())
                   : null;
@@ -127,9 +127,9 @@ class _DispatchMapScreenState extends State<DispatchMapScreen> {
                 if (lat != null && lng != null) {
                   _selectedRiderPos = LatLng(lat, lng);
                   _selectedRiderName =
-                      location['rider_name']?.toString() ?? 'Active Courier';
+                      location['rider_name']?.toString() ?? 'Courier';
                   _selectedRiderVehicle =
-                      location['vehicle_plate']?.toString() ?? 'KDC 482J';
+                      location['vehicle_plate']?.toString() ?? 'Vehicle';
                   _selectedRiderLastSeen = location['updated_at'] != null
                       ? DateTime.tryParse(location['updated_at'].toString())
                       : DateTime.now();

@@ -95,23 +95,28 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
       _catalog = cached.map((d) => {
         'id': d.id,
         'name': d.name,
+        'generic_name': d.genericName,
         'price': d.unitPrice,
         'barcode': d.sku,
         'category': d.category,
-        'thumb_url': d.thumbUrl,
+        'package_unit': d.unit,
+        'quantity_in_stock': d.quantityInStock,
+        'image_url': d.imageUrl,
+        'box_image_url': d.imageUrl,
+        'thumb_url': d.displayThumbUrl,
       }).toList();
       _filteredCatalog = List.from(_catalog);
       _isLoading = false;
       if (mounted) setState(() {});
     }
 
-    // 2. Refresh lightweight fields in background (Never select heavy image_url in list)
+    // 2. Fetch full live medicines catalog from Supabase
     try {
       final res = await Supabase.instance.client
           .from('drugs')
-          .select('id, name, price, barcode, category, thumb_url')
+          .select('id, name, generic_name, price, barcode, category, package_unit, quantity_in_stock, image_url, box_image_url, inner_unit_image_url')
           .order('name')
-          .limit(100);
+          .limit(500);
 
       final freshList = List<Map<String, dynamic>>.from(res as List);
       if (mounted) {
@@ -131,7 +136,7 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
 
   void _filterCatalog(String query) {
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
       if (!mounted) return;
       final q = query.toLowerCase().trim();
       if (q.isEmpty) {
@@ -141,9 +146,10 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
       setState(() {
         _filteredCatalog = _catalog.where((d) {
           final name = (d['name'] ?? '').toString().toLowerCase();
+          final generic = (d['generic_name'] ?? '').toString().toLowerCase();
           final barcode = (d['barcode'] ?? '').toString().toLowerCase();
           final cat = (d['category'] ?? '').toString().toLowerCase();
-          return name.contains(q) || barcode.contains(q) || cat.contains(q);
+          return name.contains(q) || generic.contains(q) || barcode.contains(q) || cat.contains(q);
         }).toList();
       });
     });
@@ -819,59 +825,106 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
             Expanded(
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-                : ListView.builder(
-                    itemCount: _filteredCatalog.length,
-                    itemBuilder: (context, index) {
-                      final drug = _filteredCatalog[index];
-                      final name = (drug['name'] ?? 'Medicine').toString();
-                      final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'Rx';
-                      final thumb = drug['thumb_url']?.toString();
-
-                      return GlassContainer(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(8),
-                        child: ListTile(
-                          leading: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.teal.withValues(alpha: 0.3), Colors.cyan.withValues(alpha: 0.15)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+                : _filteredCatalog.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.medication_outlined, size: 48, color: Colors.white24),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No medicines found in catalog.',
+                              style: GoogleFonts.inter(color: Colors.white60, fontSize: 14),
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: thumb != null && thumb.isNotEmpty
-                                  ? Image.network(
-                                      thumb,
-                                      fit: BoxFit.cover,
-                                      cacheWidth: 100,
-                                      errorBuilder: (context, error, stackTrace) => Center(
-                                        child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                                    ),
-                            ),
-                          ),
-                          title: Text(drug['name']?.toString() ?? 'Medicine', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                          subtitle: Text(
-                            'Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}',
-                            style: const TextStyle(color: Colors.white54),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
-                            onPressed: () => _addToCart(drug),
-                          ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        itemCount: _filteredCatalog.length,
+                        itemBuilder: (context, index) {
+                          final drug = _filteredCatalog[index];
+                          final name = (drug['name'] ?? 'Medicine').toString();
+                          final genericName = (drug['generic_name'] ?? '').toString();
+                          final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'Rx';
+                          final imgUrl = drug['image_url']?.toString() ??
+                              drug['box_image_url']?.toString() ??
+                              drug['inner_unit_image_url']?.toString() ??
+                              drug['thumb_url']?.toString();
+                          final stock = drug['quantity_in_stock'] != null
+                              ? int.tryParse(drug['quantity_in_stock'].toString()) ?? 0
+                              : 0;
+
+                          return GlassContainer(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(8),
+                            child: ListTile(
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.teal.withValues(alpha: 0.3), Colors.cyan.withValues(alpha: 0.15)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: imgUrl != null && imgUrl.isNotEmpty
+                                      ? Image.network(
+                                          imgUrl,
+                                          fit: BoxFit.cover,
+                                          cacheWidth: 120,
+                                          errorBuilder: (context, error, stackTrace) => Center(
+                                            child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                          ),
+                                        )
+                                      : Center(
+                                          child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                        ),
+                                ),
+                              ),
+                              title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (genericName.isNotEmpty)
+                                    Text(
+                                      genericName,
+                                      style: const TextStyle(color: Colors.tealAccent, fontSize: 11),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '• In Stock: $stock',
+                                        style: TextStyle(
+                                          color: stock > 10 ? const Color(0xFF10B981) : Colors.amberAccent,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
+                                onPressed: () => _addToCart(drug),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
             ),
           ],
         ),

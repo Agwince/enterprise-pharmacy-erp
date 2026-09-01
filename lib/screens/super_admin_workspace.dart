@@ -16,16 +16,7 @@ class SuperAdminWorkspaceScreen extends StatefulWidget {
 }
 
 class _SuperAdminWorkspaceScreenState extends State<SuperAdminWorkspaceScreen> {
-  final List<Map<String, dynamic>> _tenants = [
-    {
-      'id': 'TNT-901',
-      'name': 'Nairobi Mega-Wholesale',
-      'tier': 'Enterprise SaaS (Unlimited)',
-      'branches': 14,
-      'mrr': '\$12,500/mo',
-      'status': 'Active',
-    },
-  ];
+  final List<Map<String, dynamic>> _tenants = [];
 
   void _showProvisionTenantDialog() {
     final tenantNameController = TextEditingController();

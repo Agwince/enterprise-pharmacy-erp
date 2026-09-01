@@ -12,7 +12,8 @@ import '../widgets/leave_application_form.dart';
 /// Kenyan statutory payroll (KRA PAYE, NSSF Phase IV Tier I/II, SHIF/SHA, Housing Levy).
 /// Every employee, shift and payslip is a live Supabase record.
 class HrPayrollWorkspaceScreen extends StatefulWidget {
-  const HrPayrollWorkspaceScreen({super.key});
+  final int initialTabIndex;
+  const HrPayrollWorkspaceScreen({super.key, this.initialTabIndex = 0});
 
   @override
   State<HrPayrollWorkspaceScreen> createState() =>
@@ -50,7 +51,11 @@ class _HrPayrollWorkspaceScreenState extends State<HrPayrollWorkspaceScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 7, vsync: this);
+    _tabs = TabController(
+      length: 7,
+      vsync: this,
+      initialIndex: widget.initialTabIndex.clamp(0, 6),
+    );
     _load();
   }
 

@@ -213,11 +213,11 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  TextField(
+                    TextField(
                     onChanged: (v) => setModalState(() => search = v),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'Search 782 products by brand or formula...',
+                      hintText: 'Search medicines by brand or formula...',
                       hintStyle: const TextStyle(color: Colors.white38),
                       prefixIcon: const Icon(Icons.search, color: Colors.tealAccent),
                       filled: true,
@@ -410,88 +410,90 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Live Incoming Kisumu Dispatch Alert Card (Never Overflows)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0D9488), Color(0xFF1E3A8A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            // Live In-Transit Dispatch Alert Card (Only displays if active dispatches exist)
+            if (_myRequisitions.any((r) => r['status']?.toString().toLowerCase() == 'in_transit'))
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 18),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0D9488), Color(0xFF1E3A8A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.tealAccent.withValues(alpha: 0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.4)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.tealAccent.withValues(alpha: 0.15),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(9),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.5)),
+                          ),
+                          child: const Icon(Icons.local_shipping_rounded, color: Colors.tealAccent, size: 22),
                         ),
-                        child: const Icon(Icons.local_shipping_rounded, color: Colors.tealAccent, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Incoming Kisumu Cold-Chain #TRK-9482',
-                              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Toyota HiAce Reefer (KDC 482J) • 3.2°C • ETA 34m',
-                              style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.w600),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Active Incoming Stock Transfer En Route',
+                                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Inter-branch requisition verified and currently in transit.',
+                                style: GoogleFonts.inter(color: Colors.tealAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const KisumuInTransitScreen()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.tealAccent,
-                        foregroundColor: const Color(0xFF0F172A),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        elevation: 3,
-                      ),
-                      icon: const Icon(Icons.radar_rounded, size: 16),
-                      label: Text(
-                        'Track Medicines En Route',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const KisumuInTransitScreen()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.tealAccent,
+                          foregroundColor: const Color(0xFF0F172A),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 3,
+                        ),
+                        icon: const Icon(Icons.radar_rounded, size: 16),
+                        label: Text(
+                          'Track Medicines En Route',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 20),
             LayoutBuilder(
               builder: (context, constraints) {

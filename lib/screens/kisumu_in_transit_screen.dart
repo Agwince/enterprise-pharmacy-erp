@@ -487,8 +487,8 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
   }
 
   void _openDispatchDialog(InternalRequisition req) {
-    String selectedRider = 'David Omondi';
-    String selectedPlate = 'KDC 482J (Toyota HiAce Cold-Chain)';
+    final riderCtrl = TextEditingController(text: 'Branch Courier');
+    final plateCtrl = TextEditingController(text: 'Fleet Vehicle');
 
     showDialog(
       context: context,
@@ -502,42 +502,28 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<String>(
-                  dropdownColor: const Color(0xFF0F172A),
-                  initialValue: selectedRider,
+                TextField(
+                  controller: riderCtrl,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    labelText: 'Assign Courier / Rider',
+                    labelText: 'Assign Courier / Rider Name',
                     labelStyle: const TextStyle(color: Colors.white54),
                     filled: true,
                     fillColor: const Color(0xFF0F172A),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'David Omondi', child: Text('David Omondi (Dedicated Courier)')),
-                    DropdownMenuItem(value: 'Samuel Kipkorir', child: Text('Samuel Kipkorir (Express Rider)')),
-                    DropdownMenuItem(value: 'James Mwangi', child: Text('James Mwangi (Transit Driver)')),
-                  ],
-                  onChanged: (v) => selectedRider = v ?? selectedRider,
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  dropdownColor: const Color(0xFF0F172A),
-                  initialValue: selectedPlate,
+                TextField(
+                  controller: plateCtrl,
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    labelText: 'Assign Fleet Vehicle',
+                    labelText: 'Assign Fleet Vehicle / Plate',
                     labelStyle: const TextStyle(color: Colors.white54),
                     filled: true,
                     fillColor: const Color(0xFF0F172A),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'KDC 482J (Toyota HiAce Cold-Chain)', child: Text('KDC 482J (Toyota HiAce Cold-Chain)')),
-                    DropdownMenuItem(value: 'KDM 891B (Bajaj Boxer 150)', child: Text('KDM 891B (Bajaj Boxer 150)')),
-                    DropdownMenuItem(value: 'KDH 312X (Isuzu Cold-Box)', child: Text('KDH 312X (Isuzu Cold-Box)')),
-                  ],
-                  onChanged: (v) => selectedPlate = v ?? selectedPlate,
                 ),
               ],
             ),
@@ -552,8 +538,8 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                 try {
                   await _requisitionService.dispatchRequisition(
                     reqId: req.id,
-                    riderName: selectedRider,
-                    vehiclePlate: selectedPlate,
+                    riderName: riderCtrl.text.trim().isNotEmpty ? riderCtrl.text.trim() : 'Branch Courier',
+                    vehiclePlate: plateCtrl.text.trim().isNotEmpty ? plateCtrl.text.trim() : 'Fleet Vehicle',
                     actor: 'Kisumu Dispatch Supervisor',
                   );
                   if (mounted) {

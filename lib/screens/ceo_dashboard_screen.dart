@@ -52,17 +52,26 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       final int totalTx = (kpis['total_transactions'] as num?)?.toInt() ?? 0;
       final int lowStock = (kpis['low_stock_count'] as num?)?.toInt() ?? 0;
 
-      // CALL 2: Single Round-Trip Branch Revenue RPC
+      // CALL 2: Fetch all registered branches and their revenue
+      final allBranches = await supabaseService.fetchBranches();
       final branchData = await supabaseService.fetchBranchRevenue();
       double maxRev = 0.0;
       final List<Map<String, dynamic>> branchRevenues = [];
+
+      final Map<String, double> revMap = {};
       for (var b in branchData) {
+        final bId = b['branch_id']?.toString() ?? '';
         final rev = (b['revenue'] as num?)?.toDouble() ?? 0.0;
+        revMap[bId] = rev;
         if (rev > maxRev) maxRev = rev;
+      }
+
+      for (var br in allBranches) {
+        final rev = revMap[br.id] ?? 0.0;
         branchRevenues.add({
-          'id': b['branch_id']?.toString() ?? '',
-          'code': b['code']?.toString() ?? 'BR',
-          'name': b['branch_name']?.toString() ?? 'Branch',
+          'id': br.id,
+          'code': br.code,
+          'name': br.name,
           'revenue': rev,
         });
       }
@@ -70,7 +79,7 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
       // CALL 3: Bounded Recent Activities
       final recentRes = await db
           .from('transactions')
-          .select('id, total_amount, transaction_date')
+          .select('id, total_amount, transaction_date, client_name, transaction_type')
           .eq('transaction_type', 'sale')
           .order('transaction_date', ascending: false)
           .limit(10);
@@ -80,12 +89,63 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
         final amount = (tx['total_amount'] as num?)?.toDouble() ?? 0.0;
         final rawId = tx['id']?.toString() ?? 'TX';
         final shortId = rawId.length >= 8 ? rawId.substring(0, 8) : rawId;
+        final client = tx['client_name']?.toString();
+        final txType = (tx['transaction_type']?.toString() ?? 'Sale').toUpperCase();
         return {
           'id': shortId,
           'amount': amount,
           'date': tx['transaction_date'],
+          'title': (client != null && client.trim().isNotEmpty) ? client : 'Invoice #$shortId',
+          'type': txType,
         };
       }).toList();
+
+      // CALL 4: Real Category Distribution & Top Selling Drugs
+      final Map<String, double> catMap = {};
+      final Map<String, Map<String, dynamic>> drugMap = {};
+      try {
+        final txSales = await db
+            .from('transactions')
+            .select('drug_id, total_amount, quantity, drugs:drug_id(name, category, barcode, target_shelf, price)')
+            .eq('transaction_type', 'sale')
+            .limit(500);
+
+        for (final t in (txSales as List)) {
+          final amt = (t['total_amount'] as num?)?.toDouble() ?? 0.0;
+          final qty = (t['quantity'] as num?)?.toInt() ?? 1;
+          final d = t['drugs'] as Map<String, dynamic>?;
+          if (d != null) {
+            final cat = (d['category'] ?? 'General Medicines').toString();
+            catMap[cat] = (catMap[cat] ?? 0.0) + amt;
+
+            final dName = (d['name'] ?? 'Medicine').toString();
+            if (!drugMap.containsKey(dName)) {
+              final unitPrice = d['price'] != null ? double.tryParse(d['price'].toString()) ?? 0.0 : 0.0;
+              drugMap[dName] = {
+                'sku': d['barcode']?.toString() ?? 'SKU',
+                'name': dName,
+                'category': cat,
+                'bin': d['target_shelf']?.toString() ?? 'Bin A',
+                'price': 'KES ${_currencyFormat.format(unitPrice)}',
+                'total_qty': qty,
+                'total_amt': amt,
+              };
+            } else {
+              drugMap[dName]!['total_qty'] = (drugMap[dName]!['total_qty'] as int) + qty;
+              drugMap[dName]!['total_amt'] = (drugMap[dName]!['total_amt'] as double) + amt;
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Category calculation note: $e');
+      }
+
+      final topDrugsList = drugMap.values.toList()
+        ..sort((a, b) => (b['total_amt'] as double).compareTo(a['total_amt'] as double));
+
+      if (topDrugsList.length > 5) {
+        topDrugsList.length = 5;
+      }
 
       if (mounted) {
         setState(() {
@@ -95,8 +155,8 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
           _lowStockCount = lowStock;
           _liveActivities = recentActivities;
           _maxBranchRev = maxRev;
-          _topDrugs = [];
-          _categorySales = {};
+          _topDrugs = topDrugsList;
+          _categorySales = catMap;
           _isLoading = false;
           _errorMessage = '';
         });
@@ -279,10 +339,10 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                               ),
                               _buildKpiCard(
                                 'Inventory Health',
-                                _lowStockCount > 0 ? '$_lowStockCount Items Low' : 'Optimal Inventory',
-                                'Live Real-time Stock',
+                                _lowStockCount > 0 ? '$_lowStockCount Low Stock' : 'All Stock Healthy',
+                                _lowStockCount > 0 ? 'Action Required' : '0 Stock Alerts',
                                 Icons.verified_user_rounded,
-                                _lowStockCount > 0 ? Colors.amberAccent : Colors.purpleAccent,
+                                _lowStockCount > 0 ? Colors.amberAccent : const Color(0xFF10B981),
                               ),
                             ],
                           );
@@ -432,11 +492,11 @@ class _CeoDashboardScreenState extends State<CeoDashboardScreen> {
                                       child: Icon(Icons.receipt_long_rounded, color: Colors.white, size: 18),
                                     ),
                                     title: Text(
-                                      'Wholesale Invoice #${act['id']}',
+                                      act['title']?.toString() ?? 'Invoice #${act['id']}',
                                       style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                                     ),
                                     subtitle: Text(
-                                      'Sale Transaction • $timeStr',
+                                      '${act['type'] ?? 'SALE'} • $timeStr',
                                       style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
                                     ),
                                     trailing: Text(

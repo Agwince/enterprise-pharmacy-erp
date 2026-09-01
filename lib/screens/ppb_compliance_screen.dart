@@ -19,126 +19,13 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
   String _selectedCategoryFilter = 'All';
 
   // DDA Controlled Substances Registry
-  final List<Map<String, dynamic>> _controlledDrugsRegister = [
-    {
-      'date': '2026-08-28 14:22',
-      'drug_name': 'Morphine Sulphate Inj 10mg/mL',
-      'batch_no': 'BATCH-MOR-2026-08',
-      'patient_name': 'Grace Wanjiku Kamau',
-      'patient_id': 'ID: 28491024',
-      'doctor_name': 'Dr. Kenneth Mutua, MD',
-      'doctor_license': 'KMPDC-A-4819',
-      'hospital': 'Aga Khan University Hospital, Nairobi',
-      'qty': 10,
-      'unit': 'Ampoules',
-      'balance_remaining': 42,
-      'verified_by': 'Dr. Beatrice Ochieng (Superintendent)',
-      'witness_by': 'Pharm. Collins Otieno',
-      'status': 'VERIFIED_DISPENSED',
-    },
-    {
-      'date': '2026-08-27 10:15',
-      'drug_name': 'Pethidine HCl Inj 50mg/mL',
-      'batch_no': 'BATCH-PTH-2026-02',
-      'patient_name': 'Daniel Kiprono Cheruiyot',
-      'patient_id': 'ID: 31092841',
-      'doctor_name': 'Dr. Sarah Odhiambo, MD',
-      'doctor_license': 'KMPDC-B-8921',
-      'hospital': 'Nairobi Hospital - Acute Surgical Ward',
-      'qty': 5,
-      'unit': 'Vials',
-      'balance_remaining': 18,
-      'verified_by': 'Dr. Beatrice Ochieng (Superintendent)',
-      'witness_by': 'Pharm. Faith Chebet',
-      'status': 'VERIFIED_DISPENSED',
-    },
-    {
-      'date': '2026-08-25 16:40',
-      'drug_name': 'Diazepam Tabs 5mg (Valium)',
-      'batch_no': 'BATCH-DZP-2026-11',
-      'patient_name': 'Mercy Atieno Owino',
-      'patient_id': 'ID: 24918239',
-      'doctor_name': 'Dr. Patrick Njoroge, MD',
-      'doctor_license': 'KMPDC-A-1209',
-      'hospital': 'Mater Misericordiae Hospital',
-      'qty': 30,
-      'unit': 'Tablets',
-      'balance_remaining': 120,
-      'verified_by': 'Dr. Beatrice Ochieng (Superintendent)',
-      'witness_by': 'Pharm. Collins Otieno',
-      'status': 'VERIFIED_DISPENSED',
-    },
-  ];
+  final List<Map<String, dynamic>> _controlledDrugsRegister = [];
 
   // Active Recalls & Central Quarantine Protocol
-  final List<Map<String, dynamic>> _quarantinedBatches = [
-    {
-      'drug_name': 'Paracetamol Syrups 120mg/5mL 100mL',
-      'batch_no': 'BATCH-PARA-2026-X1',
-      'quarantined_by': 'Pharmacy & Poisons Board (PPB Alert #2026-09)',
-      'reason': 'Statutory PPB Recall: Suspected diethylene glycol trace in overseas solvent excipient.',
-      'date_quarantined': '2026-08-20',
-      'units_locked': 350,
-      'status': 'NATIONWIDE_KILL_SWITCH_ACTIVE',
-    },
-    {
-      'drug_name': 'Gentamicin Eye/Ear Drops 0.3%',
-      'batch_no': 'BATCH-GEN-2026-Q4',
-      'quarantined_by': 'Quality Assurance Head (Mediocare HQ)',
-      'reason': 'Cold-Chain excursion exceeding 25°C during Mombasa-Nairobi feeder transit.',
-      'date_quarantined': '2026-08-22',
-      'units_locked': 85,
-      'status': 'NATIONWIDE_KILL_SWITCH_ACTIVE',
-    },
-  ];
+  final List<Map<String, dynamic>> _quarantinedBatches = [];
 
   // Insurance & SHA Claims Clearinghouse
-  final List<Map<String, dynamic>> _insuranceClaims = [
-    {
-      'claim_id': 'CLM-SHA-2026-9481',
-      'insurer': 'Social Health Authority (SHA)',
-      'member_no': 'SHA-28491024-K',
-      'patient': 'Grace Wanjiku Kamau',
-      'prescription_amount': 8450.0,
-      'copay_amount': 845.0,
-      'pre_auth_code': 'AUTH-SHA-84910',
-      'status': 'PRE_AUTH_APPROVED',
-      'date': '2026-08-28',
-    },
-    {
-      'claim_id': 'CLM-JUB-2026-1048',
-      'insurer': 'Jubilee Health Insurance',
-      'member_no': 'JUB-CORP-48190',
-      'patient': 'Daniel Kiprono Cheruiyot',
-      'prescription_amount': 14200.0,
-      'copay_amount': 0.0,
-      'pre_auth_code': 'AUTH-JUB-39182',
-      'status': 'SETTLED_REMITTED',
-      'date': '2026-08-27',
-    },
-    {
-      'claim_id': 'CLM-AAR-2026-3810',
-      'insurer': 'AAR Insurance Kenya',
-      'member_no': 'AAR-IND-92814',
-      'patient': 'Mercy Atieno Owino',
-      'prescription_amount': 4800.0,
-      'copay_amount': 480.0,
-      'pre_auth_code': 'AUTH-AAR-18290',
-      'status': 'PRE_AUTH_APPROVED',
-      'date': '2026-08-26',
-    },
-    {
-      'claim_id': 'CLM-OLD-2026-7281',
-      'insurer': 'Old Mutual Health',
-      'member_no': 'OM-EXEC-71920',
-      'patient': 'Brian Omondi Onyango',
-      'prescription_amount': 19500.0,
-      'copay_amount': 1950.0,
-      'pre_auth_code': 'AUTH-OM-91028',
-      'status': 'SETTLED_REMITTED',
-      'date': '2026-08-25',
-    },
-  ];
+  List<Map<String, dynamic>> _insuranceClaims = [];
 
   @override
   void initState() {
@@ -160,23 +47,29 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
       final res = await db.from('drugs').select().order('name').limit(150);
       final list = List<Map<String, dynamic>>.from(res as List);
 
-      // Synthesize realistic FEFO expiry batches based on drug IDs for realistic governance
-      final now = DateTime.now();
-      for (var i = 0; i < list.length; i++) {
-        final drug = list[i];
-        final hash = drug['name'].toString().length + i;
-        int daysUntilExpiry;
-        if (hash % 7 == 0) {
-          daysUntilExpiry = 18; // 🔴 Critical <30 days
-        } else if (hash % 3 == 0) {
-          daysUntilExpiry = 54; // 🟡 Warning 30-90 days
-        } else {
-          daysUntilExpiry = 180 + (hash * 12); // 🟢 Optimal
+      // Load real insurance claims
+      try {
+        final claimsRes = await db
+            .from('insurance_claims')
+            .select()
+            .order('created_at', ascending: false)
+            .limit(100);
+        final realClaims = List<Map<String, dynamic>>.from(claimsRes as List);
+        if (mounted) {
+          _insuranceClaims = realClaims.map((c) => {
+            'claim_id': 'CLM-${(c['id']?.toString() ?? 'REQ').substring(0, 8).toUpperCase()}',
+            'insurer': c['insurer'] ?? 'Insurance Provider',
+            'member_no': c['member_number'] ?? 'N/A',
+            'patient': c['client_name'] ?? 'Patient',
+            'prescription_amount': (c['gross_amount'] as num?)?.toDouble() ?? 0.0,
+            'copay_amount': (c['copay_amount'] as num?)?.toDouble() ?? 0.0,
+            'pre_auth_code': c['pre_auth_code'] ?? 'N/A',
+            'status': c['claim_status'] ?? 'SUBMITTED',
+            'date': c['created_at'] != null ? c['created_at'].toString().substring(0, 10) : 'Today',
+          }).toList();
         }
-        drug['expiry_date'] = now.add(Duration(days: daysUntilExpiry));
-        drug['days_to_expiry'] = daysUntilExpiry;
-        drug['batch_number'] = 'BATCH-2026-${(1000 + i).toString()}';
-        drug['is_quarantined'] = _quarantinedBatches.any((q) => q['drug_name'] == drug['name']);
+      } catch (ce) {
+        debugPrint('Claims load note: $ce');
       }
 
       if (mounted) {
@@ -1031,7 +924,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                   onChanged: (v) => setState(() => _searchQuery = v),
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 13),
                   decoration: InputDecoration(
-                    hintText: 'Search 782 live medicines by name, generic, batch or SKU...',
+                    hintText: 'Search live medicines by name, generic, or SKU...',
                     hintStyle: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
                     prefixIcon: const Icon(Icons.search_rounded, color: Colors.tealAccent, size: 18),
                     filled: true,

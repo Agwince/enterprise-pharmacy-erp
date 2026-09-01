@@ -53,51 +53,9 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
       }
     } catch (_) {}
 
-    // Fallback if network drop
     if (mounted) {
       setState(() {
-        _fleet = [
-          {
-            'plate_number': 'KDC 482J',
-            'vehicle_model': 'TVS Apache 180 (Motorbike Dispatch)',
-            'current_lat': -0.0917,
-            'current_lng': 34.7680,
-            'destination': 'Milimani Hospital, Kisumu',
-            'speed': '48 km/h',
-            'temp': '22°C (Ambient)',
-            'is_bike': true,
-          },
-          {
-            'plate_number': 'KDH 312X',
-            'vehicle_model': 'Toyota Probox (Cold-Chain Insulin Van)',
-            'current_lat': -1.2635,
-            'current_lng': 36.8028,
-            'destination': 'Aga Khan Hospital Nairobi',
-            'speed': '36 km/h',
-            'temp': '3.2°C (Cold-Chain Verified)',
-            'is_bike': false,
-          },
-          {
-            'plate_number': 'KDM 891B',
-            'vehicle_model': 'Bajaj Boxer 150 (Hospital Courier)',
-            'current_lat': -1.2863,
-            'current_lng': 36.8172,
-            'destination': 'Kenyatta National Hospital Pharmacy',
-            'speed': '52 km/h',
-            'temp': '23°C (Ambient)',
-            'is_bike': true,
-          },
-          {
-            'plate_number': 'KDJ 554T',
-            'vehicle_model': 'Isuzu D-Max (Wholesale Carrier)',
-            'current_lat': -1.3090,
-            'current_lng': 36.8520,
-            'destination': 'Mombasa Port Depot Transit',
-            'speed': '64 km/h',
-            'temp': '20°C (Ventilated)',
-            'is_bike': false,
-          },
-        ];
+        _fleet = [];
         _isLoading = false;
       });
     }
@@ -192,13 +150,11 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
         physics: const BouncingScrollPhysics(),
         child: Row(
           children: [
-            _buildStatItem('Active Dispatch', '${_fleet.length} Units', Icons.two_wheeler_rounded, Colors.tealAccent),
+            _buildStatItem('Active Units', '${_fleet.length}', Icons.two_wheeler_rounded, Colors.tealAccent),
             const SizedBox(width: 24),
-            _buildStatItem('Cold-Chain Temp', '100% Compliant', Icons.thermostat_rounded, Colors.cyanAccent),
+            _buildStatItem('Telemetry Nodes', _fleet.isEmpty ? '0 Online' : '${_fleet.length} Connected', Icons.wifi_tethering_rounded, Colors.cyanAccent),
             const SizedBox(width: 24),
-            _buildStatItem('On-Time Rate', '98.6%', Icons.verified_rounded, const Color(0xFF10B981)),
-            const SizedBox(width: 24),
-            _buildStatItem('Nairobi HQ Pings', 'Live (3s)', Icons.wifi_tethering_rounded, Colors.amberAccent),
+            _buildStatItem('Live Stream', _fleet.isEmpty ? 'Idle' : 'Active GPS', Icons.satellite_alt_rounded, const Color(0xFF10B981)),
           ],
         ),
       ),
@@ -223,7 +179,9 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
   }
 
   Widget _buildDesktopMapLayout() {
-    final selectedVehicle = _fleet.isNotEmpty ? _fleet[_selectedVehicleIndex] : null;
+    final selectedVehicle = (_fleet.isNotEmpty && _selectedVehicleIndex < _fleet.length)
+        ? _fleet[_selectedVehicleIndex]
+        : null;
 
     return Row(
       children: [
@@ -245,7 +203,28 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
             ),
             child: selectedVehicle != null
                 ? _buildVehicleTelemetryCard(selectedVehicle)
-                : const SizedBox(),
+                : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.two_wheeler_outlined, size: 48, color: Colors.white24),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No Fleet In Transit',
+                            style: GoogleFonts.inter(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Active fleet telemetry and live GPS routes will stream here in real-time.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(color: Colors.white38, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
         ),
       ],
@@ -253,7 +232,9 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
   }
 
   Widget _buildMobileMapLayout() {
-    final selectedVehicle = _fleet.isNotEmpty ? _fleet[_selectedVehicleIndex] : null;
+    final selectedVehicle = (_fleet.isNotEmpty && _selectedVehicleIndex < _fleet.length)
+        ? _fleet[_selectedVehicleIndex]
+        : null;
 
     return Column(
       children: [
@@ -373,6 +354,24 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
               ),
             ),
 
+            if (_fleet.isEmpty)
+              Center(
+                child: GlassContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.radar_rounded, color: Colors.tealAccent, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Radar Scanning • 0 Active Fleet En Route',
+                        style: GoogleFonts.inter(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
             // Top-left GPS Coordinate Readout
             Positioned(
               top: 16,
@@ -399,13 +398,14 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
   }
 
   Widget _buildVehicleTelemetryCard(Map<String, dynamic> v) {
-    final plate = v['plate_number'] ?? 'KDC 482J';
-    final model = v['vehicle_model'] ?? 'Wholesale Courier';
-    final isBike = v['is_bike'] == true || model.contains('Motorbike');
-    final driver = v['profiles']?['full_name'] ?? v['assigned_marketer'] ?? 'Dedicated Regional Courier';
-    final destination = v['destination'] ?? 'Kenyatta National Hospital (Bulk Orders)';
-    final speed = v['speed'] ?? '46 km/h';
-    final temp = v['temp'] ?? '3.4°C (Cold-Chain Verified)';
+    final plate = v['plate_number']?.toString() ?? 'Unregistered Plate';
+    final model = v['vehicle_model']?.toString() ?? 'Fleet Vehicle';
+    final isBike = v['is_bike'] == true || model.toLowerCase().contains('motorbike') || model.toLowerCase().contains('bike');
+    final driver = v['profiles']?['full_name']?.toString() ?? v['driver_name']?.toString() ?? v['assigned_marketer']?.toString() ?? 'Unassigned Rider';
+    final destination = v['destination']?.toString() ?? 'Not specified';
+    final speed = v['speed']?.toString() ?? (v['speed_kmh'] != null ? '${v['speed_kmh']} km/h' : '--');
+    final temp = v['temp']?.toString() ?? (v['temp_celsius'] != null ? '${v['temp_celsius']}°C' : '--');
+    final status = (v['status']?.toString() ?? 'ACTIVE').toUpperCase();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -451,7 +451,7 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
                   border: Border.all(color: const Color(0xFF10B981)),
                 ),
                 child: Text(
-                  'EN ROUTE',
+                  status,
                   style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF10B981)),
                 ),
               ),
@@ -466,12 +466,11 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
           Text('LIVE TELEMETRY SENSORS', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.tealAccent, letterSpacing: 1)),
           const SizedBox(height: 12),
 
-          _buildTelemetryRow('Dedicated Driver', driver, Icons.person_rounded),
+          _buildTelemetryRow('Assigned Driver', driver, Icons.person_rounded),
           _buildTelemetryRow('Live Speed', speed, Icons.speed_rounded),
           _buildTelemetryRow('Cargo Temperature', temp, Icons.thermostat_rounded, valueColor: Colors.cyanAccent),
           _buildTelemetryRow('Delivery Target', destination, Icons.local_hospital_rounded, valueColor: Colors.amberAccent),
-          _buildTelemetryRow('GPS Coordinates', '${v['current_lat']}, ${v['current_lng']}', Icons.gps_fixed_rounded),
-          _buildTelemetryRow('Battery / Health', '94% • Optimal', Icons.battery_charging_full_rounded, valueColor: const Color(0xFF10B981)),
+          _buildTelemetryRow('GPS Coordinates', '${v['current_lat'] ?? '--'}, ${v['current_lng'] ?? '--'}', Icons.gps_fixed_rounded),
 
           const SizedBox(height: 24),
 
@@ -493,8 +492,8 @@ class _CeoFleetMapScreenState extends State<CeoFleetMapScreen> with SingleTicker
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              icon: const Icon(Icons.radio_rounded, size: 18),
-              label: Text('Send Ping to Dispatcher', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text('Ping Vehicle Sensor', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
             ),
           ),
         ],

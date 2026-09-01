@@ -21,8 +21,9 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
 
   // Branch Scoping
   String _selectedBranchId = '';
-  String _selectedBranchName = 'Nairobi';
-  String _selectedBranchCode = 'NBO-01';
+  String _selectedBranchName = '';
+  String _selectedBranchCode = '';
+  double? _monthlyBranchBudget;
 
   // 1. Revenue & POS Totals (Today)
   double _posCashTotal = 0.0;
@@ -72,11 +73,10 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
   // 7. Expense Claims & Imprest Ledger
   final _expenseDescController = TextEditingController();
   final _expenseAmountController = TextEditingController();
-  final _expenseCategoryController = TextEditingController(text: 'Branch Operations');
+  final _expenseCategoryController = TextEditingController();
   final _expenseReceiptController = TextEditingController();
   List<Map<String, dynamic>> _expenseLedger = [];
   double _totalExpensesThisMonth = 0.0;
-  final double _monthlyBranchBudget = 50000.0;
 
   // 8. Shift Handover Log
   final _handoverOutgoingController = TextEditingController();
@@ -138,36 +138,56 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
 
     try {
       final db = Supabase.instance.client;
+      final currentEmail = AuthService().userEmail.trim();
 
-      // 1. Fetch available branches
-      final branchRes = await db.from('branches').select('id, name, code, is_active').order('name');
-      final branchList = List<Map<String, dynamic>>.from(branchRes as List);
-
-      if (branchList.isNotEmpty) {
-        if (_selectedBranchId.isEmpty) {
-          // Check if user belongs to a specific branch in staff table
-          final userEmail = AuthService().userEmail;
-          if (userEmail.isNotEmpty) {
-            final staffMatch = await db.from('staff').select('branch_id').eq('email', userEmail).maybeSingle();
-            if (staffMatch != null && staffMatch['branch_id'] != null) {
-              final matched = branchList.firstWhere(
-                (b) => b['id'] == staffMatch['branch_id'],
-                orElse: () => branchList.first,
-              );
-              _selectedBranchId = matched['id'].toString();
-              _selectedBranchName = matched['name'].toString();
-              _selectedBranchCode = matched['code']?.toString() ?? 'BR';
-            }
-          }
-
-          // Fallback to first branch
-          if (_selectedBranchId.isEmpty) {
-            _selectedBranchId = branchList.first['id'].toString();
-            _selectedBranchName = branchList.first['name'].toString();
-            _selectedBranchCode = branchList.first['code']?.toString() ?? 'BR';
-          }
+      if (currentEmail.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Your account is not authenticated.';
+          });
         }
+        return;
       }
+
+      // Look up staff record for the logged-in user
+      final staffMatch = await db
+          .from('staff')
+          .select('branch_id')
+          .eq('email', currentEmail)
+          .maybeSingle();
+
+      if (staffMatch == null || staffMatch['branch_id'] == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Your account is not assigned to a branch.';
+          });
+        }
+        return;
+      }
+
+      final branchId = staffMatch['branch_id'].toString();
+      final branchMatch = await db
+          .from('branches')
+          .select('id, name, code, is_active, monthly_expense_budget')
+          .eq('id', branchId)
+          .maybeSingle();
+
+      if (branchMatch == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Assigned branch not found in database.';
+          });
+        }
+        return;
+      }
+
+      _selectedBranchId = branchMatch['id'].toString();
+      _selectedBranchName = branchMatch['name']?.toString() ?? 'Branch';
+      _selectedBranchCode = branchMatch['code']?.toString() ?? 'BR';
+      _monthlyBranchBudget = (branchMatch['monthly_expense_budget'] as num?)?.toDouble();
 
       await _fetchBranchData();
     } catch (e) {
@@ -182,6 +202,16 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
   }
 
   Future<void> _fetchBranchData() async {
+    if (_selectedBranchId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Your account is not assigned to a branch.';
+        });
+      }
+      return;
+    }
+
     try {
       final db = Supabase.instance.client;
       final today = DateTime.now();
@@ -191,6 +221,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
       final txRes = await db
           .from('transactions')
           .select('id, total_amount, payment_method, mpesa_receipt_number, client_name, transaction_date')
+          .eq('branch_id', _selectedBranchId)
           .eq('transaction_type', 'sale')
           .gte('transaction_date', startOfDay);
 
@@ -218,26 +249,29 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
         }
       }
 
-      // 2. M-Pesa Statement Records
+      // 2. M-Pesa Statement Records (scoped to branch_id)
       final mpesaRes = await db
           .from('mpesa_transactions')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('amount', ascending: false)
           .limit(20);
       final mpesaStmt = List<Map<String, dynamic>>.from(mpesaRes as List);
 
-      // 3. EOD Declarations
+      // 3. EOD Declarations (scoped to branch_id)
       final eodRes = await db
           .from('eod_declarations')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(10);
       final eodList = List<Map<String, dynamic>>.from(eodRes as List);
 
-      // 4. Bank Deposits Today
+      // 4. Bank Deposits Today (scoped to branch_id)
       final depRes = await db
           .from('branch_bank_deposits')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(20);
       final depList = List<Map<String, dynamic>>.from(depRes as List);
@@ -250,26 +284,29 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
         }
       }
 
-      // 5. Insurance Claims
+      // 5. Insurance Claims (scoped to branch_id)
       final claimRes = await db
           .from('insurance_claims')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(25);
       final claimList = List<Map<String, dynamic>>.from(claimRes as List);
 
-      // 6. Supplier Invoices Intake
+      // 6. Supplier Invoices Intake (scoped to branch_id)
       final suppInvRes = await db
           .from('branch_supplier_invoices')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(25);
       final suppInvList = List<Map<String, dynamic>>.from(suppInvRes as List);
 
-      // 7. Imprest Ledger & Expense Claims
+      // 7. Imprest Ledger & Expense Claims (scoped to branch_id)
       final ledgerRes = await db
           .from('imprest_ledger')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(30);
       final ledgerList = List<Map<String, dynamic>>.from(ledgerRes as List);
@@ -280,18 +317,20 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
         }
       }
 
-      // 8. Shift Handovers
+      // 8. Shift Handovers (scoped to branch_id)
       final handoverRes = await db
           .from('branch_shift_handovers')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(15);
       final handoverList = List<Map<String, dynamic>>.from(handoverRes as List);
 
-      // 9. eTIMS Invoices
+      // 9. eTIMS Invoices (scoped to branch_id)
       final etimsRes = await db
           .from('etims_invoices')
           .select()
+          .eq('branch_id', _selectedBranchId)
           .order('created_at', ascending: false)
           .limit(20);
       final etimsList = List<Map<String, dynamic>>.from(etimsRes as List);
@@ -351,6 +390,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('eod_declarations').insert({
+        'branch_id': _selectedBranchId,
         'branch': _selectedBranchName,
         'physical_cash': declCash,
         'mpesa_till_balance': declMpesa,
@@ -407,6 +447,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('branch_bank_deposits').insert({
+        'branch_id': _selectedBranchId,
         'branch_name': _selectedBranchName,
         'bank_name': bankName,
         'slip_reference': slipRef,
@@ -461,6 +502,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('insurance_claims').insert({
+        'branch_id': _selectedBranchId,
         'client_name': patient,
         'insurer': insurer,
         'member_number': memberNo,
@@ -517,6 +559,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('branch_supplier_invoices').insert({
+        'branch_id': _selectedBranchId,
         'branch_name': _selectedBranchName,
         'supplier_name': supplierName,
         'invoice_number': invoiceNo,
@@ -569,10 +612,11 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('imprest_ledger').insert({
-        'description': '$desc [$cat]',
+        'branch_id': _selectedBranchId,
+        'branch': _selectedBranchName,
+        'description': cat.isNotEmpty ? '$desc [$cat]' : desc,
         'amount': amount,
         'status': 'Pending Approval',
-        'branch': _selectedBranchName,
       });
 
       _expenseDescController.clear();
@@ -615,6 +659,7 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
     try {
       final db = Supabase.instance.client;
       await db.from('branch_shift_handovers').insert({
+        'branch_id': _selectedBranchId,
         'branch_name': _selectedBranchName,
         'outgoing_staff': outgoing,
         'incoming_staff': incoming,
@@ -679,7 +724,9 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
                     style: GoogleFonts.inter(fontSize: isDesktop ? 16 : 14, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   Text(
-                    'Scoped to: $_selectedBranchName ($_selectedBranchCode)',
+                    _selectedBranchName.isNotEmpty
+                        ? 'Scoped to: $_selectedBranchName ($_selectedBranchCode)'
+                        : 'Resolving branch...',
                     style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF10B981), fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -1294,8 +1341,10 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
   // TAB 4: EXPENSES & BUDGET
   // ===========================================================================
   Widget _buildExpensesAndBudgetTab(bool isDesktop) {
-    final remainingBudget = _monthlyBranchBudget - _totalExpensesThisMonth;
-    final budgetUsedPct = (_totalExpensesThisMonth / _monthlyBranchBudget).clamp(0.0, 1.0);
+    final hasBudget = _monthlyBranchBudget != null && _monthlyBranchBudget! > 0;
+    final budget = _monthlyBranchBudget ?? 0.0;
+    final remainingBudget = budget - _totalExpensesThisMonth;
+    final budgetUsedPct = hasBudget ? (_totalExpensesThisMonth / budget).clamp(0.0, 1.0) : 0.0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
@@ -1322,7 +1371,14 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Monthly Budget Cap', style: GoogleFonts.inter(color: Colors.white60, fontSize: 12)),
-                        Text('KES ${_currencyFormat.format(_monthlyBranchBudget)}', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Text(
+                          hasBudget ? 'KES ${_currencyFormat.format(budget)}' : 'No budget set',
+                          style: GoogleFonts.inter(
+                            fontSize: hasBudget ? 20 : 15,
+                            fontWeight: FontWeight.bold,
+                            color: hasBudget ? Colors.white : Colors.white54,
+                          ),
+                        ),
                       ],
                     ),
                     Column(
@@ -1336,28 +1392,41 @@ class _SecretaryFinanceScreenState extends State<SecretaryFinanceScreen>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text('Remaining Budget', style: GoogleFonts.inter(color: Colors.white60, fontSize: 12)),
-                        Text('KES ${_currencyFormat.format(remainingBudget)}', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: remainingBudget >= 0 ? const Color(0xFF10B981) : Colors.redAccent)),
+                        Text(
+                          hasBudget ? 'KES ${_currencyFormat.format(remainingBudget)}' : 'No budget set',
+                          style: GoogleFonts.inter(
+                            fontSize: hasBudget ? 20 : 15,
+                            fontWeight: FontWeight.bold,
+                            color: hasBudget ? (remainingBudget >= 0 ? const Color(0xFF10B981) : Colors.redAccent) : Colors.white54,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: budgetUsedPct,
-                    minHeight: 10,
-                    backgroundColor: Colors.white12,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      budgetUsedPct > 0.85 ? Colors.redAccent : (budgetUsedPct > 0.65 ? Colors.amberAccent : const Color(0xFF10B981)),
+                if (hasBudget) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: budgetUsedPct,
+                      minHeight: 10,
+                      backgroundColor: Colors.white12,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        budgetUsedPct > 0.85 ? Colors.redAccent : (budgetUsedPct > 0.65 ? Colors.amberAccent : const Color(0xFF10B981)),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${(budgetUsedPct * 100).toStringAsFixed(1)}% of monthly budget utilized',
-                  style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
-                ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${(budgetUsedPct * 100).toStringAsFixed(1)}% of monthly budget utilized',
+                    style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                  ),
+                ] else
+                  Text(
+                    'No monthly expense budget configured for ${_selectedBranchName.isNotEmpty ? _selectedBranchName : "this"} branch.',
+                    style: GoogleFonts.inter(color: Colors.white38, fontSize: 12, fontStyle: FontStyle.italic),
+                  ),
               ],
             ),
           ),

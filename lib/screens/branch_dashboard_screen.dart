@@ -737,10 +737,10 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
           if (filteredStock.isEmpty)
             Center(child: Text('No stock data available', style: GoogleFonts.inter(color: Colors.white54)))
           else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredStock.length,
+            SizedBox(
+              height: 500,
+              child: ListView.builder(
+                itemCount: filteredStock.length,
               itemBuilder: (context, index) {
                 final stock = filteredStock[index];
                 final hasImage = stock['image_url'] != null && stock['image_url'].toString().isNotEmpty;
@@ -784,6 +784,7 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 );
               },
             ),
+          ),
         ],
       ),
     );

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class PpbComplianceScreen extends StatefulWidget {
   const PpbComplianceScreen({super.key});
@@ -13,7 +12,13 @@ class PpbComplianceScreen extends StatefulWidget {
 
 class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final ScrollController _scrollController = ScrollController();
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _drugsPage = 0;
+  static const int _pageSize = 50;
+  String? _errorMessage;
   List<Map<String, dynamic>> _drugs = [];
   String _searchQuery = '';
   String _selectedCategoryFilter = 'All';
@@ -31,57 +36,139 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _scrollController.addListener(_onScroll);
     _loadSupabaseCatalog();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadSupabaseCatalog() async {
-    setState(() => _isLoading = true);
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreDrugs();
+    }
+  }
+
+  Future<void> _loadSupabaseCatalog({bool refresh = true}) async {
+    if (refresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _drugsPage = 0;
+        _hasMore = true;
+      });
+    }
     try {
       final db = Supabase.instance.client;
-      final res = await db.from('drugs').select().order('name').limit(2500);
-      final list = List<Map<String, dynamic>>.from(res as List);
+      final offset = _drugsPage * _pageSize;
 
-      // Load real insurance claims
-      try {
-        final claimsRes = await db
-            .from('insurance_claims')
-            .select()
-            .order('created_at', ascending: false)
-            .limit(100);
-        final realClaims = List<Map<String, dynamic>>.from(claimsRes as List);
-        if (mounted) {
-          _insuranceClaims = realClaims.map((c) => {
-            'claim_id': 'CLM-${(c['id']?.toString() ?? 'REQ').substring(0, 8).toUpperCase()}',
-            'insurer': c['insurer'] ?? 'Insurance Provider',
-            'member_no': c['member_number'] ?? 'N/A',
-            'patient': c['client_name'] ?? 'Patient',
-            'prescription_amount': (c['gross_amount'] as num?)?.toDouble() ?? 0.0,
-            'copay_amount': (c['copay_amount'] as num?)?.toDouble() ?? 0.0,
-            'pre_auth_code': c['pre_auth_code'] ?? 'N/A',
-            'status': c['claim_status'] ?? 'SUBMITTED',
-            'date': c['created_at'] != null ? c['created_at'].toString().substring(0, 10) : 'Today',
-          }).toList();
+      // Select valid columns from drugs and join real inventory_batches
+      final res = await db
+          .from('drugs')
+          .select('id, name, barcode, category, quantity_in_stock, inventory_batches(expiry_date, quantity, status)')
+          .order('name')
+          .range(offset, offset + _pageSize - 1);
+      final rawList = List<Map<String, dynamic>>.from(res as List);
+      final list = rawList.map((d) {
+        final batches = (d['inventory_batches'] as List?) ?? [];
+        int? days;
+        String? nearestBatchNo;
+        String? nearestExpiry;
+        for (var b in batches) {
+          if (b['expiry_date'] != null) {
+            final exp = DateTime.tryParse(b['expiry_date'].toString());
+            if (exp != null) {
+              final diff = exp.difference(DateTime.now()).inDays;
+              if (days == null || diff < days) {
+                days = diff;
+                nearestExpiry = b['expiry_date'].toString();
+                nearestBatchNo = b['batch_no']?.toString();
+              }
+            }
+          }
         }
-      } catch (ce) {
-        debugPrint('Claims load note: $ce');
+        return {
+          ...d,
+          'days_to_expiry': days ?? 999,
+          'batch_number': nearestBatchNo ?? 'No Batch',
+          'expiry_date': nearestExpiry ?? 'N/A',
+          'is_quarantined': false,
+        };
+      }).toList();
+
+      // Load real insurance claims on initial load
+      if (refresh) {
+        try {
+          final claimsRes = await db
+              .from('insurance_claims')
+              .select('id, insurer, member_number, client_name, gross_amount, copay_amount, pre_auth_code, claim_status, created_at')
+              .order('created_at', ascending: false)
+              .limit(100);
+          final realClaims = List<Map<String, dynamic>>.from(claimsRes as List);
+          if (mounted) {
+            _insuranceClaims = realClaims.map((c) => {
+              'claim_id': 'CLM-${(c['id']?.toString() ?? 'REQ').substring(0, 8).toUpperCase()}',
+              'insurer': c['insurer'] ?? 'Insurance Provider',
+              'member_no': c['member_number'] ?? 'N/A',
+              'patient': c['client_name'] ?? 'Patient',
+              'prescription_amount': (c['gross_amount'] as num?)?.toDouble() ?? 0.0,
+              'copay_amount': (c['copay_amount'] as num?)?.toDouble() ?? 0.0,
+              'pre_auth_code': c['pre_auth_code'] ?? 'N/A',
+              'status': c['claim_status'] ?? 'SUBMITTED',
+              'date': c['created_at'] != null ? c['created_at'].toString().substring(0, 10) : 'Today',
+            }).toList();
+          }
+        } catch (ce) {
+          debugPrint('Claims load note: $ce');
+        }
       }
 
       if (mounted) {
         setState(() {
-          _drugs = list;
+          if (refresh) {
+            _drugs = list;
+          } else {
+            _drugs.addAll(list);
+          }
+          _hasMore = list.length == _pageSize;
           _isLoading = false;
+          _isLoadingMore = false;
+          _errorMessage = null;
         });
       }
     } catch (e) {
       debugPrint('Error loading catalog for PPB: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        final errStr = e.toString();
+        final isOffline = errStr.contains('SocketException') ||
+            errStr.contains('ClientException') ||
+            errStr.contains('NetworkImage') ||
+            errStr.contains('Failed host lookup') ||
+            errStr.contains('connection');
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+          _errorMessage = isOffline
+              ? 'Network offline: Please check your internet connection.'
+              : 'Database error: $errStr';
+        });
+      }
     }
+  }
+
+  Future<void> _loadMoreDrugs() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    _drugsPage++;
+    await _loadSupabaseCatalog(refresh: false);
   }
 
   void _showAddControlledDispenseModal() {
@@ -959,6 +1046,31 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
           ),
           const SizedBox(height: 14),
 
+          // Error state banner if offline / failed query
+          if (_errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.cloud_off_rounded, color: Colors.redAccent, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(_errorMessage!, style: GoogleFonts.inter(color: Colors.white, fontSize: 12)),
+                  ),
+                  TextButton(
+                    onPressed: () => _loadSupabaseCatalog(refresh: true),
+                    child: Text('Retry', style: GoogleFonts.inter(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+
           // Medicine Batch Expiry List
           Expanded(
             child: Container(
@@ -972,9 +1084,17 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                       child: Text('No medicines matching FEFO criteria.', style: GoogleFonts.inter(color: Colors.white54)),
                     )
                   : ListView.separated(
-                      itemCount: filteredDrugs.length,
+                      controller: _scrollController,
+                      itemCount: filteredDrugs.length + (_isLoadingMore ? 1 : 0),
                       separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
                       itemBuilder: (context, idx) {
+                        if (idx == filteredDrugs.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
+                          );
+                        }
+
                         final drug = filteredDrugs[idx];
                         final days = drug['days_to_expiry'] as int? ?? 100;
                         final isQuarantined = drug['is_quarantined'] == true;
@@ -995,26 +1115,25 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                           statusLabel = '🟢 OPTIMAL ($days DAYS)';
                         }
 
-                        final img = (drug['image_url'] ?? '').toString();
+                        final drugName = (drug['name'] ?? 'Medicine').toString();
+                        final initials = drugName.length >= 2 ? drugName.substring(0, 2).toUpperCase() : 'RX';
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: img.isNotEmpty
-                                ? CachedNetworkImage(
-                                    imageUrl: img,
-                                    width: 44,
-                                    height: 44,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (_, _, _) => const Icon(Icons.medication_rounded, color: Colors.tealAccent),
-                                  )
-                                : Container(
-                                    width: 44,
-                                    height: 44,
-                                    color: Colors.tealAccent.withValues(alpha: 0.1),
-                                    child: const Icon(Icons.medication_rounded, color: Colors.tealAccent),
-                                  ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                            ),
+                            child: Center(
+                              child: Text(
+                                initials,
+                                style: GoogleFonts.inter(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
                           ),
                           title: Row(
                             children: [

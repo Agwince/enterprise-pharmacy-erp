@@ -24,7 +24,13 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   List<Map<String, dynamic>> _filteredCatalog = [];
   final List<Map<String, dynamic>> _cart = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _catalogPage = 0;
+  static const int _pageSize = 50;
+  String? _catalogError;
   Timer? _searchDebounce;
+  final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _clientController = TextEditingController();
   final TextEditingController _mpesaVerificationController = TextEditingController();
@@ -32,10 +38,21 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     _searchController.dispose();
     _clientController.dispose();
     _mpesaVerificationController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMoreCatalog();
+    }
   }
 
   Future<void> _verifyMpesaPayment() async {
@@ -85,73 +102,109 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _fetchCatalog();
   }
 
-  Future<void> _fetchCatalog() async {
-    // 1. Instant paint from Hive offline cache without waiting for network
-    final cached = CacheService().getCachedDrugs(ignoreTtl: true);
-    if (cached != null && cached.isNotEmpty) {
-      _catalog = cached.map((d) => {
-        'id': d.id,
-        'name': d.name,
-        'generic_name': d.genericName,
-        'price': d.unitPrice,
-        'barcode': d.sku,
-        'category': d.category,
-        'package_unit': d.unit,
-        'quantity_in_stock': d.quantityInStock,
-        'image_url': d.imageUrl,
-        'box_image_url': d.imageUrl,
-        'thumb_url': d.displayThumbUrl,
-      }).toList();
-      _filteredCatalog = List.from(_catalog);
-      _isLoading = false;
-      if (mounted) setState(() {});
+  Future<void> _fetchCatalog({bool refresh = true}) async {
+    if (refresh) {
+      setState(() {
+        _isLoading = true;
+        _catalogError = null;
+        _catalogPage = 0;
+        _hasMore = true;
+      });
     }
 
-    // 2. Fetch full live medicines catalog from Supabase (all available products)
+    // 1. Instant paint from Hive offline cache without waiting for network (first load only)
+    if (refresh && _catalog.isEmpty) {
+      final cached = CacheService().getCachedDrugs(ignoreTtl: true);
+      if (cached != null && cached.isNotEmpty) {
+        _catalog = cached.map((d) => {
+          'id': d.id,
+          'name': d.name,
+          'generic_name': d.genericName,
+          'price': d.unitPrice,
+          'barcode': d.sku,
+          'category': d.category,
+          'package_unit': d.unit,
+          'quantity_in_stock': d.quantityInStock,
+        }).toList();
+        _filteredCatalog = List.from(_catalog);
+        _isLoading = false;
+        if (mounted) setState(() {});
+      }
+    }
+
+    // 2. Fetch paginated live medicines catalog from Supabase (50 at a time)
     try {
-      final res = await Supabase.instance.client
+      final offset = _catalogPage * _pageSize;
+      final queryText = _searchController.text.trim();
+
+      var req = Supabase.instance.client
           .from('drugs')
-          .select('id, name, generic_name, price, barcode, category, package_unit, quantity_in_stock, image_url, box_image_url, inner_unit_image_url')
+          .select('id, name, generic_name, price, barcode, category, package_unit, quantity_in_stock');
+
+      if (queryText.isNotEmpty) {
+        req = req.or('name.ilike.%$queryText%,generic_name.ilike.%$queryText%,barcode.ilike.%$queryText%');
+      }
+
+      final res = await req
           .order('name')
-          .limit(2500);
+          .range(offset, offset + _pageSize - 1);
 
       final freshList = List<Map<String, dynamic>>.from(res as List);
       if (mounted) {
         setState(() {
-          _catalog = freshList;
-          if (_searchController.text.trim().isEmpty) {
+          if (refresh) {
+            _catalog = freshList;
+            _filteredCatalog = freshList;
+          } else {
+            _catalog.addAll(freshList);
             _filteredCatalog = List.from(_catalog);
           }
+          _hasMore = freshList.length == _pageSize;
           _isLoading = false;
+          _isLoadingMore = false;
+          _catalogError = null;
         });
       }
     } catch (e) {
       debugPrint('POS catalog network note: $e');
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        final errStr = e.toString();
+        final isOffline = errStr.contains('SocketException') ||
+            errStr.contains('ClientException') ||
+            errStr.contains('NetworkImage') ||
+            errStr.contains('Failed host lookup') ||
+            errStr.contains('connection');
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+          if (_catalog.isEmpty) {
+            _catalogError = isOffline
+                ? 'Network offline: Please check your internet connection.'
+                : 'Database error: $errStr';
+          }
+        });
+      }
     }
+  }
+
+  Future<void> _loadMoreCatalog() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    _catalogPage++;
+    await _fetchCatalog(refresh: false);
   }
 
   void _filterCatalog(String query) {
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
-      final q = query.toLowerCase().trim();
-      if (q.isEmpty) {
-        setState(() => _filteredCatalog = List.from(_catalog));
-        return;
-      }
-      setState(() {
-        _filteredCatalog = _catalog.where((d) {
-          final name = (d['name'] ?? '').toString().toLowerCase();
-          final generic = (d['generic_name'] ?? '').toString().toLowerCase();
-          final barcode = (d['barcode'] ?? '').toString().toLowerCase();
-          final cat = (d['category'] ?? '').toString().toLowerCase();
-          return name.contains(q) || generic.contains(q) || barcode.contains(q) || cat.contains(q);
-        }).toList();
-      });
+      _catalogPage = 0;
+      _hasMore = true;
+      _fetchCatalog(refresh: true);
     });
   }
 
@@ -825,106 +878,120 @@ class _TelesalesPosScreenState extends State<TelesalesPosScreen> {
             Expanded(
               child: _isLoading 
                 ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
-                : _filteredCatalog.isEmpty
+                : _catalogError != null && _filteredCatalog.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.medication_outlined, size: 48, color: Colors.white24),
+                            const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.redAccent),
                             const SizedBox(height: 12),
                             Text(
-                              'No medicines found in catalog.',
-                              style: GoogleFonts.inter(color: Colors.white60, fontSize: 14),
+                              _catalogError!,
+                              style: GoogleFonts.inter(color: Colors.white70, fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () => _fetchCatalog(refresh: true),
+                              icon: const Icon(Icons.refresh, color: Colors.black, size: 18),
+                              label: const Text('Retry Connection', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: _filteredCatalog.length,
-                        itemBuilder: (context, index) {
-                          final drug = _filteredCatalog[index];
-                          final name = (drug['name'] ?? 'Medicine').toString();
-                          final genericName = (drug['generic_name'] ?? '').toString();
-                          final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'Rx';
-                          final imgUrl = drug['image_url']?.toString() ??
-                              drug['box_image_url']?.toString() ??
-                              drug['inner_unit_image_url']?.toString() ??
-                              drug['thumb_url']?.toString();
-                          final stock = drug['quantity_in_stock'] != null
-                              ? int.tryParse(drug['quantity_in_stock'].toString()) ?? 0
-                              : 0;
+                    : _filteredCatalog.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.medication_outlined, size: 48, color: Colors.white24),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'No medicines found in catalog.',
+                                  style: GoogleFonts.inter(color: Colors.white60, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            itemCount: _filteredCatalog.length + (_isLoadingMore ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == _filteredCatalog.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
+                                );
+                              }
 
-                          return GlassContainer(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            padding: const EdgeInsets.all(8),
-                            child: ListTile(
-                              leading: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Colors.teal.withValues(alpha: 0.3), Colors.cyan.withValues(alpha: 0.15)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: imgUrl != null && imgUrl.isNotEmpty
-                                      ? Image.network(
-                                          imgUrl,
-                                          fit: BoxFit.cover,
-                                          cacheWidth: 120,
-                                          errorBuilder: (context, error, stackTrace) => Center(
-                                            child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                                          ),
-                                        )
-                                      : Center(
-                                          child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                                        ),
-                                ),
-                              ),
-                              title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (genericName.isNotEmpty)
-                                    Text(
-                                      genericName,
-                                      style: const TextStyle(color: Colors.tealAccent, fontSize: 11),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        'Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                              final drug = _filteredCatalog[index];
+                              final name = (drug['name'] ?? 'Medicine').toString();
+                              final genericName = (drug['generic_name'] ?? '').toString();
+                              final initials = name.length >= 2 ? name.substring(0, 2).toUpperCase() : 'Rx';
+                              final stock = drug['quantity_in_stock'] != null
+                                  ? int.tryParse(drug['quantity_in_stock'].toString()) ?? 0
+                                  : 0;
+
+                              return GlassContainer(
+                                margin: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.all(8),
+                                child: ListTile(
+                                  leading: Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.teal.withValues(alpha: 0.3), Colors.cyan.withValues(alpha: 0.15)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                       ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '• In Stock: $stock',
-                                        style: TextStyle(
-                                          color: stock > 10 ? const Color(0xFF10B981) : Colors.amberAccent,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.tealAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Center(
+                                      child: Text(initials, style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                                    ),
+                                  ),
+                                  title: Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (genericName.isNotEmpty)
+                                        Text(
+                                          genericName,
+                                          style: const TextStyle(color: Colors.tealAccent, fontSize: 11),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
+                                      const SizedBox(height: 2),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            'Price: Ksh ${drug['price'] != null ? (double.tryParse(drug['price'].toString()) ?? 0.0).toStringAsFixed(2) : '0.00'}',
+                                            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '• In Stock: $stock',
+                                            style: TextStyle(
+                                              color: stock > 10 ? const Color(0xFF10B981) : Colors.amberAccent,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
-                                onPressed: () => _addToCart(drug),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.add_shopping_cart, color: Colors.tealAccent),
+                                    onPressed: () => _addToCart(drug),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
             ),
           ],
         ),

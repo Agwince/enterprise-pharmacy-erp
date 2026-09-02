@@ -512,11 +512,11 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                             ),
                           )
                         else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: filteredCompleted.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 12),
+                          SizedBox(
+                            height: 480,
+                            child: ListView.separated(
+                              itemCount: filteredCompleted.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 12),
                             itemBuilder: (context, index) {
                               final drug = filteredCompleted[index];
                               final name = drug['name'] as String;
@@ -596,9 +596,10 @@ class _CatalogListScreenState extends State<CatalogListScreen> {
                               );
                             },
                           ),
-                          const SizedBox(height: 80), // extra padding at bottom
-                      ],
-                    ),
+                        ),
+                      const SizedBox(height: 80), // extra padding at bottom
+                    ],
+                  ),
                   ),
                 ),
     );

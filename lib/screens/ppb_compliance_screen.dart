@@ -97,7 +97,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
         }
         return {
           ...d,
-          'days_to_expiry': days ?? 999,
+          'days_to_expiry': days,
           'batch_number': nearestBatchNo ?? 'No Batch',
           'expiry_date': nearestExpiry ?? 'N/A',
           'is_quarantined': false,
@@ -361,7 +361,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                               'doctor_name': doctorNameCtrl.text.trim(),
                               'doctor_license': doctorLicenseCtrl.text.trim(),
                               'hospital': hospitalCtrl.text.trim(),
-                              'qty': int.tryParse(qtyCtrl.text) ?? 10,
+                              'qty': int.tryParse(qtyCtrl.text) ?? 1,
                               'unit': 'Units',
                               'balance_remaining': 35,
                               'verified_by': 'Dr. Beatrice Ochieng (Superintendent)',
@@ -803,7 +803,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                     tabs: [
                       Tab(
                         icon: const Icon(Icons.timelapse_rounded, size: 18),
-                        text: 'FEFO Expiry Radar (${_drugs.where((d) => (d['days_to_expiry'] as int? ?? 100) <= 90).length})',
+                        text: 'FEFO Expiry Radar (${_drugs.where((d) => d['days_to_expiry'] != null && (d['days_to_expiry'] as int) <= 90).length})',
                       ),
                       Tab(
                         icon: const Icon(Icons.security_rounded, size: 18),
@@ -952,12 +952,17 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
       final matchesSearch = (d['name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
           (d['barcode'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase());
       if (_selectedCategoryFilter == 'All') return matchesSearch;
-      if (_selectedCategoryFilter == 'Critical (<30d)') return matchesSearch && (d['days_to_expiry'] as int? ?? 100) <= 30;
-      if (_selectedCategoryFilter == 'Warning (30-90d)') {
-        final days = d['days_to_expiry'] as int? ?? 100;
-        return matchesSearch && days > 30 && days <= 90;
+      if (_selectedCategoryFilter == 'Critical (<30d)') {
+        return matchesSearch && d['days_to_expiry'] != null && (d['days_to_expiry'] as int) <= 30;
       }
-      if (_selectedCategoryFilter == 'Optimal (>90d)') return matchesSearch && (d['days_to_expiry'] as int? ?? 100) > 90;
+      if (_selectedCategoryFilter == 'Warning (30-90d)') {
+        final days = d['days_to_expiry'] as int?;
+        return matchesSearch && days != null && days > 30 && days <= 90;
+      }
+      if (_selectedCategoryFilter == 'Optimal (>90d)') {
+        final days = d['days_to_expiry'] as int?;
+        return matchesSearch && days != null && days > 90;
+      }
       return matchesSearch;
     }).toList();
 
@@ -970,9 +975,9 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
           LayoutBuilder(
             builder: (context, box) {
               final isWide = box.maxWidth >= 600;
-              final critCount = _drugs.where((d) => (d['days_to_expiry'] as int? ?? 100) <= 30).length;
-              final warnCount = _drugs.where((d) => (d['days_to_expiry'] as int? ?? 100) > 30 && (d['days_to_expiry'] as int? ?? 100) <= 90).length;
-              final optCount = _drugs.where((d) => (d['days_to_expiry'] as int? ?? 100) > 90).length;
+              final critCount = _drugs.where((d) => d['days_to_expiry'] != null && (d['days_to_expiry'] as int) <= 30).length;
+              final warnCount = _drugs.where((d) => d['days_to_expiry'] != null && (d['days_to_expiry'] as int) > 30 && (d['days_to_expiry'] as int) <= 90).length;
+              final optCount = _drugs.where((d) => d['days_to_expiry'] != null && (d['days_to_expiry'] as int) > 90).length;
 
               final c1 = _buildKpiPill('🔴 Critical (<30 Days)', '$critCount Batches', Colors.redAccent, 'Urgent Clearance / Return');
               final c2 = _buildKpiPill('🟡 Warning (30-90 Days)', '$warnCount Batches', Colors.amberAccent, 'FEFO Priority Rotation');
@@ -1096,7 +1101,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                         }
 
                         final drug = filteredDrugs[idx];
-                        final days = drug['days_to_expiry'] as int? ?? 100;
+                        final days = drug['days_to_expiry'] as int?;
                         final isQuarantined = drug['is_quarantined'] == true;
 
                         Color statusColor;
@@ -1104,6 +1109,9 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                         if (isQuarantined) {
                           statusColor = Colors.purpleAccent;
                           statusLabel = '🛑 QUARANTINED (LOCKED)';
+                        } else if (days == null) {
+                          statusColor = Colors.blueGrey;
+                          statusLabel = 'No batch — expiry unknown';
                         } else if (days <= 30) {
                           statusColor = Colors.redAccent;
                           statusLabel = '🔴 CRITICAL ($days DAYS)';
@@ -1164,7 +1172,7 @@ class _PpbComplianceScreenState extends State<PpbComplianceScreen> with SingleTi
                             style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
                             overflow: TextOverflow.ellipsis,
                           ),
-                          trailing: days <= 90 && !isQuarantined
+                          trailing: days != null && days <= 90 && !isQuarantined
                               ? ElevatedButton(
                                   onPressed: () {
                                     ScaffoldMessenger.of(context).showSnackBar(

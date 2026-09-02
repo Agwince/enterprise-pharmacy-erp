@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,7 +16,6 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
   final RequisitionService _requisitionService = RequisitionService();
   bool _isLoading = true;
   List<InternalRequisition> _requisitions = [];
-  List<Map<String, dynamic>> _catalog = [];
   List<Map<String, dynamic>> _fleet = [];
   InternalRequisition? _selectedRequisition;
 
@@ -33,20 +33,12 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
       // 1. Fetch live requisitions
       final reqs = await _requisitionService.fetchRequisitions();
 
-      // 2. Fetch real medicines for new requisition builder
-      final drugRes = await db
-          .from('drugs')
-          .select('id, name, barcode, category, target_shelf, price, quantity_in_stock, warehouse_quantity, shelf_quantity')
-          .order('name')
-          .limit(100);
-
-      // 3. Fetch fleet vehicles telemetry
+      // 2. Fetch fleet vehicles telemetry
       final fleetRes = await db.from('fleet_vehicles').select();
 
       if (mounted) {
         setState(() {
           _requisitions = reqs;
-          _catalog = List<Map<String, dynamic>>.from(drugRes as List);
           _fleet = List<Map<String, dynamic>>.from(fleetRes as List);
           if (_requisitions.isNotEmpty) {
             _selectedRequisition = _requisitions.first;
@@ -65,7 +57,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
   void _openCreateRequisitionModal() {
     final List<Map<String, dynamic>> selectedItems = [];
     final notesCtrl = TextEditingController();
-    String? selectedDrugId;
+    Map<String, dynamic>? selectedDrug;
     final qtyCtrl = TextEditingController();
 
     showModalBottomSheet(
@@ -107,25 +99,47 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                     children: [
                       Expanded(
                         flex: 3,
-                        child: DropdownButtonFormField<String>(
-                          dropdownColor: const Color(0xFF0F172A),
-                          initialValue: selectedDrugId,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: InputDecoration(
-                            labelText: 'Select Medicine',
-                            labelStyle: const TextStyle(color: Colors.white54),
-                            filled: true,
-                            fillColor: const Color(0xFF0F172A),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
-                          items: _catalog.map((d) {
-                            return DropdownMenuItem<String>(
-                              value: d['id'].toString(),
-                              child: Text(d['name'].toString(), overflow: TextOverflow.ellipsis),
+                        child: InkWell(
+                          onTap: () async {
+                            final picked = await showDialog<Map<String, dynamic>>(
+                              context: context,
+                              builder: (c) => const SearchableMedicineDialog(),
                             );
-                          }).toList(),
-                          onChanged: (val) => setModalState(() => selectedDrugId = val),
+                            if (picked != null) {
+                              setModalState(() => selectedDrug = picked);
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F172A),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: selectedDrug != null ? Colors.tealAccent : Colors.white12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.search, size: 18, color: selectedDrug != null ? Colors.tealAccent : Colors.white54),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    selectedDrug != null ? selectedDrug!['name'].toString() : 'Search Medicine (tap here)...',
+                                    style: TextStyle(
+                                      color: selectedDrug != null ? Colors.white : Colors.white54,
+                                      fontSize: 13,
+                                      fontWeight: selectedDrug != null ? FontWeight.w600 : FontWeight.normal,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (selectedDrug != null)
+                                  GestureDetector(
+                                    onTap: () => setModalState(() => selectedDrug = null),
+                                    child: const Icon(Icons.close, size: 16, color: Colors.white54),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -150,10 +164,10 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
-                        onPressed: selectedDrugId == null
+                        onPressed: selectedDrug == null
                             ? null
                             : () {
-                                final drug = _catalog.firstWhere((d) => d['id'].toString() == selectedDrugId);
+                                final drug = selectedDrug!;
                                 final qty = int.tryParse(qtyCtrl.text.trim()) ?? 1;
                                 final cost = (drug['cost_price'] as num?)?.toDouble() ?? (drug['price'] as num?)?.toDouble() ?? 50.0;
                                 setModalState(() {
@@ -164,7 +178,7 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
                                     'unit_cost': cost,
                                     'bin_location': drug['target_shelf'] ?? 'Unassigned',
                                   });
-                                  selectedDrugId = null;
+                                  selectedDrug = null;
                                   qtyCtrl.clear();
                                 });
                               },
@@ -979,5 +993,219 @@ class _KisumuInTransitScreenState extends State<KisumuInTransitScreen> {
         child: const Text('CLOSED (Stock & GL Reconciled)', style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold)),
       );
     }
+  }
+}
+
+class SearchableMedicineDialog extends StatefulWidget {
+  const SearchableMedicineDialog({super.key});
+
+  @override
+  State<SearchableMedicineDialog> createState() => _SearchableMedicineDialogState();
+}
+
+class _SearchableMedicineDialogState extends State<SearchableMedicineDialog> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
+  List<Map<String, dynamic>> _results = [];
+  bool _isLoading = false;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  int _page = 0;
+  static const int _pageSize = 20;
+  Timer? _debounce;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollCtrl.addListener(_onScroll);
+    _fetchPage(0, refresh: true);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _scrollCtrl.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollCtrl.hasClients &&
+        _scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 100 &&
+        !_isLoadingMore &&
+        _hasMore) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _fetchPage(int page, {bool refresh = false}) async {
+    if (refresh) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _page = 0;
+        _hasMore = true;
+      });
+    }
+
+    try {
+      final db = Supabase.instance.client;
+      final queryText = _searchCtrl.text.trim();
+      final offset = page * _pageSize;
+
+      var req = db
+          .from('drugs')
+          .select('id, name, barcode, category, target_shelf, price, quantity_in_stock, warehouse_quantity, shelf_quantity');
+
+      if (queryText.isNotEmpty) {
+        req = req.ilike('name', '%$queryText%');
+      }
+
+      final res = await req
+          .order('name')
+          .range(offset, offset + _pageSize - 1);
+
+      final items = List<Map<String, dynamic>>.from(res as List);
+      if (mounted) {
+        setState(() {
+          if (refresh) {
+            _results = items;
+          } else {
+            _results.addAll(items);
+          }
+          _hasMore = items.length == _pageSize;
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        final errStr = e.toString();
+        final isOffline = errStr.contains('SocketException') ||
+            errStr.contains('ClientException') ||
+            errStr.contains('Failed host lookup') ||
+            errStr.contains('connection');
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+          _errorMessage = isOffline
+              ? 'Network offline: Please check your internet connection.'
+              : 'Database error: $errStr';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    setState(() => _isLoadingMore = true);
+    _page++;
+    await _fetchPage(_page, refresh: false);
+  }
+
+  void _onSearchChanged(String text) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _fetchPage(0, refresh: true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF1E293B),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 480,
+        height: 520,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.search, color: Colors.tealAccent, size: 20),
+                const SizedBox(width: 8),
+                Text('Select Medicine', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.close, color: Colors.white54, size: 20), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchCtrl,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search by name (e.g. Zentel, Amox, Z)...',
+                hintStyle: const TextStyle(color: Colors.white38),
+                prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
+                filled: true,
+                fillColor: const Color(0xFF0F172A),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.cloud_off_rounded, color: Colors.redAccent, size: 36),
+                              const SizedBox(height: 8),
+                              Text(_errorMessage!, style: const TextStyle(color: Colors.white70, fontSize: 12), textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: () => _fetchPage(0, refresh: true),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.tealAccent, foregroundColor: Colors.black),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _results.isEmpty
+                          ? Center(
+                              child: Text(
+                                _searchCtrl.text.isEmpty ? 'No medicines available' : 'No medicines match "${_searchCtrl.text}"',
+                                style: const TextStyle(color: Colors.white54, fontSize: 13),
+                              ),
+                            )
+                          : ListView.separated(
+                              controller: _scrollCtrl,
+                              itemCount: _results.length + (_isLoadingMore ? 1 : 0),
+                              separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.05), height: 1),
+                              itemBuilder: (context, idx) {
+                                if (idx == _results.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 12),
+                                    child: Center(child: CircularProgressIndicator(color: Colors.tealAccent, strokeWidth: 2)),
+                                  );
+                                }
+                                final drug = _results[idx];
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(drug['name'] ?? '', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                  subtitle: Text(
+                                    'Category: ${drug['category'] ?? 'General'} • Bin: ${drug['target_shelf'] ?? 'Unassigned'} • Stock: ${drug['quantity_in_stock'] ?? 0}',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 11),
+                                  ),
+                                  trailing: Text(
+                                    'KES ${drug['price'] ?? '0.00'}',
+                                    style: const TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                  onTap: () => Navigator.pop(context, drug),
+                                );
+                              },
+                            ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
